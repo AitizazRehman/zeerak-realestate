@@ -24,7 +24,8 @@ class CustomerController extends Controller
             });
         }
         if ($request->has('is_active')) $query->where('is_active', $request->boolean('is_active'));
-        return response()->json($query->latest()->paginate($request->integer('per_page', 15)));
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        return response()->json($query->latest()->paginate($perPage));
     }
 
     public function store(StoreCustomerRequest $request)
