@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StoreProjectBlockRequest;
 use App\Http\Requests\UpdateProjectBlockRequest;
 use App\Models\ProjectBlock;
@@ -10,17 +11,27 @@ use Illuminate\Http\Request;
 
 class ProjectBlockController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function applyBranchScope($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $query->whereHas('project', function ($projectQuery) {
+                $projectQuery->where('branch_id', auth()->user()->branch_id);
+            });
+        }
+
+        return $query;
+    }
+
     public function index(Request $request)
     {
-        $query = ProjectBlock::with([
+        $query = $this->applyBranchScope(ProjectBlock::with([
             'project:id,name,code'
-        ]);
+        ]));
 
         if ($request->filled('project_id')) {
-            $query->where(
-                'project_id',
-                $request->project_id
-            );
+            $query->where('project_id', $request->project_id);
         }
 
         if ($request->filled('search')) {
@@ -42,12 +53,11 @@ class ProjectBlockController extends Controller
     public function store(StoreProjectBlockRequest $request)
     {
         $data = $request->validated();
+        $project = $this->applyBranchScope(\App\Models\Project::query())
+            ->findOrFail($data['project_id']);
 
-        $data['area_unit'] =
-            $data['area_unit'] ?? 'Marla';
-
-        $data['total_units'] =
-            $data['total_units'] ?? 0;
+        $data['area_unit'] = $data['area_unit'] ?? 'Marla';
+        $data['total_units'] = $data['total_units'] ?? 0;
 
         $block = ProjectBlock::create($data);
 
@@ -59,10 +69,10 @@ class ProjectBlockController extends Controller
 
     public function show($id)
     {
-        $block = ProjectBlock::with([
+        $block = $this->applyBranchScope(ProjectBlock::with([
             'project',
             'properties'
-        ])->findOrFail($id);
+        ]))->findOrFail($id);
 
         return response()->json([
             'data' => $block
@@ -73,9 +83,16 @@ class ProjectBlockController extends Controller
         UpdateProjectBlockRequest $request,
         $id
     ) {
-        $block = ProjectBlock::findOrFail($id);
+        $block = $this->applyBranchScope(ProjectBlock::query())
+            ->findOrFail($id);
+        $data = $request->validated();
 
-        $block->update($request->validated());
+        if (isset($data['project_id'])) {
+            $this->applyBranchScope(\App\Models\Project::query())
+                ->findOrFail($data['project_id']);
+        }
+
+        $block->update($data);
 
         return response()->json([
             'message' => 'Block updated successfully.',
@@ -85,7 +102,8 @@ class ProjectBlockController extends Controller
 
     public function destroy($id)
     {
-        $block = ProjectBlock::findOrFail($id);
+        $block = $this->applyBranchScope(ProjectBlock::query())
+            ->findOrFail($id);
 
         $block->delete();
 
