@@ -26,7 +26,8 @@ class ExpenseController extends Controller
                   ->orWhere('vendor_name','like',"%{$search}%");
             });
         }
-        return response()->json($q->latest('expense_date')->latest('id')->paginate($request->integer('per_page', 20)));
+        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
+        return response()->json($q->latest('expense_date')->latest('id')->paginate($perPage));
     }
 
     public function store(Request $request)
