@@ -18,7 +18,8 @@ class PaymentController extends Controller
         foreach (['booking_id','customer_id','installment_id','payment_method','status'] as $f) if ($r->filled($f)) $q->where($f, $r->$f);
         if ($r->filled('from')) $q->whereDate('payment_date','>=',$r->from);
         if ($r->filled('to')) $q->whereDate('payment_date','<=',$r->to);
-        return response()->json($q->latest('payment_date')->paginate($r->integer('per_page',15)));
+        $perPage = min(max((int) $r->get('per_page', 15), 1), 100);
+        return response()->json($q->latest('payment_date')->paginate($perPage));
     }
 
     public function store(Request $r)
