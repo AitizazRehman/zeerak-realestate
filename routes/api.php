@@ -33,10 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
     });
 
-    // Lightweight lookup used by CRM/sales forms. It does not expose user administration data.
     Route::get('sales-agents', [UserController::class, 'salesAgents'])->middleware('permission:sales.view');
 
-    // User administration is protected by action-level permissions.
+    // User administration.
     Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view');
     Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create');
     Route::get('users/{user}', [UserController::class, 'show'])->middleware('permission:users.view');
@@ -44,39 +43,103 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('users/{user}', [UserController::class, 'update'])->middleware('permission:users.edit');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->middleware('permission:users.delete');
 
-    // Reference data used by the authenticated application.
-    Route::apiResource('branches', BranchController::class)->only(['index', 'show']);
+    // Reference data.
+    Route::get('branches', [BranchController::class, 'index'])->middleware('permission:dashboard.view');
+    Route::get('branches/{branch}', [BranchController::class, 'show'])->middleware('permission:dashboard.view');
 
-    // Property and project management.
-    Route::apiResource('projects', ProjectController::class);
-    Route::apiResource('project-blocks', ProjectBlockController::class);
-    Route::get('properties/inventory', [PropertyController::class, 'inventory']);
-    Route::apiResource('properties', PropertyController::class);
-    Route::put('properties/{property}/status', [PropertyStatusController::class, 'update']);
-    Route::get('properties/{property}/status-history', [PropertyStatusController::class, 'history']);
-    Route::post('properties/{property}/images', [PropertyImageController::class, 'store']);
-    Route::delete('property-images/{image}', [PropertyImageController::class, 'destroy']);
-    Route::put('property-images/{image}/primary', [PropertyImageController::class, 'primary']);
-    Route::post('properties/{property}/documents', [PropertyDocumentController::class, 'store']);
-    Route::delete('property-documents/{document}', [PropertyDocumentController::class, 'destroy']);
-    Route::post('properties/{property}/features', [PropertyFeatureController::class, 'store']);
-    Route::delete('property-features/{feature}', [PropertyFeatureController::class, 'destroy']);
+    // Projects.
+    Route::get('projects', [ProjectController::class, 'index'])->middleware('permission:projects.view');
+    Route::post('projects', [ProjectController::class, 'store'])->middleware('permission:projects.create');
+    Route::get('projects/{project}', [ProjectController::class, 'show'])->middleware('permission:projects.view');
+    Route::put('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
+    Route::patch('projects/{project}', [ProjectController::class, 'update'])->middleware('permission:projects.edit');
+    Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->middleware('permission:projects.delete');
 
-    // CRM and sales.
-    Route::apiResource('customers', CustomerController::class);
-    Route::apiResource('leads', LeadController::class);
-    Route::apiResource('site-visits', SiteVisitController::class);
-    Route::apiResource('bookings', BookingController::class);
-    Route::post('bookings/{booking}/confirm', [BookingStatusController::class, 'confirm']);
-    Route::post('bookings/{booking}/cancel', [BookingStatusController::class, 'cancel']);
-    Route::post('bookings/{booking}/complete', [BookingStatusController::class, 'complete']);
-    Route::get('sales/dashboard', [SalesDashboardController::class, 'index']);
+    // Project blocks.
+    Route::get('project-blocks', [ProjectBlockController::class, 'index'])->middleware('permission:projects.view');
+    Route::post('project-blocks', [ProjectBlockController::class, 'store'])->middleware('permission:projects.create');
+    Route::get('project-blocks/{projectBlock}', [ProjectBlockController::class, 'show'])->middleware('permission:projects.view');
+    Route::put('project-blocks/{projectBlock}', [ProjectBlockController::class, 'update'])->middleware('permission:projects.edit');
+    Route::patch('project-blocks/{projectBlock}', [ProjectBlockController::class, 'update'])->middleware('permission:projects.edit');
+    Route::delete('project-blocks/{projectBlock}', [ProjectBlockController::class, 'destroy'])->middleware('permission:projects.delete');
+
+    // Properties and related resources.
+    Route::get('properties/inventory', [PropertyController::class, 'inventory'])->middleware('permission:properties.view');
+    Route::get('properties', [PropertyController::class, 'index'])->middleware('permission:properties.view');
+    Route::post('properties', [PropertyController::class, 'store'])->middleware('permission:properties.create');
+    Route::get('properties/{property}', [PropertyController::class, 'show'])->middleware('permission:properties.view');
+    Route::put('properties/{property}', [PropertyController::class, 'update'])->middleware('permission:properties.edit');
+    Route::patch('properties/{property}', [PropertyController::class, 'update'])->middleware('permission:properties.edit');
+    Route::delete('properties/{property}', [PropertyController::class, 'destroy'])->middleware('permission:properties.delete');
+    Route::put('properties/{property}/status', [PropertyStatusController::class, 'update'])->middleware('permission:properties.edit');
+    Route::get('properties/{property}/status-history', [PropertyStatusController::class, 'history'])->middleware('permission:properties.view');
+    Route::post('properties/{property}/images', [PropertyImageController::class, 'store'])->middleware('permission:properties.create');
+    Route::delete('property-images/{image}', [PropertyImageController::class, 'destroy'])->middleware('permission:properties.delete');
+    Route::put('property-images/{image}/primary', [PropertyImageController::class, 'primary'])->middleware('permission:properties.edit');
+    Route::post('properties/{property}/documents', [PropertyDocumentController::class, 'store'])->middleware('permission:documents.create');
+    Route::delete('property-documents/{document}', [PropertyDocumentController::class, 'destroy'])->middleware('permission:documents.delete');
+    Route::post('properties/{property}/features', [PropertyFeatureController::class, 'store'])->middleware('permission:properties.create');
+    Route::delete('property-features/{feature}', [PropertyFeatureController::class, 'destroy'])->middleware('permission:properties.delete');
+
+    // CRM.
+    Route::get('customers', [CustomerController::class, 'index'])->middleware('permission:customers.view');
+    Route::post('customers', [CustomerController::class, 'store'])->middleware('permission:customers.create');
+    Route::get('customers/{customer}', [CustomerController::class, 'show'])->middleware('permission:customers.view');
+    Route::put('customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:customers.edit');
+    Route::patch('customers/{customer}', [CustomerController::class, 'update'])->middleware('permission:customers.edit');
+    Route::delete('customers/{customer}', [CustomerController::class, 'destroy'])->middleware('permission:customers.delete');
+
+    Route::get('leads', [LeadController::class, 'index'])->middleware('permission:leads.view');
+    Route::post('leads', [LeadController::class, 'store'])->middleware('permission:leads.create');
+    Route::get('leads/{lead}', [LeadController::class, 'show'])->middleware('permission:leads.view');
+    Route::put('leads/{lead}', [LeadController::class, 'update'])->middleware('permission:leads.edit');
+    Route::patch('leads/{lead}', [LeadController::class, 'update'])->middleware('permission:leads.edit');
+    Route::delete('leads/{lead}', [LeadController::class, 'destroy'])->middleware('permission:leads.delete');
+
+    Route::get('site-visits', [SiteVisitController::class, 'index'])->middleware('permission:site_visits.view');
+    Route::post('site-visits', [SiteVisitController::class, 'store'])->middleware('permission:site_visits.create');
+    Route::get('site-visits/{siteVisit}', [SiteVisitController::class, 'show'])->middleware('permission:site_visits.view');
+    Route::put('site-visits/{siteVisit}', [SiteVisitController::class, 'update'])->middleware('permission:site_visits.edit');
+    Route::patch('site-visits/{siteVisit}', [SiteVisitController::class, 'update'])->middleware('permission:site_visits.edit');
+    Route::delete('site-visits/{siteVisit}', [SiteVisitController::class, 'destroy'])->middleware('permission:site_visits.delete');
+
+    // Sales / bookings.
+    Route::get('bookings', [BookingController::class, 'index'])->middleware('permission:sales.view');
+    Route::post('bookings', [BookingController::class, 'store'])->middleware('permission:sales.create');
+    Route::get('bookings/{booking}', [BookingController::class, 'show'])->middleware('permission:sales.view');
+    Route::put('bookings/{booking}', [BookingController::class, 'update'])->middleware('permission:sales.edit');
+    Route::patch('bookings/{booking}', [BookingController::class, 'update'])->middleware('permission:sales.edit');
+    Route::delete('bookings/{booking}', [BookingController::class, 'destroy'])->middleware('permission:sales.delete');
+    Route::post('bookings/{booking}/confirm', [BookingStatusController::class, 'confirm'])->middleware('permission:sales.edit');
+    Route::post('bookings/{booking}/cancel', [BookingStatusController::class, 'cancel'])->middleware('permission:sales.edit');
+    Route::post('bookings/{booking}/complete', [BookingStatusController::class, 'complete'])->middleware('permission:sales.edit');
+    Route::get('sales/dashboard', [SalesDashboardController::class, 'index'])->middleware('permission:dashboard.view');
 
     // Finance.
-    Route::apiResource('installment-plans', InstallmentPlanController::class);
-    Route::apiResource('installments', InstallmentController::class)->only(['index', 'show']);
-    Route::apiResource('payments', PaymentController::class)->only(['index', 'store', 'show']);
-    Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt']);
-    Route::apiResource('commissions', CommissionController::class)->only(['index', 'store', 'update']);
-    Route::apiResource('expenses', ExpenseController::class);
+    Route::get('installment-plans', [InstallmentPlanController::class, 'index'])->middleware('permission:installments.view');
+    Route::post('installment-plans', [InstallmentPlanController::class, 'store'])->middleware('permission:installments.create');
+    Route::get('installment-plans/{installmentPlan}', [InstallmentPlanController::class, 'show'])->middleware('permission:installments.view');
+    Route::put('installment-plans/{installmentPlan}', [InstallmentPlanController::class, 'update'])->middleware('permission:installments.edit');
+    Route::patch('installment-plans/{installmentPlan}', [InstallmentPlanController::class, 'update'])->middleware('permission:installments.edit');
+    Route::delete('installment-plans/{installmentPlan}', [InstallmentPlanController::class, 'destroy'])->middleware('permission:installments.delete');
+
+    Route::get('installments', [InstallmentController::class, 'index'])->middleware('permission:installments.view');
+    Route::get('installments/{installment}', [InstallmentController::class, 'show'])->middleware('permission:installments.view');
+
+    Route::get('payments', [PaymentController::class, 'index'])->middleware('permission:payments.view');
+    Route::post('payments', [PaymentController::class, 'store'])->middleware('permission:payments.create');
+    Route::get('payments/{payment}', [PaymentController::class, 'show'])->middleware('permission:payments.view');
+    Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->middleware('permission:payments.view');
+
+    Route::get('commissions', [CommissionController::class, 'index'])->middleware('permission:commissions.view');
+    Route::post('commissions', [CommissionController::class, 'store'])->middleware('permission:commissions.create');
+    Route::put('commissions/{commission}', [CommissionController::class, 'update'])->middleware('permission:commissions.edit');
+    Route::patch('commissions/{commission}', [CommissionController::class, 'update'])->middleware('permission:commissions.edit');
+
+    Route::get('expenses', [ExpenseController::class, 'index'])->middleware('permission:expenses.view');
+    Route::post('expenses', [ExpenseController::class, 'store'])->middleware('permission:expenses.create');
+    Route::get('expenses/{expense}', [ExpenseController::class, 'show'])->middleware('permission:expenses.view');
+    Route::put('expenses/{expense}', [ExpenseController::class, 'update'])->middleware('permission:expenses.edit');
+    Route::patch('expenses/{expense}', [ExpenseController::class, 'update'])->middleware('permission:expenses.edit');
+    Route::delete('expenses/{expense}', [ExpenseController::class, 'destroy'])->middleware('permission:expenses.delete');
 });
