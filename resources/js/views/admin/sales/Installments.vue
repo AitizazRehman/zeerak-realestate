@@ -1,1 +1,50 @@
-<template><div class="page"><v-card flat class="hero pa-5 mb-4"><div><div class="text-overline">FINANCE</div><h1 class="text-h5 font-weight-bold">Installments</h1><div class="grey--text">Monitor due dates, outstanding balances and payment progress.</div></div></v-card><v-card flat class="pa-3"><v-row dense><v-col cols="12" md="4"><v-select v-model="status" :items="statuses" outlined dense clearable label="Status" @change="load"/></v-col><v-col cols="12" md="4"><v-text-field v-model="from" outlined dense type="date" label="Due from" @change="load"/></v-col><v-col cols="12" md="4"><v-text-field v-model="to" outlined dense type="date" label="Due to" @change="load"/></v-col></v-row><v-data-table :headers="headers" :items="items" :loading="loading"><template v-slot:item.amount="{item}">{{money(item.amount)}}</template><template v-slot:item.remaining_amount="{item}"><span :class="{'error--text':Number(item.remaining_amount)>0}">{{money(item.remaining_amount)}}</span></template><template v-slot:item.status="{item}"><v-chip x-small :color="item.status==='overdue'?'error':item.status==='paid'?'success':'orange'" dark>{{item.status}}</v-chip></template></v-data-table></v-card></div></template><script>import api from '../../../services/api';export default{name:'Installments',data(){return{loading:false,items:[],status:null,from:null,to:null,statuses:['pending','partial','paid','overdue'],headers:[{text:'#',value:'installment_number'},{text:'Customer',value:'booking.customer.name'},{text:'Booking',value:'booking.booking_number'},{text:'Due Date',value:'due_date'},{text:'Amount',value:'amount'},{text:'Paid',value:'paid_amount'},{text:'Remaining',value:'remaining_amount'},{text:'Status',value:'status'}]}},mounted(){this.load()},methods:{async load(){this.loading=true;try{const r=await api.get('/installments',{params:{status:this.status,from:this.from,to:this.to,per_page:100}});this.items=r.data.data||[]}finally{this.loading=false}},money(v){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(v||0))}}}</script><style scoped>.page{width:100%}.hero{border-left:4px solid #165134}</style>
+<template>
+  <div class="page">
+    <v-card flat class="hero pa-5 mb-4">
+      <div class="d-flex flex-wrap align-center">
+        <div><div class="text-overline">FINANCE</div><h1 class="text-h5 font-weight-bold">Installments</h1><div class="grey--text">Monitor due dates, balances and collect payments against individual installments.</div></div>
+        <v-spacer/><v-chip v-if="items.length" outlined>{{ items.length }} records</v-chip>
+      </div>
+    </v-card>
+    <v-card flat outlined>
+      <v-card-text><v-row dense>
+        <v-col cols="12" md="4"><v-select v-model="status" :items="statuses" outlined dense clearable label="Status" @change="load"/></v-col>
+        <v-col cols="12" md="4"><v-text-field v-model="from" outlined dense type="date" label="Due from" @change="load"/></v-col>
+        <v-col cols="12" md="4"><v-text-field v-model="to" outlined dense type="date" label="Due to" @change="load"/></v-col>
+      </v-row></v-card-text>
+      <v-data-table :headers="headers" :items="items" :loading="loading" :items-per-page="15">
+        <template v-slot:item.amount="{item}">{{ money(item.amount) }}</template>
+        <template v-slot:item.paid_amount="{item}">{{ money(item.paid_amount) }}</template>
+        <template v-slot:item.remaining_amount="{item}"><span :class="{'error--text':Number(item.remaining_amount)>0}">{{ money(item.remaining_amount) }}</span></template>
+        <template v-slot:item.status="{item}"><v-chip x-small :color="statusColor(item.status)" :outlined="item.status==='partial'" dark>{{ item.status }}</v-chip></template>
+        <template v-slot:item.actions="{item}"><v-btn v-if="Number(item.remaining_amount)>0" small color="#165134" dark @click="openPayment(item)"><v-icon left small>mdi-cash-plus</v-icon>Pay</v-btn><v-btn icon small class="ml-1" @click="view(item)"><v-icon small>mdi-eye</v-icon></v-btn></template>
+        <template v-slot:no-data><div class="pa-8 grey--text">No installments found for the selected filters.</div></template>
+      </v-data-table>
+    </v-card>
+
+    <v-dialog v-model="paymentDialog" max-width="620" persistent>
+      <v-card><v-card-title>Record Installment Payment <v-spacer/><v-btn icon @click="paymentDialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
+        <v-card-text v-if="selected">
+          <v-alert type="info" text dense class="mb-4">Installment #{{ selected.installment_number }} — Remaining: <strong>{{ money(selected.remaining_amount) }}</strong></v-alert>
+          <v-row dense>
+            <v-col cols="12" md="6"><v-text-field v-model="payment.amount" type="number" min="0.01" :max="selected.remaining_amount" step="0.01" outlined dense label="Amount *"/></v-col>
+            <v-col cols="12" md="6"><v-select v-model="payment.payment_method" :items="methods" outlined dense label="Payment Method *"/></v-col>
+            <v-col cols="12" md="6"><v-text-field v-model="payment.payment_date" type="date" outlined dense label="Payment Date *"/></v-col>
+            <v-col cols="12" md="6"><v-text-field v-model="payment.reference_number" outlined dense label="Reference #"/></v-col>
+            <v-col cols="12" md="6"><v-text-field v-model="payment.bank_name" outlined dense label="Bank Name"/></v-col>
+            <v-col cols="12" md="6"><v-text-field v-model="payment.cheque_number" outlined dense label="Cheque #"/></v-col>
+            <v-col cols="12"><v-textarea v-model="payment.notes" outlined dense rows="2" label="Notes"/></v-col>
+          </v-row>
+        </v-card-text>
+        <v-card-actions><v-spacer/><v-btn text @click="paymentDialog=false">Cancel</v-btn><v-btn color="#165134" dark :loading="saving" @click="savePayment">Save Payment</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="detailsDialog" max-width="600"><v-card><v-card-title>Installment Details <v-spacer/><v-btn icon @click="detailsDialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title><v-card-text v-if="details"><v-list dense><v-list-item><v-list-item-content>Customer</v-list-item-content><v-list-item-content class="text-right">{{ details.booking?.customer?.name || '—' }}</v-list-item-content></v-list-item><v-list-item><v-list-item-content>Booking</v-list-item-content><v-list-item-content class="text-right">{{ details.booking?.booking_number || '—' }}</v-list-item-content></v-list-item><v-list-item><v-list-item-content>Plan</v-list-item-content><v-list-item-content class="text-right">{{ details.plan?.plan_name || '—' }}</v-list-item-content></v-list-item><v-divider/><v-list-item><v-list-item-content>Amount</v-list-item-content><v-list-item-content class="text-right font-weight-bold">{{ money(details.amount) }}</v-list-item-content></v-list-item><v-list-item><v-list-item-content>Paid</v-list-item-content><v-list-item-content class="text-right">{{ money(details.paid_amount) }}</v-list-item-content></v-list-item><v-list-item><v-list-item-content>Remaining</v-list-item-content><v-list-item-content class="text-right error--text">{{ money(details.remaining_amount) }}</v-list-item-content></v-list-item></v-list></v-card-text></v-card></v-dialog>
+  </div>
+</template>
+<script>
+import api from '../../../services/api'
+export default {name:'Installments',data(){return{loading:false,saving:false,items:[],status:null,from:null,to:null,selected:null,details:null,paymentDialog:false,detailsDialog:false,statuses:['pending','partial','paid','overdue'],methods:['cash','bank_transfer','cheque','online','other'],headers:[{text:'#',value:'installment_number'},{text:'Customer',value:'booking.customer.name'},{text:'Booking',value:'booking.booking_number'},{text:'Due Date',value:'due_date'},{text:'Amount',value:'amount',align:'right'},{text:'Paid',value:'paid_amount',align:'right'},{text:'Remaining',value:'remaining_amount',align:'right'},{text:'Status',value:'status'},{text:'Actions',value:'actions',sortable:false}],payment:{amount:null,payment_method:'cash',payment_date:new Date().toISOString().slice(0,10),reference_number:'',bank_name:'',cheque_number:'',notes:''}}},mounted(){this.load()},methods:{async load(){this.loading=true;try{const r=await api.get('/installments',{params:{status:this.status,from:this.from,to:this.to,per_page:100}});this.items=r.data.data||[]}catch(e){this.$root.$emit('show-error',e.response?.data?.message||'Unable to load installments.')}finally{this.loading=false}},openPayment(item){this.selected=item;this.payment={amount:item.remaining_amount,payment_method:'cash',payment_date:new Date().toISOString().slice(0,10),reference_number:'',bank_name:'',cheque_number:'',notes:''};this.paymentDialog=true},async savePayment(){const amount=Number(this.payment.amount);const max=Number(this.selected.remaining_amount);if(!amount||amount<=0||amount>max){this.$root.$emit('show-error',`Enter an amount between 0.01 and ${this.money(max)}.`);return}this.saving=true;try{await api.post('/payments',{booking_id:this.selected.booking_id,installment_id:this.selected.id,customer_id:this.selected.booking.customer_id,amount,payment_date:this.payment.payment_date,payment_method:this.payment.payment_method,reference_number:this.payment.reference_number,bank_name:this.payment.bank_name,cheque_number:this.payment.cheque_number,notes:this.payment.notes});this.paymentDialog=false;await this.load();this.$root.$emit('show-success','Installment payment recorded successfully.')}catch(e){this.$root.$emit('show-error',e.response?.data?.message||'Unable to record payment.')}finally{this.saving=false}},async view(item){try{const r=await api.get('/installments/'+item.id);this.details=r.data;this.detailsDialog=true}catch(e){this.$root.$emit('show-error','Unable to load installment details.')}},money(v){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(v||0))},statusColor(s){return s==='overdue'?'error':s==='paid'?'success':'orange'}}}
+</script>
+<style scoped>.page{width:100%}.hero{border-left:4px solid #165134}.page ::v-deep .v-data-table__wrapper{overflow-x:auto}</style>
