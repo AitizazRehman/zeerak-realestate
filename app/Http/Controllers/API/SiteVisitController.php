@@ -13,7 +13,8 @@ class SiteVisitController extends Controller
         foreach(['customer_id','lead_id','property_id','assigned_to','status'] as $f) if($request->filled($f)) $q->where($f,$request->$f);
         if($request->filled('from'))$q->whereDate('visit_at','>=',$request->from);
         if($request->filled('to'))$q->whereDate('visit_at','<=',$request->to);
-        return response()->json($q->orderBy('visit_at')->paginate($request->integer('per_page',15)));
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        return response()->json($q->orderBy('visit_at')->paginate($perPage));
     }
     public function store(Request $request){
         $data=$request->validate(['customer_id'=>'nullable|exists:customers,id','lead_id'=>'nullable|exists:leads,id','property_id'=>'nullable|exists:properties,id','assigned_to'=>'nullable|exists:users,id','visit_at'=>'required|date','status'=>'nullable|in:scheduled,completed,cancelled,no_show','feedback'=>'nullable|string','notes'=>'nullable|string']);
