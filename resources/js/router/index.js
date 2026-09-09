@@ -18,6 +18,7 @@ import SiteVisits from '../views/admin/sales/SiteVisits.vue'
 import Bookings from '../views/admin/sales/Bookings.vue'
 import Payments from '../views/admin/sales/Payments.vue'
 import Installments from '../views/admin/sales/Installments.vue'
+import SalesDashboard from '../views/admin/sales/SalesDashboard.vue'
 
 Vue.use(VueRouter)
 
@@ -26,6 +27,7 @@ const routes = [
  { path:'/admin', component:AdminLayout, meta:{requiresAuth:true}, children:[
    {path:'',redirect:{name:'dashboard'}},
    {path:'dashboard',name:'dashboard',component:Dashboard},
+   {path:'sales/dashboard',name:'sales-dashboard',component:SalesDashboard},
    {path:'users',name:'users',component:Users},
    {path:'projects',name:'projects',component:Projects},
    {path:'projects/create',name:'project-create',component:ProjectForm},
