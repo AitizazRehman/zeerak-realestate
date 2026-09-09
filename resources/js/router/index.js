@@ -13,6 +13,11 @@ import Properties from '../views/admin/real-estate/Properties.vue'
 import PropertyForm from '../views/admin/real-estate/PropertyForm.vue'
 import PropertyDetails from '../views/admin/real-estate/PropertyDetails.vue'
 import Customers from '../views/admin/sales/Customers.vue'
+import Leads from '../views/admin/sales/Leads.vue'
+import SiteVisits from '../views/admin/sales/SiteVisits.vue'
+import Bookings from '../views/admin/sales/Bookings.vue'
+import Payments from '../views/admin/sales/Payments.vue'
+import Installments from '../views/admin/sales/Installments.vue'
 
 Vue.use(VueRouter)
 
@@ -31,10 +36,11 @@ const routes = [
    {path:'properties/:id',name:'property-details',component:PropertyDetails},
    {path:'properties/:id/edit',name:'property-edit',component:PropertyForm},
    {path:'customers',name:'customers',component:Customers},
-   {path:'leads',name:'leads',component:NotFound},
-   {path:'site-visits',name:'site-visits',component:NotFound},
-   {path:'bookings',name:'bookings',component:NotFound},
-   {path:'payments',name:'payments',component:NotFound},
+   {path:'leads',name:'leads',component:Leads},
+   {path:'site-visits',name:'site-visits',component:SiteVisits},
+   {path:'bookings',name:'bookings',component:Bookings},
+   {path:'payments',name:'payments',component:Payments},
+   {path:'installments',name:'installments',component:Installments},
    {path:'expenses',name:'expenses',component:NotFound},
    {path:'construction',name:'construction',component:NotFound},
    {path:'reports',name:'reports',component:NotFound},
