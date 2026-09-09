@@ -1,6 +1,6 @@
 <template>
   <v-container fluid class="pa-6">
-    <div class="d-flex flex-wrap align-center justify-space-between mb-6">
+    <div class="d-flex flex-wrap align-center justify-space-between mb-4">
       <div>
         <div class="text-overline green--text text--darken-3">Sales & CRM</div>
         <h1 class="text-h4 font-weight-bold">Sales Dashboard</h1>
@@ -8,6 +8,23 @@
       </div>
       <v-btn text color="primary" :loading="loading" @click="load"><v-icon left>mdi-refresh</v-icon>Refresh</v-btn>
     </div>
+
+    <v-card outlined class="mb-5">
+      <v-card-text>
+        <v-row align="center">
+          <v-col cols="12" sm="5" md="4">
+            <v-text-field v-model="filters.from" type="date" label="From date" outlined dense hide-details />
+          </v-col>
+          <v-col cols="12" sm="5" md="4">
+            <v-text-field v-model="filters.to" type="date" label="To date" outlined dense hide-details />
+          </v-col>
+          <v-col cols="12" sm="2" md="4" class="d-flex">
+            <v-btn color="primary" :loading="loading" @click="load"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
+            <v-btn text class="ml-2" :disabled="loading || (!filters.from && !filters.to)" @click="clearFilters">Clear</v-btn>
+          </v-col>
+        </v-row>
+      </v-card-text>
+    </v-card>
 
     <v-alert v-if="error" type="error" dense text class="mb-5">{{ error }}</v-alert>
 
@@ -18,7 +35,7 @@
             <v-avatar size="46" color="grey lighten-4" class="mr-4"><v-icon :color="card.color">{{ card.icon }}</v-icon></v-avatar>
             <div>
               <div class="caption grey--text text-uppercase">{{ card.label }}</div>
-              <div class="text-h5 font-weight-bold">{{ formatMetric(card.key, metrics[card.key]) }}</div>
+              <div class="text-h5 font-weight-bold">{{ formatMetric(metrics[card.key]) }}</div>
             </div>
           </v-card-text>
         </v-card>
@@ -40,7 +57,6 @@
           </v-card-text>
         </v-card>
       </v-col>
-
       <v-col cols="12" md="5">
         <v-card outlined class="fill-height">
           <v-card-title>Property Pipeline</v-card-title>
@@ -88,6 +104,7 @@ export default {
   data: () => ({
     loading: false,
     error: '',
+    filters: { from: '', to: '' },
     metrics: {},
     monthlyCollections: [],
     agentPerformance: [],
@@ -127,10 +144,17 @@ export default {
   mounted () { this.load() },
   methods: {
     async load () {
+      if (this.filters.from && this.filters.to && this.filters.from > this.filters.to) {
+        this.error = 'The From date cannot be later than the To date.'
+        return
+      }
       this.loading = true
       this.error = ''
       try {
-        const response = await api.get('/sales/dashboard')
+        const params = {}
+        if (this.filters.from) params.from = this.filters.from
+        if (this.filters.to) params.to = this.filters.to
+        const response = await api.get('/sales/dashboard', { params })
         const data = response.data || {}
         this.metrics = data.metrics || {}
         this.monthlyCollections = data.monthly_collections || []
@@ -140,8 +164,9 @@ export default {
         this.error = e.response && e.response.data && e.response.data.message ? e.response.data.message : 'Unable to load the sales dashboard.'
       } finally { this.loading = false }
     },
+    clearFilters () { this.filters = { from: '', to: '' }; this.load() },
     money (value) { return new Intl.NumberFormat('en-PK', { maximumFractionDigits: 0 }).format(Number(value || 0)) },
-    formatMetric (key, value) { return ['sales_value', 'collections', 'receivables', 'overdue_amount'].includes(key) ? this.money(value) : this.money(value) },
+    formatMetric (value) { return this.money(value) },
     formatMonth (value) { const parts = String(value).split('-'); return parts.length === 2 ? `${parts[1]}/${parts[0]}` : value },
     collectionPercent (value) { return (Number(value || 0) / this.maxCollection) * 100 }
   }
