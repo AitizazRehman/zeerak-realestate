@@ -29,10 +29,9 @@ class UserController extends Controller
             });
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $query->latest()->paginate($request->integer('per_page', 20)),
-        ]);
+        return response()->json(
+            $query->latest()->paginate($request->integer('per_page', 20))
+        );
     }
 
     public function show(User $user)
@@ -80,7 +79,8 @@ class UserController extends Controller
             'role' => ['nullable', 'string', 'exists:roles,name'],
         ]);
 
-        $role = array_key_exists('role', $data) ? $data['role'] : null;
+        $roleProvided = array_key_exists('role', $data);
+        $role = $data['role'] ?? null;
         unset($data['role']);
 
         if (!empty($data['password'])) {
@@ -91,8 +91,8 @@ class UserController extends Controller
 
         $user->update($data);
 
-        if ($role !== null) {
-            $user->syncRoles([$role]);
+        if ($roleProvided) {
+            $role ? $user->syncRoles([$role]) : $user->syncRoles([]);
         }
 
         return response()->json([
