@@ -17,7 +17,8 @@ class BookingController extends Controller
         $query = Booking::with(['customer', 'property.project', 'property.block', 'salesAgent:id,name']);
         foreach (['customer_id', 'property_id', 'sales_agent_id', 'status'] as $field) if ($request->filled($field)) $query->where($field, $request->$field);
         if ($request->filled('search')) { $search = $request->search; $query->where(function ($q) use ($search) { $q->where('booking_number', 'like', "%{$search}%")->orWhereHas('customer', function ($c) use ($search) { $c->where('name', 'like', "%{$search}%")->orWhere('phone', 'like', "%{$search}%"); }); }); }
-        return response()->json($query->latest('booking_date')->paginate($request->integer('per_page', 15)));
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
+        return response()->json($query->latest('booking_date')->paginate($perPage));
     }
 
     public function store(Request $request)
