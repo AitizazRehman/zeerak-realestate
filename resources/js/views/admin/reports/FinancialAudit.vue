@@ -1,137 +1,14 @@
 <template>
   <div class="page">
-    <v-card flat class="hero pa-5 mb-4">
-      <div class="d-flex flex-wrap align-center">
-        <div>
-          <div class="text-overline">FINANCIAL CONTROL</div>
-          <h1 class="text-h5 font-weight-bold">Financial Audit Trail</h1>
-          <div class="grey--text">Immutable history of payment creation and reversals.</div>
-        </div>
-        <v-spacer />
-        <v-btn icon :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn>
-      </div>
-    </v-card>
-
+    <v-card flat class="hero pa-5 mb-4"><div class="d-flex flex-wrap align-center"><div><div class="text-overline">FINANCIAL CONTROL</div><h1 class="text-h5 font-weight-bold">Financial Audit Trail</h1><div class="grey--text">Immutable history of payment creation and reversals.</div></div><v-spacer/><v-btn icon :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></div></v-card>
     <v-alert v-if="error" type="error" dense text>{{ error }}</v-alert>
-
-    <v-card outlined class="mb-4">
-      <v-card-text>
-        <v-row dense>
-          <v-col cols="12" sm="6" md="3">
-            <v-select v-model="filters.action" :items="actions" clearable dense outlined label="Action" @change="load" />
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-text-field v-model="filters.entity_id" clearable dense outlined label="Payment ID" type="number" @keyup.enter="load" />
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-text-field v-model="filters.from" clearable dense outlined label="From" type="date" @change="load" />
-          </v-col>
-          <v-col cols="12" sm="6" md="3">
-            <v-text-field v-model="filters.to" clearable dense outlined label="To" type="date" @change="load" />
-          </v-col>
-        </v-row>
-        <v-btn small color="primary" :loading="loading" @click="load">Apply Filters</v-btn>
-        <v-btn small text class="ml-2" @click="reset">Reset</v-btn>
-      </v-card-text>
-    </v-card>
-
-    <v-card outlined>
-      <v-card-title>
-        Audit Events
-        <v-spacer />
-        <v-chip small outlined>{{ total }} records</v-chip>
-      </v-card-title>
-      <v-data-table :headers="headers" :items="items" :loading="loading" :server-items-length="total" :options.sync="options" @update:options="load">
-        <template v-slot:item.action="{ item }">
-          <v-chip x-small outlined :color="item.action === 'payment_reversed' ? 'error' : 'primary'">{{ item.action }}</v-chip>
-        </template>
-        <template v-slot:item.user="{ item }">{{ item.user ? item.user.name : 'System' }}</template>
-        <template v-slot:item.created_at="{ item }">{{ formatDate(item.created_at) }}</template>
-        <template v-slot:item.details="{ item }">
-          <v-btn x-small text color="primary" @click="selected=item; details=true">View</v-btn>
-        </template>
-        <template v-slot:no-data><div class="pa-8 grey--text">No audit records found.</div></template>
-      </v-data-table>
-    </v-card>
-
-    <v-dialog v-model="details" max-width="800">
-      <v-card v-if="selected">
-        <v-card-title>Audit #{{ selected.id }}<v-spacer/><v-btn icon @click="details=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
-        <v-card-text>
-          <v-row dense>
-            <v-col cols="12" sm="6"><strong>Entity:</strong> {{ selected.entity_type }} #{{ selected.entity_id }}</v-col>
-            <v-col cols="12" sm="6"><strong>Action:</strong> {{ selected.action }}</v-col>
-            <v-col cols="12" sm="6"><strong>User:</strong> {{ selected.user ? selected.user.name : 'System' }}</v-col>
-            <v-col cols="12" sm="6"><strong>Date:</strong> {{ formatDate(selected.created_at) }}</v-col>
-          </v-row>
-          <div v-if="selected.reason" class="mt-4"><strong>Reason</strong><div class="audit-box">{{ selected.reason }}</div></div>
-          <v-row class="mt-2">
-            <v-col cols="12" md="6"><strong>Before</strong><pre class="audit-box">{{ pretty(selected.before_data) }}</pre></v-col>
-            <v-col cols="12" md="6"><strong>After</strong><pre class="audit-box">{{ pretty(selected.after_data) }}</pre></v-col>
-          </v-row>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
+    <v-card outlined class="mb-4"><v-card-text><v-row dense><v-col cols="12" sm="6" md="3"><v-select v-model="filters.action" :items="actions" clearable dense outlined label="Action" @change="load"/></v-col><v-col cols="12" sm="6" md="3"><v-text-field v-model="filters.entity_id" clearable dense outlined label="Payment ID" type="number" @keyup.enter="load"/></v-col><v-col cols="12" sm="6" md="3"><v-text-field v-model="filters.from" clearable dense outlined label="From" type="date" @change="load"/></v-col><v-col cols="12" sm="6" md="3"><v-text-field v-model="filters.to" clearable dense outlined label="To" type="date" @change="load"/></v-col></v-row><v-btn small color="primary" :loading="loading" @click="load">Apply Filters</v-btn><v-btn small text class="ml-2" @click="reset">Reset</v-btn></v-card-text></v-card>
+    <v-card outlined><v-card-title>Audit Events<v-spacer/><v-chip small outlined>{{ total }} records</v-chip></v-card-title><v-data-table :headers="headers" :items="items" :loading="loading" :server-items-length="total" :options.sync="options" @update:options="load"><template v-slot:item.action="{item}"><v-chip x-small outlined :color="item.action==='reversed'?'error':'primary'">{{ item.action }}</v-chip></template><template v-slot:item.user="{item}">{{ item.user ? item.user.name : 'System' }}</template><template v-slot:item.created_at="{item}">{{ formatDate(item.created_at) }}</template><template v-slot:item.details="{item}"><v-btn x-small text color="primary" @click="selected=item;details=true">View</v-btn></template><template v-slot:no-data><div class="pa-8 grey--text">No audit records found.</div></template></v-data-table></v-card>
+    <v-dialog v-model="details" max-width="800"><v-card v-if="selected"><v-card-title>Audit #{{ selected.id }}<v-spacer/><v-btn icon @click="details=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title><v-card-text><v-row dense><v-col cols="12" sm="6"><strong>Entity:</strong> {{ selected.entity_type }} #{{ selected.entity_id }}</v-col><v-col cols="12" sm="6"><strong>Action:</strong> {{ selected.action }}</v-col><v-col cols="12" sm="6"><strong>User:</strong> {{ selected.user ? selected.user.name : 'System' }}</v-col><v-col cols="12" sm="6"><strong>Date:</strong> {{ formatDate(selected.created_at) }}</v-col></v-row><div v-if="selected.reason" class="mt-4"><strong>Reason</strong><div class="audit-box">{{ selected.reason }}</div></div><v-row class="mt-2"><v-col cols="12" md="6"><strong>Before</strong><pre class="audit-box">{{ pretty(selected.before_data) }}</pre></v-col><v-col cols="12" md="6"><strong>After</strong><pre class="audit-box">{{ pretty(selected.after_data) }}</pre></v-col></v-row></v-card-text></v-card></v-dialog>
   </div>
 </template>
-
 <script>
 import api from '../../../services/api'
-
-export default {
-  name: 'FinancialAudit',
-  data: () => ({
-    loading: false,
-    error: '',
-    items: [],
-    total: 0,
-    selected: null,
-    details: false,
-    options: { page: 1, itemsPerPage: 25, sortBy: [], sortDesc: [] },
-    filters: { action: '', entity_id: '', from: '', to: '' },
-    actions: ['payment_created', 'payment_reversed'],
-    headers: [
-      { text: 'ID', value: 'id', width: 80 },
-      { text: 'Entity', value: 'entity_type' },
-      { text: 'Entity ID', value: 'entity_id' },
-      { text: 'Action', value: 'action' },
-      { text: 'User', value: 'user' },
-      { text: 'Date', value: 'created_at' },
-      { text: '', value: 'details', sortable: false, align: 'right' }
-    ]
-  }),
-  mounted () { this.load() },
-  methods: {
-    async load () {
-      this.loading = true
-      this.error = ''
-      try {
-        const params = Object.assign({}, this.filters, {
-          page: this.options.page,
-          per_page: this.options.itemsPerPage
-        })
-        const response = await api.get('/financial-audits', { params: params })
-        this.items = response.data.data || []
-        this.total = response.data.total || 0
-      } catch (e) {
-        this.error = (e.response && e.response.data && e.response.data.message) || 'Unable to load financial audit records.'
-      } finally {
-        this.loading = false
-      }
-    },
-    reset () {
-      this.filters = { action: '', entity_id: '', from: '', to: '' }
-      this.options.page = 1
-      this.load()
-    },
-    formatDate (value) { return value ? new Date(value).toLocaleString('en-PK') : '' },
-    pretty (value) { return value ? JSON.stringify(value, null, 2) : 'No data' }
-  }
-}
+export default {name:'FinancialAudit',data:()=>({loading:false,error:'',items:[],total:0,selected:null,details:false,options:{page:1,itemsPerPage:25,sortBy:[],sortDesc:[]},filters:{action:'',entity_id:'',from:'',to:''},actions:['created','reversed'],headers:[{text:'ID',value:'id',width:80},{text:'Entity',value:'entity_type'},{text:'Entity ID',value:'entity_id'},{text:'Action',value:'action'},{text:'User',value:'user'},{text:'Date',value:'created_at'},{text:'',value:'details',sortable:false,align:'right'}]}),mounted(){this.load()},methods:{async load(){this.loading=true;this.error='';try{const params=Object.assign({},this.filters,{page:this.options.page,per_page:this.options.itemsPerPage});const response=await api.get('/financial-audits',{params:params});this.items=response.data.data||[];this.total=response.data.total||0}catch(e){this.error=(e.response&&e.response.data&&e.response.data.message)||'Unable to load financial audit records.'}finally{this.loading=false}},reset(){this.filters={action:'',entity_id:'',from:'',to:''};this.options.page=1;this.load()},formatDate(value){return value?new Date(value).toLocaleString('en-PK'):''},pretty(value){return value?JSON.stringify(value,null,2):'No data'}}}
 </script>
-
-<style scoped>
-.page { width: 100%; }
-.hero { border-left: 4px solid #165134; }
-.audit-box { margin-top: 6px; padding: 12px; background: rgba(128,128,128,.08); border-radius: 6px; white-space: pre-wrap; word-break: break-word; max-height: 280px; overflow: auto; }
-</style>
+<style scoped>.page{width:100%}.hero{border-left:4px solid #165134}.audit-box{margin-top:6px;padding:12px;background:rgba(128,128,128,.08);border-radius:6px;white-space:pre-wrap;word-break:break-word;max-height:280px;overflow:auto}</style>
