@@ -20,10 +20,12 @@ use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\CommissionController;
 use App\Http\Controllers\API\SalesDashboardController;
 use App\Http\Controllers\API\ExpenseController;
+use App\Http\Controllers\API\UserController;
 
 Route::prefix('auth')->group(function(){Route::post('/login',[AuthController::class,'login']);});
 Route::middleware('auth:sanctum')->group(function(){
  Route::prefix('auth')->group(function(){Route::get('/me',[AuthController::class,'me']);Route::post('/logout',[AuthController::class,'logout']);});
+ Route::apiResource('users',UserController::class);
  Route::apiResource('branches',BranchController::class)->only(['index','show']);
  Route::apiResource('projects',ProjectController::class);
  Route::apiResource('project-blocks',ProjectBlockController::class);
