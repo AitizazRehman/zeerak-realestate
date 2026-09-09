@@ -3,129 +3,91 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
 use App\Models\Property;
+use App\Models\Project;
 use App\Models\PropertyStatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PropertyController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function applyBranchScope($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $query->whereHas('project', function ($projectQuery) {
+                $projectQuery->where('branch_id', auth()->user()->branch_id);
+            });
+        }
+
+        return $query;
+    }
+
     public function index(Request $request)
     {
-        $query = Property::with([
+        $query = $this->applyBranchScope(Property::with([
             'project:id,name,code',
             'block:id,project_id,name,code',
             'assignedAgent:id,name,email',
             'images',
-        ]);
+        ]));
 
         if ($request->filled('project_id')) {
-            $query->where(
-                'project_id',
-                $request->project_id
-            );
+            $query->where('project_id', $request->project_id);
         }
 
         if ($request->filled('block_id')) {
-            $query->where(
-                'block_id',
-                $request->block_id
-            );
+            $query->where('block_id', $request->block_id);
         }
 
         if ($request->filled('status')) {
-            $query->where(
-                'status',
-                $request->status
-            );
+            $query->where('status', $request->status);
         }
 
         if ($request->filled('property_type')) {
-            $query->where(
-                'property_type',
-                $request->property_type
-            );
+            $query->where('property_type', $request->property_type);
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
 
             $query->where(function ($q) use ($search) {
-                $q->where(
-                    'property_number',
-                    'like',
-                    "%{$search}%"
-                )
-                    ->orWhere(
-                        'address',
-                        'like',
-                        "%{$search}%"
-                    )
-                    ->orWhere(
-                        'description',
-                        'like',
-                        "%{$search}%"
-                    );
+                $q->where('property_number', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
         if ($request->has('is_published')) {
-            $query->where(
-                'is_published',
-                $request->boolean('is_published')
-            );
+            $query->where('is_published', $request->boolean('is_published'));
         }
 
-        $perPage = min(
-            (int) $request->get('per_page', 20),
-            100
-        );
+        $perPage = min((int) $request->get('per_page', 20), 100);
 
         return response()->json(
-            $query
-                ->latest()
-                ->paginate($perPage)
+            $query->latest()->paginate($perPage)
         );
     }
 
     public function inventory(Request $request)
     {
-        $baseQuery = Property::query();
+        $baseQuery = $this->applyBranchScope(Property::query());
 
         $this->applyInventoryFilters($baseQuery, $request);
 
         $summary = [
             'total' => (clone $baseQuery)->count(),
-
-            'available' => (clone $baseQuery)
-                ->where('status', 'available')
-                ->count(),
-
-            'reserved' => (clone $baseQuery)
-                ->where('status', 'reserved')
-                ->count(),
-
-            'booked' => (clone $baseQuery)
-                ->where('status', 'booked')
-                ->count(),
-
-            'sold' => (clone $baseQuery)
-                ->where('status', 'sold')
-                ->count(),
-
-            'rented' => (clone $baseQuery)
-                ->where('status', 'rented')
-                ->count(),
-
-            'under_construction' => (clone $baseQuery)
-                ->where('status', 'under_construction')
-                ->count(),
-
-            'unavailable' => (clone $baseQuery)
-                ->where('status', 'unavailable')
-                ->count(),
+            'available' => (clone $baseQuery)->where('status', 'available')->count(),
+            'reserved' => (clone $baseQuery)->where('status', 'reserved')->count(),
+            'booked' => (clone $baseQuery)->where('status', 'booked')->count(),
+            'sold' => (clone $baseQuery)->where('status', 'sold')->count(),
+            'rented' => (clone $baseQuery)->where('status', 'rented')->count(),
+            'under_construction' => (clone $baseQuery)->where('status', 'under_construction')->count(),
+            'unavailable' => (clone $baseQuery)->where('status', 'unavailable')->count(),
         ];
 
         $properties = $baseQuery
@@ -134,14 +96,11 @@ class PropertyController extends Controller
                 'block:id,name,code',
                 'assignedAgent:id,name,email',
                 'images' => function ($query) {
-                    $query->orderBy('is_primary', 'desc')
-                        ->orderBy('sort_order');
+                    $query->orderBy('is_primary', 'desc')->orderBy('sort_order');
                 },
             ])
             ->latest()
-            ->paginate(
-                $request->get('per_page', 24)
-            );
+            ->paginate($request->get('per_page', 24));
 
         return response()->json([
             'summary' => $summary,
@@ -152,8 +111,10 @@ class PropertyController extends Controller
     public function store(StorePropertyRequest $request)
     {
         return DB::transaction(function () use ($request) {
-
             $data = $request->validated();
+
+            $this->applyBranchScope(Project::query())
+                ->findOrFail($data['project_id']);
 
             $property = Property::create($data);
 
@@ -184,6 +145,8 @@ class PropertyController extends Controller
 
     public function show(Property $property)
     {
+        $this->applyBranchScope(Property::query())->findOrFail($property->id);
+
         $property->load([
             'project',
             'block',
@@ -203,19 +166,19 @@ class PropertyController extends Controller
         UpdatePropertyRequest $request,
         Property $property
     ) {
-        return DB::transaction(function () use (
-            $request,
-            $property
-        ) {
+        return DB::transaction(function () use ($request, $property) {
+            $this->applyBranchScope(Property::query())->findOrFail($property->id);
+
+            $data = $request->validated();
+
+            if (isset($data['project_id'])) {
+                $this->applyBranchScope(Project::query())->findOrFail($data['project_id']);
+            }
 
             $oldStatus = $property->status;
-
-            $property->update(
-                $request->validated()
-            );
+            $property->update($data);
 
             if ($oldStatus !== $property->status) {
-
                 PropertyStatusHistory::create([
                     'property_id' => $property->id,
                     'old_status' => $oldStatus,
@@ -244,12 +207,15 @@ class PropertyController extends Controller
 
     public function destroy(Property $property)
     {
+        $this->applyBranchScope(Property::query())->findOrFail($property->id);
+
         $property->delete();
 
         return response()->json([
             'message' => 'Property deleted successfully.',
         ]);
     }
+
     private function applyInventoryFilters($query, Request $request)
     {
         if ($request->filled('project_id')) {
