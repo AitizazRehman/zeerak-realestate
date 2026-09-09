@@ -24,6 +24,7 @@ import SalesDashboard from '../views/admin/sales/SalesDashboard.vue'
 import Expenses from '../views/admin/finance/Expenses.vue'
 import Construction from '../views/admin/construction/Construction.vue'
 import Reports from '../views/admin/reports/Reports.vue'
+import FinancialAudit from '../views/admin/reports/FinancialAudit.vue'
 import Settings from '../views/admin/settings/Settings.vue'
 
 Vue.use(VueRouter)
@@ -57,6 +58,7 @@ const routes = [
             { path: 'expenses', name: 'expenses', component: Expenses, meta: { permission: 'expenses.view' } },
             { path: 'construction', name: 'construction', component: Construction, meta: { permission: 'construction.view' } },
             { path: 'reports', name: 'reports', component: Reports, meta: { permission: 'reports.view' } },
+            { path: 'reports/financial-audit', name: 'financial-audit', component: FinancialAudit, meta: { permission: 'reports.view' } },
             { path: 'settings', name: 'settings', component: Settings, meta: { permission: 'settings.view' } }
         ]
     },
@@ -64,40 +66,21 @@ const routes = [
     { path: '*', component: NotFound }
 ]
 
-const router = new VueRouter({
-    mode: 'history',
-    routes,
-    scrollBehavior() {
-        return { x: 0, y: 0 }
-    }
-})
+const router = new VueRouter({ mode: 'history', routes, scrollBehavior () { return { x: 0, y: 0 } } })
 
 const hasPermission = permission => {
     if (!permission) return true
-
     const user = store.getters['auth/user'] || {}
     const permissions = Array.isArray(user.permissions) ? user.permissions : []
-
     return permissions.indexOf('*') !== -1 || permissions.indexOf(permission) !== -1
 }
 
 router.beforeEach((to, from, next) => {
     const authenticated = store.getters['auth/isAuthenticated']
-
-    if (to.matched.some(route => route.meta.requiresAuth) && !authenticated) {
-        return next({ name: 'login' })
-    }
-
-    if (to.matched.some(route => route.meta.guest) && authenticated) {
-        return next({ name: 'dashboard' })
-    }
-
+    if (to.matched.some(route => route.meta.requiresAuth) && !authenticated) return next({ name: 'login' })
+    if (to.matched.some(route => route.meta.guest) && authenticated) return next({ name: 'dashboard' })
     const permissionRoute = to.matched.find(route => route.meta && route.meta.permission)
-
-    if (permissionRoute && !hasPermission(permissionRoute.meta.permission)) {
-        return next({ name: 'forbidden' })
-    }
-
+    if (permissionRoute && !hasPermission(permissionRoute.meta.permission)) return next({ name: 'forbidden' })
     next()
 })
 
