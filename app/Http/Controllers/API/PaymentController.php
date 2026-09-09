@@ -8,6 +8,7 @@ use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PaymentController extends Controller
 {
@@ -22,11 +23,7 @@ class PaymentController extends Controller
 
     public function store(Request $r)
     {
-        $d = $r->validate([
-            'booking_id'=>'required|exists:bookings,id','installment_id'=>'nullable|exists:installments,id','customer_id'=>'required|exists:customers,id',
-            'amount'=>'required|numeric|min:0.01','payment_date'=>'required|date','payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
-            'reference_number'=>'nullable|string|max:100','bank_name'=>'nullable|string|max:100','cheque_number'=>'nullable|string|max:100','notes'=>'nullable|string'
-        ]);
+        $d = $r->validate(['booking_id'=>'required|exists:bookings,id','installment_id'=>'nullable|exists:installments,id','customer_id'=>'required|exists:customers,id','amount'=>'required|numeric|min:0.01','payment_date'=>'required|date','payment_method'=>'required|in:cash,bank_transfer,cheque,online,other','reference_number'=>'nullable|string|max:100','bank_name'=>'nullable|string|max:100','cheque_number'=>'nullable|string|max:100','notes'=>'nullable|string']);
         $payment = DB::transaction(function () use ($d, $r) {
             $b = Booking::lockForUpdate()->findOrFail($d['booking_id']);
             if ($b->customer_id != $d['customer_id']) abort(422, 'Customer does not belong to this booking.');
@@ -64,4 +61,10 @@ class PaymentController extends Controller
     }
 
     public function show(Payment $payment) { return response()->json($payment->load(['customer','booking.property.project','booking.property.block','installment','receivedBy'])); }
+
+    public function receipt(Payment $payment)
+    {
+        $payment->load(['customer','booking.property.project','booking.property.block','installment','receivedBy']);
+        return Pdf::loadView('payments.receipt', ['payment'=>$payment])->setPaper('a4')->stream($payment->receipt_number.'.pdf');
+    }
 }
