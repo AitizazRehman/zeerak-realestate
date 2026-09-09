@@ -10,6 +10,30 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
+    public function salesAgents(Request $request)
+    {
+        $query = User::query()
+            ->whereHas('roles', function ($q) {
+                $q->where('name', 'Sales Agent');
+            })
+            ->select(['id', 'name', 'email', 'branch_id'])
+            ->with('branch:id,name')
+            ->orderBy('name');
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $query->get(),
+        ]);
+    }
+
     public function index(Request $request)
     {
         $query = User::with(['roles:id,name', 'branch:id,name'])
@@ -55,18 +79,13 @@ class UserController extends Controller
         $role = $data['role'] ?? null;
         unset($data['role']);
         $data['password'] = Hash::make($data['password']);
-
         $user = User::create($data);
 
         if ($role) {
             $user->assignRole($role);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User created successfully.',
-            'data' => $user->load(['roles:id,name', 'branch:id,name']),
-        ], 201);
+        return response()->json(['success' => true, 'message' => 'User created successfully.', 'data' => $user->load(['roles:id,name', 'branch:id,name'])], 201);
     }
 
     public function update(Request $request, User $user)
@@ -82,41 +101,26 @@ class UserController extends Controller
         $roleProvided = array_key_exists('role', $data);
         $role = $data['role'] ?? null;
         unset($data['role']);
-
         if (!empty($data['password'])) {
             $data['password'] = Hash::make($data['password']);
         } else {
             unset($data['password']);
         }
-
         $user->update($data);
-
         if ($roleProvided) {
             $role ? $user->syncRoles([$role]) : $user->syncRoles([]);
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User updated successfully.',
-            'data' => $user->fresh()->load(['roles:id,name', 'branch:id,name']),
-        ]);
+        return response()->json(['success' => true, 'message' => 'User updated successfully.', 'data' => $user->fresh()->load(['roles:id,name', 'branch:id,name'])]);
     }
 
     public function destroy(Request $request, User $user)
     {
         if ($request->user()->is($user)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You cannot delete your own account.',
-            ], 422);
+            return response()->json(['success' => false, 'message' => 'You cannot delete your own account.'], 422);
         }
-
         $user->tokens()->delete();
         $user->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'User deleted successfully.',
-        ]);
+        return response()->json(['success' => true, 'message' => 'User deleted successfully.']);
     }
 }
