@@ -19,6 +19,7 @@ import Bookings from '../views/admin/sales/Bookings.vue'
 import Payments from '../views/admin/sales/Payments.vue'
 import Installments from '../views/admin/sales/Installments.vue'
 import SalesDashboard from '../views/admin/sales/SalesDashboard.vue'
+import Expenses from '../views/admin/finance/Expenses.vue'
 
 Vue.use(VueRouter)
 
@@ -43,7 +44,7 @@ const routes = [
    {path:'bookings',name:'bookings',component:Bookings},
    {path:'payments',name:'payments',component:Payments},
    {path:'installments',name:'installments',component:Installments},
-   {path:'expenses',name:'expenses',component:NotFound},
+   {path:'expenses',name:'expenses',component:Expenses},
    {path:'construction',name:'construction',component:NotFound},
    {path:'reports',name:'reports',component:NotFound},
    {path:'settings',name:'settings',component:NotFound}
