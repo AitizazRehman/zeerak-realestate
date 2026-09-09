@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
@@ -10,11 +11,19 @@ use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
+    use ChecksBranchAccess;
+
     public function index(Request $request)
     {
         $query = Project::with([
             'branch:id,name,code'
         ]);
+
+        if (!$this->canAccessAllBranches()) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        } elseif ($request->filled('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -25,10 +34,6 @@ class ProjectController extends Controller
                     ->orWhere('city', 'like', "%{$search}%")
                     ->orWhere('location', 'like', "%{$search}%");
             });
-        }
-
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', $request->branch_id);
         }
 
         if ($request->filled('status')) {
@@ -52,6 +57,7 @@ class ProjectController extends Controller
     public function store(StoreProjectRequest $request)
     {
         $data = $request->validated();
+        $this->enforceUserBranchOnCreate($data);
 
         $data['area_unit'] = $data['area_unit'] ?? 'Marla';
         $data['status'] = $data['status'] ?? 'planning';
@@ -70,11 +76,17 @@ class ProjectController extends Controller
 
     public function show($id)
     {
-        $project = Project::with([
+        $query = Project::with([
             'branch',
             'blocks',
             'properties'
-        ])->findOrFail($id);
+        ]);
+
+        if (!$this->canAccessAllBranches()) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        }
+
+        $project = $query->findOrFail($id);
 
         return response()->json([
             'data' => $project
@@ -85,9 +97,22 @@ class ProjectController extends Controller
         UpdateProjectRequest $request,
         $id
     ) {
-        $project = Project::findOrFail($id);
+        $query = Project::query();
 
-        $project->update($request->validated());
+        if (!$this->canAccessAllBranches()) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        }
+
+        $project = $query->findOrFail($id);
+        $data = $request->validated();
+
+        if (!$this->canAccessAllBranches()) {
+            unset($data['branch_id']);
+        } else {
+            $this->ensureBranchAccess($data['branch_id']);
+        }
+
+        $project->update($data);
 
         return response()->json([
             'message' => 'Project updated successfully.',
@@ -97,8 +122,13 @@ class ProjectController extends Controller
 
     public function destroy($id)
     {
-        $project = Project::findOrFail($id);
+        $query = Project::query();
 
+        if (!$this->canAccessAllBranches()) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        }
+
+        $project = $query->findOrFail($id);
         $project->delete();
 
         return response()->json([
