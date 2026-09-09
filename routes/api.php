@@ -35,6 +35,6 @@ Route::middleware('auth:sanctum')->group(function(){
  Route::apiResource('customers',CustomerController::class); Route::apiResource('leads',LeadController::class); Route::apiResource('site-visits',SiteVisitController::class);
  Route::apiResource('bookings',BookingController::class); Route::post('bookings/{booking}/confirm',[BookingStatusController::class,'confirm']); Route::post('bookings/{booking}/cancel',[BookingStatusController::class,'cancel']); Route::post('bookings/{booking}/complete',[BookingStatusController::class,'complete']);
  Route::get('sales/dashboard',[SalesDashboardController::class,'index']);
- Route::apiResource('installment-plans',InstallmentPlanController::class); Route::apiResource('installments',InstallmentController::class)->only(['index','show']); Route::apiResource('payments',PaymentController::class)->only(['index','store','show']); Route::apiResource('commissions',CommissionController::class)->only(['index','store','update']);
+ Route::apiResource('installment-plans',InstallmentPlanController::class); Route::apiResource('installments',InstallmentController::class)->only(['index','show']); Route::apiResource('payments',PaymentController::class)->only(['index','store','show']); Route::get('payments/{payment}/receipt',[PaymentController::class,'receipt']); Route::apiResource('commissions',CommissionController::class)->only(['index','store','update']);
  Route::apiResource('expenses',ExpenseController::class);
 });
