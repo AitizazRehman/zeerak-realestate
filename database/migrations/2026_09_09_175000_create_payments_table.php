@@ -1,0 +1,5 @@
+<?php
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+return new class extends Migration{public function up(){Schema::create('payments',function(Blueprint $t){$t->id();$t->string('receipt_number')->unique();$t->foreignId('booking_id')->constrained()->restrictOnDelete();$t->foreignId('installment_id')->nullable()->constrained()->nullOnDelete();$t->foreignId('customer_id')->constrained()->restrictOnDelete();$t->decimal('amount',15,2);$t->date('payment_date');$t->string('payment_method')->default('cash');$t->string('reference_number')->nullable();$t->string('bank_name')->nullable();$t->string('cheque_number')->nullable();$t->string('status')->default('verified');$t->foreignId('received_by')->nullable()->constrained('users')->nullOnDelete();$t->text('notes')->nullable();$t->timestamps();$t->softDeletes();$t->index(['booking_id','payment_date']);$t->index('customer_id');});}public function down(){Schema::dropIfExists('payments');}};
