@@ -2,142 +2,19 @@
   <div class="page">
     <v-card flat class="hero pa-5 mb-4">
       <div class="d-flex flex-wrap align-center">
-        <div>
-          <div class="text-overline">USER MANAGEMENT</div>
-          <h1 class="text-h5 font-weight-bold">Users</h1>
-          <div class="grey--text">Manage accounts, roles and branch assignments.</div>
-        </div>
+        <div><div class="text-overline">USER MANAGEMENT</div><h1 class="text-h5 font-weight-bold">Users</h1><div class="grey--text">Manage accounts, roles and branch assignments.</div></div>
         <v-spacer />
-        <v-btn color="primary" depressed @click="openCreate">
-          <v-icon left>mdi-account-plus</v-icon> Add User
-        </v-btn>
+        <v-btn v-if="$can('users.create')" color="primary" depressed @click="openCreate"><v-icon left>mdi-account-plus</v-icon> Add User</v-btn>
       </div>
     </v-card>
-
-    <v-card flat outlined class="mb-4">
-      <v-card-text>
-        <v-row dense align="center">
-          <v-col cols="12" md="6">
-            <v-text-field v-model="search" outlined dense clearable hide-details label="Search users" prepend-inner-icon="mdi-magnify" @keyup.enter="load" />
-          </v-col>
-          <v-col cols="12" md="4">
-            <v-select v-model="roleFilter" :items="roles" outlined dense clearable hide-details label="Role" @change="load" />
-          </v-col>
-          <v-col cols="12" md="2" class="d-flex justify-end">
-            <v-btn text :loading="loading" @click="load"><v-icon left>mdi-refresh</v-icon>Refresh</v-btn>
-          </v-col>
-        </v-row>
-      </v-card-text>
-    </v-card>
-
+    <v-card flat outlined class="mb-4"><v-card-text><v-row dense align="center"><v-col cols="12" md="6"><v-text-field v-model="search" outlined dense clearable hide-details label="Search users" prepend-inner-icon="mdi-magnify" @keyup.enter="load" /></v-col><v-col cols="12" md="4"><v-select v-model="roleFilter" :items="roles" outlined dense clearable hide-details label="Role" @change="load" /></v-col><v-col cols="12" md="2" class="d-flex justify-end"><v-btn text :loading="loading" @click="load"><v-icon left>mdi-refresh</v-icon>Refresh</v-btn></v-col></v-row></v-card-text></v-card>
     <v-alert v-if="error" type="error" dense text class="mb-4">{{ error }}</v-alert>
-
-    <v-card flat outlined>
-      <v-data-table :headers="headers" :items="users" :loading="loading" :server-items-length="total" :options.sync="options" :footer-props="{itemsPerPageOptions:[10,20,50]}" item-key="id">
-        <template v-slot:item.roles="{ item }">
-          <v-chip v-if="item.roles && item.roles.length" x-small color="primary" outlined>{{ item.roles[0].name }}</v-chip>
-          <span v-else class="grey--text">No role</span>
-        </template>
-        <template v-slot:item.branch.name="{ item }">{{ item.branch ? item.branch.name : 'All branches' }}</template>
-        <template v-slot:item.created_at="{ item }">{{ formatDate(item.created_at) }}</template>
-        <template v-slot:item.actions="{ item }">
-          <v-btn icon small @click="openEdit(item)"><v-icon small>mdi-pencil</v-icon></v-btn>
-          <v-btn icon small color="error" :disabled="item.id === currentUserId" @click="remove(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
-        </template>
-        <template v-slot:no-data><div class="pa-8 grey--text">No users found.</div></template>
-      </v-data-table>
-    </v-card>
-
-    <v-dialog v-model="dialog" max-width="620" persistent>
-      <v-card>
-        <v-card-title>{{ editing ? 'Edit User' : 'Create User' }}<v-spacer /><v-btn icon @click="dialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
-        <v-card-text>
-          <v-alert v-if="formError" type="error" dense text class="mb-4">{{ formError }}</v-alert>
-          <v-form ref="form" v-model="valid" @submit.prevent="save">
-            <v-text-field v-model="form.name" label="Full name" outlined dense :rules="[required]" />
-            <v-text-field v-model="form.email" label="Email" type="email" outlined dense :rules="[required, emailRule]" />
-            <v-text-field v-model="form.password" :label="editing ? 'New password (leave blank to keep current)' : 'Password'" type="password" outlined dense :rules="editing ? [] : [required, passwordRule]" />
-            <v-row dense>
-              <v-col cols="12" md="6"><v-select v-model="form.role" :items="roles" label="Role" outlined dense clearable /></v-col>
-              <v-col cols="12" md="6"><v-select v-model="form.branch_id" :items="branches" item-text="name" item-value="id" label="Branch" outlined dense clearable /></v-col>
-            </v-row>
-          </v-form>
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer /><v-btn text @click="dialog=false">Cancel</v-btn><v-btn color="primary" depressed :loading="saving" :disabled="!valid" @click="save">{{ editing ? 'Update' : 'Create' }}</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
+    <v-card flat outlined><v-data-table :headers="headers" :items="users" :loading="loading" :server-items-length="total" :options.sync="options" :footer-props="{itemsPerPageOptions:[10,20,50]}" item-key="id"><template v-slot:item.roles="{ item }"><v-chip v-if="item.roles && item.roles.length" x-small color="primary" outlined>{{ item.roles[0].name }}</v-chip><span v-else class="grey--text">No role</span></template><template v-slot:item.branch.name="{ item }">{{ item.branch ? item.branch.name : 'All branches' }}</template><template v-slot:item.created_at="{ item }">{{ formatDate(item.created_at) }}</template><template v-slot:item.actions="{ item }"><v-btn v-if="$can('users.edit')" icon small @click="openEdit(item)"><v-icon small>mdi-pencil</v-icon></v-btn><v-btn v-if="$can('users.delete')" icon small color="error" :disabled="item.id === currentUserId" @click="remove(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn></template><template v-slot:no-data><div class="pa-8 grey--text">No users found.</div></template></v-data-table></v-card>
+    <v-dialog v-model="dialog" max-width="620" persistent><v-card><v-card-title>{{ editing ? 'Edit User' : 'Create User' }}<v-spacer /><v-btn icon @click="dialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title><v-card-text><v-alert v-if="formError" type="error" dense text class="mb-4">{{ formError }}</v-alert><v-form ref="form" v-model="valid" @submit.prevent="save"><v-text-field v-model="form.name" label="Full name" outlined dense :rules="[required]" /><v-text-field v-model="form.email" label="Email" type="email" outlined dense :rules="[required, emailRule]" /><v-text-field v-model="form.password" :label="editing ? 'New password (leave blank to keep current)' : 'Password'" type="password" outlined dense :rules="editing ? [] : [required, passwordRule]" /><v-row dense><v-col cols="12" md="6"><v-select v-model="form.role" :items="roles" label="Role" outlined dense clearable /></v-col><v-col cols="12" md="6"><v-select v-model="form.branch_id" :items="branches" item-text="name" item-value="id" label="Branch" outlined dense clearable /></v-col></v-row></v-form></v-card-text><v-card-actions><v-spacer /><v-btn text @click="dialog=false">Cancel</v-btn><v-btn color="primary" depressed :loading="saving" :disabled="!valid" @click="save">{{ editing ? 'Update' : 'Create' }}</v-btn></v-card-actions></v-card></v-dialog>
   </div>
 </template>
-
 <script>
 import api from '../../services/api'
-
-export default {
-  name: 'Users',
-  data: () => ({
-    loading: false, saving: false, error: '', formError: '', dialog: false, editing: null, valid: false,
-    search: '', roleFilter: null, users: [], total: 0, branches: [],
-    roles: ['Super Admin', 'Admin', 'Manager', 'Sales Agent', 'Accountant', 'Construction Manager', 'HR', 'Customer'],
-    options: { page: 1, itemsPerPage: 20, sortBy: [], sortDesc: [] },
-    headers: [
-      { text: 'Name', value: 'name' }, { text: 'Email', value: 'email' }, { text: 'Role', value: 'roles', sortable: false },
-      { text: 'Branch', value: 'branch.name', sortable: false }, { text: 'Created', value: 'created_at' }, { text: '', value: 'actions', sortable: false, align: 'right' }
-    ],
-    form: { name: '', email: '', password: '', role: null, branch_id: null }
-  }),
-  computed: {
-    currentUserId () { const user = this.$store.getters['auth/user']; return user ? user.id : null }
-  },
-  watch: {
-    options: { deep: true, handler () { this.load() } }
-  },
-  mounted () { this.load(); this.loadBranches() },
-  methods: {
-    required (v) { return !!String(v || '').trim() || 'This field is required.' },
-    emailRule (v) { return /.+@.+\..+/.test(v || '') || 'Enter a valid email address.' },
-    passwordRule (v) { return String(v || '').length >= 8 || 'Password must be at least 8 characters.' },
-    async load () {
-      this.loading = true; this.error = ''
-      try {
-        const r = await api.get('/users', { params: { search: this.search || undefined, role: this.roleFilter || undefined, page: this.options.page, per_page: this.options.itemsPerPage } })
-        this.users = r.data.data || []; this.total = r.data.total || 0
-      } catch (e) { this.error = e.response?.data?.message || 'Unable to load users.' }
-      finally { this.loading = false }
-    },
-    async loadBranches () {
-      try { const r = await api.get('/branches', { params: { is_active: true, per_page: 100 } }); this.branches = r.data.data || [] } catch (e) {}
-    },
-    resetForm () { this.form = { name: '', email: '', password: '', role: null, branch_id: null }; this.formError = ''; if (this.$refs.form) this.$refs.form.resetValidation() },
-    openCreate () { this.editing = null; this.resetForm(); this.dialog = true },
-    openEdit (item) { this.editing = item; this.form = { name: item.name || '', email: item.email || '', password: '', role: item.roles?.[0]?.name || null, branch_id: item.branch_id || null }; this.formError = ''; this.dialog = true },
-    async save () {
-      if (!this.$refs.form.validate()) return
-      this.saving = true; this.formError = ''
-      try {
-        const payload = { ...this.form }
-        if (!payload.password) delete payload.password
-        if (this.editing) await api.put('/users/' + this.editing.id, payload)
-        else await api.post('/users', payload)
-        this.dialog = false; await this.load()
-      } catch (e) {
-        const errors = e.response?.data?.errors
-        this.formError = errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || 'Unable to save user.')
-      } finally { this.saving = false }
-    },
-    async remove (item) {
-      if (!window.confirm(`Delete user "${item.name}"? This action cannot be undone.`)) return
-      try { await api.delete('/users/' + item.id); await this.load() }
-      catch (e) { this.error = e.response?.data?.message || 'Unable to delete user.' }
-    },
-    formatDate (value) { return value ? new Date(value).toLocaleDateString('en-GB') : '-' }
-  }
-}
+export default { name: 'Users', data: () => ({ loading: false, saving: false, error: '', formError: '', dialog: false, editing: null, valid: false, search: '', roleFilter: null, users: [], total: 0, branches: [], roles: ['Super Admin', 'Admin', 'Manager', 'Sales Agent', 'Accountant', 'Construction Manager', 'HR', 'Customer'], options: { page: 1, itemsPerPage: 20, sortBy: [], sortDesc: [] }, headers: [{ text: 'Name', value: 'name' }, { text: 'Email', value: 'email' }, { text: 'Role', value: 'roles', sortable: false }, { text: 'Branch', value: 'branch.name', sortable: false }, { text: 'Created', value: 'created_at' }, { text: '', value: 'actions', sortable: false, align: 'right' }], form: { name: '', email: '', password: '', role: null, branch_id: null } }), computed: { currentUserId () { const user = this.$store.getters['auth/user']; return user ? user.id : null } }, watch: { options: { deep: true, handler () { this.load() } } }, mounted () { this.load(); this.loadBranches() }, methods: { required (v) { return !!String(v || '').trim() || 'This field is required.' }, emailRule (v) { return /.+@.+\..+/.test(v || '') || 'Enter a valid email address.' }, passwordRule (v) { return String(v || '').length >= 8 || 'Password must be at least 8 characters.' }, async load () { this.loading = true; this.error = ''; try { const r = await api.get('/users', { params: { search: this.search || undefined, role: this.roleFilter || undefined, page: this.options.page, per_page: this.options.itemsPerPage } }); this.users = r.data.data || []; this.total = r.data.total || 0 } catch (e) { this.error = e.response?.data?.message || 'Unable to load users.' } finally { this.loading = false } }, async loadBranches () { try { const r = await api.get('/branches', { params: { is_active: true, per_page: 100 } }); this.branches = r.data.data || [] } catch (e) {} }, resetForm () { this.form = { name: '', email: '', password: '', role: null, branch_id: null }; this.formError = ''; if (this.$refs.form) this.$refs.form.resetValidation() }, openCreate () { this.editing = null; this.resetForm(); this.dialog = true }, openEdit (item) { this.editing = item; this.form = { name: item.name || '', email: item.email || '', password: '', role: item.roles?.[0]?.name || null, branch_id: item.branch_id || null }; this.formError = ''; this.dialog = true }, async save () { if (!this.$refs.form.validate()) return; this.saving = true; this.formError = ''; try { const payload = { ...this.form }; if (!payload.password) delete payload.password; if (this.editing) await api.put('/users/' + this.editing.id, payload); else await api.post('/users', payload); this.dialog = false; await this.load() } catch (e) { const errors = e.response?.data?.errors; this.formError = errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || 'Unable to save user.') } finally { this.saving = false } }, async remove (item) { if (!window.confirm(`Delete user "${item.name}"? This action cannot be undone.`)) return; try { await api.delete('/users/' + item.id); await this.load() } catch (e) { this.error = e.response?.data?.message || 'Unable to delete user.' } }, formatDate (value) { return value ? new Date(value).toLocaleDateString('en-GB') : '-' } } }
 </script>
-
-<style scoped>
-.page { width: 100%; }
-.hero { border-left: 4px solid #165134; }
-.page ::v-deep .v-data-table__wrapper { overflow-x: auto; }
-</style>
+<style scoped>.page { width: 100%; }.hero { border-left: 4px solid #165134; }.page ::v-deep .v-data-table__wrapper { overflow-x: auto; }</style>
