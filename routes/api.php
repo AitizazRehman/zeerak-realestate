@@ -33,6 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
     });
 
+    // Lightweight lookup used by CRM/sales forms. It does not expose user administration data.
+    Route::get('sales-agents', [UserController::class, 'salesAgents'])->middleware('permission:sales.view');
+
     // User administration is protected by action-level permissions.
     Route::get('users', [UserController::class, 'index'])->middleware('permission:users.view');
     Route::post('users', [UserController::class, 'store'])->middleware('permission:users.create');
