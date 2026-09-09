@@ -25,7 +25,15 @@ use App\Http\Controllers\API\UserController;
 Route::prefix('auth')->group(function(){Route::post('/login',[AuthController::class,'login']);});
 Route::middleware('auth:sanctum')->group(function(){
  Route::prefix('auth')->group(function(){Route::get('/me',[AuthController::class,'me']);Route::post('/logout',[AuthController::class,'logout']);});
- Route::apiResource('users',UserController::class);
+
+ // User administration is permission-protected by action.
+ Route::get('users',[UserController::class,'index'])->middleware('permission:users.view');
+ Route::post('users',[UserController::class,'store'])->middleware('permission:users.create');
+ Route::get('users/{user}',[UserController::class,'show'])->middleware('permission:users.view');
+ Route::put('users/{user}',[UserController::class,'update'])->middleware('permission:users.edit');
+ Route::patch('users/{user}',[UserController::class,'update'])->middleware('permission:users.edit');
+ Route::delete('users/{user}',[UserController::class,'destroy'])->middleware('permission:users.delete');
+
  Route::apiResource('branches',BranchController::class)->only(['index','show']);
  Route::apiResource('projects',ProjectController::class);
  Route::apiResource('project-blocks',ProjectBlockController::class);
