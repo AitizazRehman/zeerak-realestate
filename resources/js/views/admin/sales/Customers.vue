@@ -1,0 +1,62 @@
+<template>
+  <div class="customers-page">
+    <v-card flat class="pa-4 mb-4">
+      <div class="d-flex align-center flex-wrap">
+        <div><h2 class="text-h5 font-weight-bold">Customers</h2><div class="text-caption grey--text">Manage customers and their sales history</div></div>
+        <v-spacer />
+        <v-btn color="#165134" dark depressed @click="openCreate"><v-icon left>mdi-account-plus</v-icon>Add Customer</v-btn>
+      </div>
+    </v-card>
+
+    <v-card flat class="pa-4 mb-4">
+      <v-text-field v-model="search" outlined dense clearable prepend-inner-icon="mdi-magnify" label="Search name, phone, CNIC or customer number" @keyup.enter="load" @click:clear="load" />
+    </v-card>
+
+    <v-card flat>
+      <v-data-table :headers="headers" :items="customers" :loading="loading" :server-items-length="total" :options.sync="options" @update:options="load">
+        <template v-slot:item.customer_number="{item}"><span class="font-weight-bold primary--text">{{ item.customer_number }}</span></template>
+        <template v-slot:item.is_active="{item}"><v-chip x-small :color="item.is_active ? 'success' : 'grey'" dark>{{ item.is_active ? 'Active' : 'Inactive' }}</v-chip></template>
+        <template v-slot:item.actions="{item}"><v-btn icon small @click="view(item)"><v-icon>mdi-eye</v-icon></v-btn><v-btn icon small @click="edit(item)"><v-icon>mdi-pencil</v-icon></v-btn></template>
+      </v-data-table>
+    </v-card>
+
+    <v-dialog v-model="dialog" max-width="700px" persistent>
+      <v-card>
+        <v-card-title>{{ editing ? 'Edit Customer' : 'Add Customer' }}<v-spacer/><v-btn icon @click="dialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
+        <v-card-text><v-form ref="form" @submit.prevent="save"><v-row>
+          <v-col cols="12" md="6"><v-text-field v-model="form.name" label="Full Name *" outlined dense :error-messages="errors.name" /></v-col>
+          <v-col cols="12" md="6"><v-text-field v-model="form.phone" label="Phone *" outlined dense :error-messages="errors.phone" /></v-col>
+          <v-col cols="12" md="6"><v-text-field v-model="form.cnic" label="CNIC" outlined dense /></v-col>
+          <v-col cols="12" md="6"><v-text-field v-model="form.alternate_phone" label="Alternate Phone" outlined dense /></v-col>
+          <v-col cols="12" md="6"><v-text-field v-model="form.email" label="Email" outlined dense /></v-col>
+          <v-col cols="12" md="6"><v-text-field v-model="form.city" label="City" outlined dense /></v-col>
+          <v-col cols="12" md="6"><v-text-field v-model="form.source" label="Lead Source" outlined dense /></v-col>
+          <v-col cols="12"><v-textarea v-model="form.address" label="Address" outlined dense rows="2" /></v-col>
+          <v-col cols="12"><v-textarea v-model="form.notes" label="Notes" outlined dense rows="2" /></v-col>
+          <v-col cols="12"><v-switch v-model="form.is_active" label="Active" color="#165134" /></v-col>
+        </v-row></v-form></v-card-text>
+        <v-card-actions><v-spacer/><v-btn text @click="dialog=false">Cancel</v-btn><v-btn color="#165134" dark :loading="saving" @click="save">Save Customer</v-btn></v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="detailsDialog" max-width="650px"><v-card v-if="selected"><v-card-title>{{ selected.name }}<v-spacer/><v-btn icon @click="detailsDialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title><v-card-text><v-simple-table><tbody><tr><td>Customer #</td><td>{{ selected.customer_number }}</td></tr><tr><td>Phone</td><td>{{ selected.phone }}</td></tr><tr><td>CNIC</td><td>{{ selected.cnic || '-' }}</td></tr><tr><td>Email</td><td>{{ selected.email || '-' }}</td></tr><tr><td>City</td><td>{{ selected.city || '-' }}</td></tr><tr><td>Bookings</td><td>{{ selected.bookings ? selected.bookings.length : 0 }}</td></tr></tbody></v-simple-table></v-card-text></v-card></v-dialog>
+  </div>
+</template>
+
+<script>
+import api from '../../../services/api'
+export default {
+  name: 'Customers',
+  data () { return { loading:false, saving:false, dialog:false, detailsDialog:false, editing:null, selected:null, search:'', total:0, customers:[], options:{page:1,itemsPerPage:15}, errors:{}, form:this.blank(), headers:[{text:'Customer #',value:'customer_number'},{text:'Name',value:'name'},{text:'Phone',value:'phone'},{text:'City',value:'city'},{text:'Status',value:'is_active'},{text:'Actions',value:'actions',sortable:false}] } },
+  mounted () { this.load() },
+  methods: {
+    blank () { return {name:'',cnic:'',phone:'',alternate_phone:'',email:'',address:'',city:'',source:'',notes:'',is_active:true} },
+    async load () { this.loading=true; try { const r=await api.get('/customers',{params:{search:this.search,page:this.options.page,per_page:this.options.itemsPerPage}}); this.customers=r.data.data||[]; this.total=r.data.total||0 } finally { this.loading=false } },
+    openCreate () { this.editing=null; this.form=this.blank(); this.errors={}; this.dialog=true },
+    edit (item) { this.editing=item; this.form=Object.assign(this.blank(),item); this.errors={}; this.dialog=true },
+    async view (item) { const r=await api.get('/customers/'+item.id); this.selected=r.data; this.detailsDialog=true },
+    async save () { this.saving=true; this.errors={}; try { if(this.editing) await api.put('/customers/'+this.editing.id,this.form); else await api.post('/customers',this.form); this.dialog=false; await this.load() } catch(e) { if(e.response && e.response.status===422) this.errors=e.response.data.errors||{}; else this.$root.$emit('show-error','Unable to save customer.') } finally { this.saving=false } }
+  }
+}
+</script>
+<style scoped>.customers-page{width:100%}</style>
