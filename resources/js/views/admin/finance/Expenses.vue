@@ -1,0 +1,39 @@
+<template>
+  <div class="page">
+    <v-card flat class="hero pa-5 mb-4">
+      <div class="d-flex flex-wrap align-center">
+        <div><div class="text-overline">FINANCE</div><h1 class="text-h5 font-weight-bold">Expenses</h1><div class="grey--text">Track project and operational expenses.</div></div>
+        <v-spacer/><v-btn color="#165134" dark @click="openCreate"><v-icon left>mdi-plus</v-icon>Record Expense</v-btn>
+      </div>
+    </v-card>
+    <v-card flat outlined class="mb-4"><v-card-text><v-row dense>
+      <v-col cols="12" md="4"><v-text-field v-model="filters.search" outlined dense clearable prepend-inner-icon="mdi-magnify" label="Search" @keyup.enter="load"/></v-col>
+      <v-col cols="12" md="3"><v-select v-model="filters.category" :items="categories" outlined dense clearable label="Category" @change="load"/></v-col>
+      <v-col cols="6" md="2"><v-text-field v-model="filters.from" type="date" outlined dense label="From" @change="load"/></v-col>
+      <v-col cols="6" md="2"><v-text-field v-model="filters.to" type="date" outlined dense label="To" @change="load"/></v-col>
+      <v-col cols="12" md="1" class="d-flex align-center"><v-btn icon @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
+    </v-row></v-card-text></v-card>
+    <v-card flat outlined><v-data-table :headers="headers" :items="items" :loading="loading" :options.sync="options" :server-items-length="total">
+      <template v-slot:item.amount="{item}"><strong>{{ money(item.amount) }}</strong></template>
+      <template v-slot:item.expense_date="{item}">{{ item.expense_date | dateOnly }}</template>
+      <template v-slot:item.actions="{item}"><v-btn icon small @click="edit(item)"><v-icon small>mdi-pencil</v-icon></v-btn><v-btn icon small color="error" @click="remove(item)"><v-icon small>mdi-delete</v-icon></v-btn></template>
+      <template v-slot:no-data><div class="pa-8 grey--text">No expenses found.</div></template>
+    </v-data-table></v-card>
+    <v-dialog v-model="dialog" max-width="700"><v-card><v-card-title>{{ editing ? 'Edit Expense' : 'Record Expense' }}</v-card-title><v-card-text><v-row>
+      <v-col cols="12" md="6"><v-select v-model="form.project_id" :items="projects" item-text="name" item-value="id" outlined dense clearable label="Project"/></v-col>
+      <v-col cols="12" md="6"><v-select v-model="form.category" :items="categories" outlined dense label="Category *"/></v-col>
+      <v-col cols="12"><v-text-field v-model="form.description" outlined dense label="Description *"/></v-col>
+      <v-col cols="12" md="6"><v-text-field v-model="form.amount" type="number" min="0" step="0.01" outlined dense label="Amount *"/></v-col>
+      <v-col cols="12" md="6"><v-text-field v-model="form.expense_date" type="date" outlined dense label="Expense Date *"/></v-col>
+      <v-col cols="12" md="6"><v-select v-model="form.payment_method" :items="methods" outlined dense label="Payment Method *"/></v-col>
+      <v-col cols="12" md="6"><v-text-field v-model="form.vendor_name" outlined dense label="Vendor / Payee"/></v-col>
+      <v-col cols="12" md="6"><v-text-field v-model="form.reference_number" outlined dense label="Reference #"/></v-col>
+      <v-col cols="12"><v-textarea v-model="form.notes" outlined dense rows="2" label="Notes"/></v-col>
+    </v-row></v-card-text><v-card-actions><v-spacer/><v-btn text @click="dialog=false">Cancel</v-btn><v-btn color="#165134" dark :loading="saving" @click="save">Save</v-btn></v-card-actions></v-card></v-dialog>
+  </div>
+</template>
+<script>
+import api from '../../../services/api'
+export default { name:'Expenses', data:()=>({ loading:false,saving:false,dialog:false,editing:null,items:[],total:0,projects:[],options:{page:1,itemsPerPage:15},filters:{search:'',category:null,from:'',to:''},categories:['Land & Development','Construction','Materials','Labour','Utilities','Marketing','Office','Transport','Legal','Maintenance','Other'],methods:['cash','bank_transfer','cheque','online','other'],headers:[{text:'Expense #',value:'expense_number'},{text:'Category',value:'category'},{text:'Description',value:'description'},{text:'Project',value:'project.name'},{text:'Amount',value:'amount',align:'right'},{text:'Date',value:'expense_date'},{text:'Method',value:'payment_method'},{text:'',value:'actions',sortable:false}],form:{project_id:null,category:'Construction',description:'',amount:null,expense_date:new Date().toISOString().slice(0,10),payment_method:'cash',vendor_name:'',reference_number:'',notes:''}}),watch:{options:{deep:true,handler(){this.load()}}},mounted(){this.load();this.loadProjects()},filters:{dateOnly(v){return v?String(v).slice(0,10):''}},methods:{async load(){this.loading=true;try{const r=await api.get('/expenses',{params:{...this.filters,page:this.options.page,per_page:this.options.itemsPerPage}});this.items=r.data.data||[];this.total=r.data.total||0}catch(e){this.$root.$emit('show-error',e.response?.data?.message||'Unable to load expenses.')}finally{this.loading=false}},async loadProjects(){try{const r=await api.get('/projects',{params:{per_page:100}});this.projects=r.data.data||r.data||[]}catch(e){}},openCreate(){this.editing=null;this.reset();this.dialog=true},reset(){this.form={project_id:null,category:'Construction',description:'',amount:null,expense_date:new Date().toISOString().slice(0,10),payment_method:'cash',vendor_name:'',reference_number:'',notes:''}},edit(item){this.editing=item;this.form={project_id:item.project_id||item.project?.id||null,category:item.category,description:item.description,amount:item.amount,expense_date:String(item.expense_date).slice(0,10),payment_method:item.payment_method,vendor_name:item.vendor_name||'',reference_number:item.reference_number||'',notes:item.notes||''};this.dialog=true},async save(){if(!this.form.category||!this.form.description||!this.form.amount){this.$root.$emit('show-error','Category, description and amount are required.');return}this.saving=true;try{if(this.editing)await api.put('/expenses/'+this.editing.id,this.form);else await api.post('/expenses',this.form);this.dialog=false;await this.load()}catch(e){this.$root.$emit('show-error',e.response?.data?.message||'Unable to save expense.')}finally{this.saving=false}},async remove(item){if(!confirm('Delete this expense?'))return;try{await api.delete('/expenses/'+item.id);await this.load()}catch(e){this.$root.$emit('show-error',e.response?.data?.message||'Unable to delete expense.')}} ,money(v){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(v||0))}}}
+</script>
+<style scoped>.page{width:100%}.hero{border-left:4px solid #165134}.page ::v-deep .v-data-table__wrapper{overflow-x:auto}</style>
