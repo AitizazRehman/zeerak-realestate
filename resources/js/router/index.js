@@ -69,10 +69,17 @@ const routes = [
 
 const router = new VueRouter({ mode: 'history', routes, scrollBehavior () { return { x: 0, y: 0 } } })
 
+const normalizePermissions = permissions => {
+    if (!Array.isArray(permissions)) return []
+    return permissions.map(permission => {
+        return typeof permission === 'string' ? permission : permission.name
+    }).filter(Boolean)
+}
+
 const hasPermission = permission => {
     if (!permission) return true
     const user = store.getters['auth/user'] || {}
-    const permissions = Array.isArray(user.permissions) ? user.permissions : []
+    const permissions = normalizePermissions(user.permissions)
     return permissions.indexOf('*') !== -1 || permissions.indexOf(permission) !== -1
 }
 
