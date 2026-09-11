@@ -5,6 +5,7 @@ import Login from '../views/auth/Login.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import Dashboard from '../views/dashboard/Dashboard.vue'
 import Users from '../views/users/Users.vue'
+import Roles from '../views/users/Roles.vue'
 import NotFound from '../views/errors/NotFound.vue'
 import Forbidden from '../views/errors/Forbidden.vue'
 import Projects from '../views/admin/real-estate/Projects.vue'
@@ -33,14 +34,12 @@ const routes = [
     { path: '/', redirect: { name: 'login' } },
     { path: '/login', name: 'login', component: Login, meta: { guest: true } },
     {
-        path: '/admin',
-        component: AdminLayout,
-        meta: { requiresAuth: true },
-        children: [
+        path: '/admin', component: AdminLayout, meta: { requiresAuth: true }, children: [
             { path: '', redirect: { name: 'dashboard' } },
             { path: 'dashboard', name: 'dashboard', component: Dashboard, meta: { permission: 'dashboard.view' } },
             { path: 'sales/dashboard', name: 'sales-dashboard', component: SalesDashboard, meta: { permission: 'dashboard.view' } },
             { path: 'users', name: 'users', component: Users, meta: { permission: 'users.view' } },
+            { path: 'roles', name: 'roles', component: Roles, meta: { permission: 'roles.view' } },
             { path: 'projects', name: 'projects', component: Projects, meta: { permission: 'projects.view' } },
             { path: 'projects/create', name: 'project-create', component: ProjectForm, meta: { permission: 'projects.create' } },
             { path: 'projects/:id/edit', name: 'project-edit', component: ProjectForm, meta: { permission: 'projects.edit' } },
