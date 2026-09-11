@@ -2,7 +2,11 @@ import Vue from 'vue';
 
 const getPermissions = () => {
     const user = JSON.parse(localStorage.getItem('zeerak_user')) || {};
-    return Array.isArray(user.permissions) ? user.permissions : [];
+    const permissions = Array.isArray(user.permissions) ? user.permissions : [];
+
+    return permissions.map(permission => {
+        return typeof permission === 'string' ? permission : permission.name;
+    }).filter(Boolean);
 };
 
 const hasPermission = permission => {
