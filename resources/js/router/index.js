@@ -30,6 +30,7 @@ import Settings from '../views/admin/settings/Settings.vue'
 Vue.use(VueRouter)
 
 const routes = [
+    { path: '/', redirect: { name: 'login' } },
     { path: '/login', name: 'login', component: Login, meta: { guest: true } },
     {
         path: '/admin',
