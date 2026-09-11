@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
@@ -29,6 +30,14 @@ class UserController extends Controller
         }
 
         return response()->json(['success' => true, 'data' => $query->get()]);
+    }
+
+    public function roles()
+    {
+        return response()->json([
+            'success' => true,
+            'data' => Role::where('guard_name', 'web')->orderBy('name')->get(['id', 'name'])
+        ]);
     }
 
     public function index(Request $request)
