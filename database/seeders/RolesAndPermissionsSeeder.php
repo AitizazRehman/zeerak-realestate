@@ -5,11 +5,14 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
     public function run()
     {
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
         $modules = ['dashboard','users','roles','properties','projects','customers','leads','site_visits','sales','installments','payments','expenses','commissions','construction','materials','vendors','contractors','documents','complaints','reports','settings'];
         $actions = ['view','create','edit','delete'];
 
@@ -24,12 +27,13 @@ class RolesAndPermissionsSeeder extends Seeder
             Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
-        $all = Permission::all();
+        $all = Permission::where('guard_name', 'web')->get();
         Role::where('name', 'Super Admin')->first()->syncPermissions($all);
 
         $matrix = [
             'Admin' => [
-                'dashboard.view','users.view','users.create','users.edit','roles.view',
+                'dashboard.view','users.view','users.create','users.edit','users.delete',
+                'roles.view','roles.create','roles.edit','roles.delete',
                 'properties.view','properties.create','properties.edit','properties.delete',
                 'projects.view','projects.create','projects.edit','projects.delete',
                 'customers.view','customers.create','customers.edit','customers.delete',
@@ -102,5 +106,7 @@ class RolesAndPermissionsSeeder extends Seeder
         foreach ($matrix as $roleName => $permissions) {
             Role::where('name', $roleName)->first()->syncPermissions($permissions);
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
