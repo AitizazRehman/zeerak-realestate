@@ -11,6 +11,23 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    private function userPayload(User $user)
+    {
+        $user->load('roles');
+
+        $data = $user->toArray();
+        $data['roles'] = $user->roles->map(function ($role) {
+            return [
+                'id' => $role->id,
+                'name' => $role->name,
+                'guard_name' => $role->guard_name,
+            ];
+        })->values();
+        $data['permissions'] = $user->getAllPermissions()->pluck('name')->values();
+
+        return $data;
+    }
+
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -45,7 +62,7 @@ class AuthController extends Controller
             'message' => 'Login successful.',
             'data' => [
                 'token' => $token,
-                'user' => $user->load('roles', 'permissions'),
+                'user' => $this->userPayload($user),
             ],
         ]);
     }
@@ -54,7 +71,7 @@ class AuthController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data' => $request->user()->load('roles', 'permissions'),
+            'data' => $this->userPayload($request->user()),
         ]);
     }
 
