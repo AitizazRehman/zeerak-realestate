@@ -1,6 +1,7 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import store from '../store'
+import api from '../services/api'
 import Login from '../views/auth/Login.vue'
 import AdminLayout from '../layouts/AdminLayout.vue'
 import Dashboard from '../views/dashboard/Dashboard.vue'
@@ -75,10 +76,27 @@ const hasPermission = permission => {
     return permissions.indexOf('*') !== -1 || permissions.indexOf(permission) !== -1
 }
 
-router.beforeEach((to, from, next) => {
+let permissionsLoaded = false
+
+router.beforeEach(async (to, from, next) => {
     const authenticated = store.getters['auth/isAuthenticated']
+
     if (to.matched.some(route => route.meta.requiresAuth) && !authenticated) return next({ name: 'login' })
     if (to.matched.some(route => route.meta.guest) && authenticated) return next({ name: 'dashboard' })
+
+    if (authenticated && !permissionsLoaded) {
+        try {
+            const response = await api.get('/auth/me')
+            store.commit('auth/SET_AUTH', {
+                token: localStorage.getItem('zeerak_token'),
+                user: response.data.data
+            })
+        } catch (e) {
+            if (e.response && e.response.status === 401) return next({ name: 'login' })
+        }
+        permissionsLoaded = true
+    }
+
     const permissionRoute = to.matched.find(route => route.meta && route.meta.permission)
     if (permissionRoute && !hasPermission(permissionRoute.meta.permission)) return next({ name: 'forbidden' })
     next()
