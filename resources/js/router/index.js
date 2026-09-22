@@ -21,6 +21,8 @@ import SiteVisits from '../views/admin/sales/SiteVisits.vue'
 import Bookings from '../views/admin/sales/Bookings.vue'
 import Payments from '../views/admin/sales/Payments.vue'
 import Installments from '../views/admin/sales/Installments.vue'
+import InstallmentPlans from '../views/admin/sales/InstallmentPlans.vue'
+import Branches from '../views/admin/settings/Branches.vue'
 import Commissions from '../views/admin/sales/Commissions.vue'
 import SalesDashboard from '../views/admin/sales/SalesDashboard.vue'
 import Expenses from '../views/admin/finance/Expenses.vue'
@@ -55,6 +57,8 @@ const routes = [
             { path: 'bookings', name: 'bookings', component: Bookings, meta: { permission: 'sales.view' } },
             { path: 'payments', name: 'payments', component: Payments, meta: { permission: 'payments.view' } },
             { path: 'installments', name: 'installments', component: Installments, meta: { permission: 'installments.view' } },
+            { path: 'installment-plans', name: 'installment-plans', component: InstallmentPlans, meta: { permission: 'installments.view' } },
+            { path: 'branches', name: 'branches', component: Branches, meta: { permission: 'dashboard.view' } },
             { path: 'commissions', name: 'commissions', component: Commissions, meta: { permission: 'commissions.view' } },
             { path: 'expenses', name: 'expenses', component: Expenses, meta: { permission: 'expenses.view' } },
             { path: 'construction', name: 'construction', component: Construction, meta: { permission: 'construction.view' } },
