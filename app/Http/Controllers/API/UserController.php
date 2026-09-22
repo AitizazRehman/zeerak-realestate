@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,6 +12,7 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
+    use ChecksBranchAccess;
     public function salesAgents(Request $request)
     {
         $query = User::query()
@@ -20,6 +22,10 @@ class UserController extends Controller
             ->select(['id', 'name', 'email', 'branch_id'])
             ->with('branch:id,name')
             ->orderBy('name');
+
+        if (!$this->canAccessAllBranches()) {
+            $query->where('branch_id', auth()->user()->branch_id);
+        }
 
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -44,6 +50,7 @@ class UserController extends Controller
     {
         $query = User::with(['roles:id,name', 'branch:id,name'])
             ->select(['id', 'name', 'email', 'branch_id', 'created_at']);
+        if (!$this->canAccessAllBranches()) $query->where('branch_id', auth()->user()->branch_id);
         if ($request->filled('search')) {
             $search = trim($request->search);
             $query->where(function ($q) use ($search) {
@@ -62,6 +69,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
+        if (!$this->canAccessAllBranches()) $this->ensureBranchAccess($user->branch_id);
         return response()->json(['success' => true, 'data' => $user->load(['roles:id,name', 'branch:id,name'])]);
     }
 
