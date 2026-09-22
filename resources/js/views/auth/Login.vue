@@ -3,7 +3,7 @@
   <v-row no-gutters class="fill-height">
     <v-col cols="12" md="7" class="brand-panel d-none d-md-flex">
       <div class="brand-content">
-        <v-img src="/images/zeerak-logo.jpeg" contain max-width="190" class="white-logo mb-8"/>
+        <v-img src="/images/zeerak-logo.jpeg" contain max-width="145" max-height="145" class="white-logo mb-8"/>
         <div class="text-overline gold--text">REAL ESTATE MANAGEMENT PLATFORM</div>
         <h1 class="display-1 font-weight-bold white--text mb-4">Manage property, customers<br>and finance in one place.</h1>
         <p class="subtitle-1 white--text muted">A secure workspace for Zeerak Real Estate &amp; Builders — from lead to booking, installment, payment and reporting.</p>
@@ -21,7 +21,7 @@
           <v-text-field v-model.trim="form.email" label="Email address" prepend-inner-icon="mdi-email-outline" outlined dense :error-messages="errors.email" autocomplete="username"/>
           <v-text-field v-model="form.password" label="Password" prepend-inner-icon="mdi-lock-outline" :append-icon="showPassword?'mdi-eye-off-outline':'mdi-eye-outline'" @click:append="showPassword=!showPassword" :type="showPassword?'text':'password'" outlined dense :error-messages="errors.password" autocomplete="current-password"/>
           <div class="d-flex align-center mb-5"><v-checkbox v-model="rememberEmail" dense hide-details label="Remember email"/><v-spacer/><span class="caption grey--text">Secure account access</span></div>
-          <v-btn type="submit" block x-large color="#165134" dark depressed class="rounded-lg" :loading="loading" :disabled="!form.email||!form.password">Sign in <v-icon right>mdi-arrow-right</v-icon></v-btn>
+          <v-btn type="submit" block x-large color="primary" dark depressed class="login-btn rounded-lg" :loading="loading" :disabled="!form.email||!form.password">Sign in <v-icon right>mdi-arrow-right</v-icon></v-btn>
         </v-form>
         <div class="text-center caption grey--text mt-7">Zeerak Real Estate &amp; Builders</div>
       </v-card>
@@ -33,5 +33,5 @@
 export default{name:'Login',data(){return{loading:false,showPassword:false,rememberEmail:localStorage.getItem('zeerak_remember_email')==='1',message:'',form:{email:localStorage.getItem('zeerak_login_email')||'',password:''},errors:{}}},methods:{async login(){this.loading=true;this.errors={};this.message='';try{await this.$store.dispatch('auth/login',this.form);if(this.rememberEmail){localStorage.setItem('zeerak_remember_email','1');localStorage.setItem('zeerak_login_email',this.form.email)}else{localStorage.removeItem('zeerak_remember_email');localStorage.removeItem('zeerak_login_email')}this.$router.push({name:'dashboard'})}catch(error){if(error.response&&error.response.status===422){this.errors=error.response.data.errors||{};this.message=error.response.data.message||''}else this.message='Unable to sign in. Please check your connection and try again.'}finally{this.loading=false}}}}
 </script>
 <style scoped>
-.login-page{min-height:100vh;background:#f6f8f7}.fill-height{min-height:100vh}.brand-panel{position:relative;align-items:center;padding:8vw;background:linear-gradient(145deg,rgba(9,54,33,.97),rgba(22,81,52,.92)),url('/images/zeerak-logo.jpeg') center/cover}.brand-content{max-width:700px}.white-logo{background:#fff;border-radius:20px;padding:10px}.gold--text{color:#d6b45d!important}.muted{opacity:.82;max-width:650px;line-height:1.8}.feature-row{display:flex;gap:28px;flex-wrap:wrap;color:#fff}.feature-row span{display:flex;gap:7px;align-items:center}.form-panel{background:#f6f8f7}.login-card{width:100%;max-width:500px;background:transparent!important}.rounded-lg{border-radius:12px!important}@media(max-width:600px){.form-panel{padding:20px}.login-card{padding:24px!important}}
+.login-page{min-height:100vh;background:#f6f8f7}.fill-height{min-height:100vh}.brand-panel{position:relative;align-items:center;padding:8vw;background:linear-gradient(145deg,rgba(9,54,33,.97),rgba(22,81,52,.92)),url('/images/zeerak-logo.jpeg') center/cover}.brand-content{max-width:700px}.white-logo{background:#fff;border-radius:18px;padding:8px;overflow:hidden}.gold--text{color:#d6b45d!important}.muted{opacity:.82;max-width:650px;line-height:1.8}.feature-row{display:flex;gap:28px;flex-wrap:wrap;color:#fff}.feature-row span{display:flex;gap:7px;align-items:center}.form-panel{background:#fff}.login-card{width:100%;max-width:500px;background:#fff!important}.login-btn{min-height:52px!important;color:#fff!important;font-weight:700;letter-spacing:.04em}.rounded-lg{border-radius:12px!important}@media(max-width:600px){.form-panel{padding:20px}.login-card{padding:24px!important}} .v-btn.login-btn.v-btn--disabled{background:#d8dedb!important;color:#8b9690!important}
 </style>
