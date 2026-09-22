@@ -222,8 +222,11 @@ class PropertyController extends Controller
     {
         $property = $this->applyBranchScope(Property::query())->findOrFail($property->id);
 
-        if ($property->bookings()->whereIn('status', ['reserved','confirmed','completed'])->exists()) {
-            abort(422, 'Property with an active or completed booking cannot be deleted.');
+        if ($property->bookings()->exists()) {
+            abort(422, 'Property with booking history cannot be deleted. Mark it unavailable instead.');
+        }
+        if ($property->statusHistories()->count() > 1) {
+            abort(422, 'Property with status history cannot be deleted. Mark it unavailable instead.');
         }
 
         $property->delete();
