@@ -139,10 +139,24 @@ class InstallmentPlanController extends Controller
                 ->exists();
 
             if ($data['status'] === 'cancelled' && $hasPayments) {
-                abort(422, 'An installment plan with payments cannot be cancelled.');
+                abort(422, 'An installment plan with verified payments cannot be cancelled. Reverse the payments first.');
+            }
+            if ($data['status'] === 'cancelled' && Payment::whereIn('installment_id', $installmentIds)->exists()) {
+                abort(422, 'An installment plan with payment history cannot be cancelled. Retain it for financial audit history.');
             }
             if ($data['status'] === 'completed' && $plan->installments()->where('remaining_amount', '>', 0)->exists()) {
                 abort(422, 'All installments must be fully paid before completing the plan.');
+            }
+            if ($data['status'] === 'completed') {
+                $installments = $plan->installments()->lockForUpdate()->get();
+                foreach ($installments as $installment) {
+                    $verifiedPaid = round((float) Payment::where('installment_id', $installment->id)
+                        ->where('status', 'verified')->sum('amount'), 2);
+                    if (abs($verifiedPaid - round((float) $installment->amount, 2)) > 0.01 ||
+                        abs($verifiedPaid - round((float) $installment->paid_amount, 2)) > 0.01) {
+                        abort(409, 'Installment payment totals are inconsistent. Run financial reconciliation before completing this plan.');
+                    }
+                }
             }
             if ($plan->status === 'completed' && $data['status'] !== 'completed') {
                 abort(422, 'A completed installment plan cannot be reopened manually. Reverse a payment to reopen it.');
