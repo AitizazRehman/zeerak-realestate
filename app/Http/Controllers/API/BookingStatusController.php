@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Booking;
 use App\Models\Property;
 use App\Models\PropertyStatusHistory;
@@ -10,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 class BookingStatusController extends Controller
 {
+    use ChecksBranchAccess;
     public function confirm(Booking $booking) { return $this->change($booking, 'booked', 'confirmed'); }
 
     public function cancel(Booking $booking)
@@ -30,11 +32,14 @@ class BookingStatusController extends Controller
         $result = DB::transaction(function () use ($booking, $propertyStatus, $bookingStatus) {
             $b = Booking::lockForUpdate()->findOrFail($booking->id);
             $p = Property::lockForUpdate()->findOrFail($b->property_id);
+            $this->ensureBranchAccess($p->project->branch_id);
             $oldPropertyStatus = $p->status;
 
             if ($bookingStatus === 'confirmed' && $b->status !== 'reserved') abort(422, 'Only reserved bookings can be confirmed.');
             if ($bookingStatus === 'cancelled' && !in_array($b->status, ['reserved', 'confirmed'], true)) abort(422, 'This booking cannot be cancelled.');
             if ($bookingStatus === 'completed' && $b->status !== 'confirmed') abort(422, 'Only confirmed bookings can be completed.');
+            if ($bookingStatus === 'completed' && (float) $b->remaining_amount > 0) abort(422, 'Booking cannot be completed until fully paid.');
+            if ($bookingStatus === 'cancelled' && (float) $b->paid_amount > 0) abort(422, 'A booking with payments cannot be cancelled. Reverse its payments first.');
 
             $p->update(['status' => $propertyStatus]);
             $b->update(['status' => $bookingStatus]);
