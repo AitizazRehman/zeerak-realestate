@@ -49,7 +49,7 @@ class ProjectController extends Controller
 
         return response()->json(
             $query->latest()->paginate(
-                $request->get('per_page', 15)
+                min(max((int) $request->get('per_page', 15), 1), 100)
             )
         );
     }
@@ -129,6 +129,14 @@ class ProjectController extends Controller
         }
 
         $project = $query->findOrFail($id);
+
+        if ($project->properties()->exists()) {
+            abort(422, 'Projects with property inventory cannot be deleted. Deactivate or archive the project instead.');
+        }
+        if ($project->blocks()->exists()) {
+            abort(422, 'Projects with blocks cannot be deleted. Remove unused blocks first.');
+        }
+
         $project->delete();
 
         return response()->json([
