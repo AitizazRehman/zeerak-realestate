@@ -12,6 +12,45 @@ use Illuminate\Support\Str;
 
 class LeadController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function scopeBranch($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $query->where(function ($q) use ($branchId) {
+                $q->whereHas('project', function ($p) use ($branchId) {
+                    $p->where('branch_id', $branchId);
+                })->orWhere(function ($fallback) use ($branchId) {
+                    $fallback->whereNull('project_id')
+                        ->whereHas('assignee', function ($u) use ($branchId) {
+                            $u->where('branch_id', $branchId);
+                        });
+                });
+            });
+        }
+        return $query;
+    }
+
+    private function validateBranchRefs(array &$data)
+    {
+        if (!empty($data['project_id'])) {
+            $project = Project::findOrFail($data['project_id']);
+            $this->ensureBranchAccess($project->branch_id);
+        }
+
+        if (!empty($data['assigned_to'])) {
+            $user = User::findOrFail($data['assigned_to']);
+            if (!$this->canAccessAllBranches()) $this->ensureBranchAccess($user->branch_id);
+            if (!empty($data['project_id']) && $user->branch_id && (int)$user->branch_id !== (int)$project->branch_id) {
+                abort(422, 'Assigned user belongs to a different branch than the selected project.');
+            }
+        }
+
+        if (!$this->canAccessAllBranches() && empty($data['project_id']) && empty($data['assigned_to'])) {
+            $data['assigned_to'] = auth()->id();
+        }
+    }
     public function index(Request $request)
     {
         $query = $this->scopeBranch(Lead::with(['customer','assignee:id,name','project:id,name']));
@@ -28,7 +67,9 @@ class LeadController extends Controller
     {
         $data=$request->validate(['customer_id'=>'nullable|exists:customers,id','assigned_to'=>'nullable|exists:users,id','name'=>'required|string|max:150','phone'=>'required|string|max:30','email'=>'nullable|email|max:150','source'=>'nullable|string|max:100','status'=>'nullable|in:new,contacted,qualified,site_visit,negotiation,converted,lost','priority'=>'nullable|in:low,medium,high','project_id'=>'nullable|exists:projects,id','budget'=>'nullable|numeric|min:0','next_follow_up'=>'nullable|date','notes'=>'nullable|string']);
         $this->validateBranchRefs($data);
-        $data['lead_number']='LEAD-'.now()->format('Ym').'-'.strtoupper(Str::random(6));
+        do {
+            $data['lead_number']='LEAD-'.now()->format('Ym').'-'.strtoupper(Str::random(10));
+        } while (Lead::withTrashed()->where('lead_number',$data['lead_number'])->exists());
         $lead=Lead::create($data);
         return response()->json(['message'=>'Lead created successfully.','lead'=>$lead->load(['customer','assignee','project'])],201);
     }
