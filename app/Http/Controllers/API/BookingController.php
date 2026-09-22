@@ -33,10 +33,10 @@ class BookingController extends Controller
             return;
         }
 
-        $agent = User::role('Sales Agent')->findOrFail($agentId);
+        $agent = User::role('Sales Agent')->where('is_active', true)->findOrFail($agentId);
 
-        if (!$this->canAccessAllBranches() && (int) $agent->branch_id !== (int) $branchId) {
-            abort(422, 'The selected sales agent belongs to another branch.');
+        if ((int) $agent->branch_id !== (int) $branchId) {
+            abort(422, 'The selected sales agent must belong to the property branch.');
         }
     }
 
