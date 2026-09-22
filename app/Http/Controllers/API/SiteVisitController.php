@@ -58,7 +58,12 @@ class SiteVisitController extends Controller
             if($branchId && (int)$branchId !== (int)$user->branch_id) abort(422,'Assigned user belongs to a different branch.');
         }
         if(!$this->canAccessAllBranches() && empty($data['property_id']) && empty($data['lead_id']) && empty($data['assigned_to'])){
-            $data['assigned_to']=auth()->id();
+            $current=auth()->user();
+            if($current && $current->is_active && $current->hasRole('Sales Agent')){
+                $data['assigned_to']=$current->id;
+            }else{
+                abort(422,'Select an active Sales Agent, lead, or property before scheduling this site visit.');
+            }
         }
     }
     public function index(Request $request){
