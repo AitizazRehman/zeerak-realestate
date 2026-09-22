@@ -74,6 +74,7 @@ class LeadController extends Controller
     public function store(Request $request)
     {
         $data=$request->validate(['customer_id'=>'nullable|exists:customers,id','assigned_to'=>'nullable|exists:users,id','name'=>'required|string|max:150','phone'=>'required|string|max:30','email'=>'nullable|email|max:150','source'=>'nullable|string|max:100','status'=>'nullable|in:new,contacted,qualified,site_visit,negotiation,converted,lost','priority'=>'nullable|in:low,medium,high','project_id'=>'nullable|exists:projects,id','budget'=>'nullable|numeric|min:0','next_follow_up'=>'nullable|date','notes'=>'nullable|string']);
+        if (($data['status'] ?? 'new') === 'converted' && empty($data['customer_id'])) abort(422, 'Use Convert to Customer to mark a lead as converted.');
         $this->validateBranchRefs($data);
         do {
             $data['lead_number']='LEAD-'.now()->format('Ym').'-'.strtoupper(Str::random(10));
@@ -84,7 +85,9 @@ class LeadController extends Controller
     public function show(Lead $lead){ $this->scopeBranch(Lead::query())->findOrFail($lead->id); return response()->json($lead->load(['customer','assignee','project'])); }
     public function update(Request $request, Lead $lead){
         $data=$request->validate(['customer_id'=>'nullable|exists:customers,id','assigned_to'=>'nullable|exists:users,id','name'=>'required|string|max:150','phone'=>'required|string|max:30','email'=>'nullable|email|max:150','source'=>'nullable|string|max:100','status'=>'nullable|in:new,contacted,qualified,site_visit,negotiation,converted,lost','priority'=>'nullable|in:low,medium,high','project_id'=>'nullable|exists:projects,id','budget'=>'nullable|numeric|min:0','next_follow_up'=>'nullable|date','notes'=>'nullable|string']);
-        $this->scopeBranch(Lead::query())->findOrFail($lead->id); $this->validateBranchRefs($data); $lead->update($data); return response()->json(['message'=>'Lead updated successfully.','lead'=>$lead->fresh()->load(['customer','assignee','project'])]);
+        $this->scopeBranch(Lead::query())->findOrFail($lead->id);
+        if (($data['status'] ?? $lead->status) === 'converted' && empty($data['customer_id']) && !$lead->customer_id) abort(422, 'Use Convert to Customer to mark a lead as converted.');
+        $this->validateBranchRefs($data); $lead->update($data); return response()->json(['message'=>'Lead updated successfully.','lead'=>$lead->fresh()->load(['customer','assignee','project'])]);
     }
     public function convert(Lead $lead)
     {
