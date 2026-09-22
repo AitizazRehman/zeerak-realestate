@@ -37,8 +37,8 @@ class SalesDashboardController extends Controller
                 'customers' => Customer::where('is_active', true)->count(), 'active_leads' => Lead::whereNotIn('status', ['converted', 'lost'])->count(),
                 'scheduled_visits' => SiteVisit::where('status', 'scheduled')->where('visit_at', '>=', now())->count(),
                 'available_properties' => Property::where('status', 'available')->count(), 'reserved_properties' => Property::where('status', 'reserved')->count(), 'booked_properties' => Property::where('status', 'booked')->count(), 'sold_properties' => Property::where('status', 'sold')->count(),
-                'sales_value' => (float) $sales->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->sum('final_price'), 'collections' => (float) $payments->sum('amount'), 'receivables' => (float) $receivables->sum('remaining_amount'), 'overdue_count' => (int) $overdue->count(), 'overdue_amount' => (float) $overdue->sum('remaining_amount'),
-                'expenses' => (float) $expenses->sum('amount'), 'net_cash_flow' => (float) $payments->sum('amount') - (float) $expenses->sum('amount'),
+                'sales_value' => (float) (clone $sales)->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->sum('final_price'), 'collections' => (float) (clone $payments)->sum('amount'), 'receivables' => (float) (clone $receivables)->sum('remaining_amount'), 'overdue_count' => (int) (clone $overdue)->count(), 'overdue_amount' => (float) (clone $overdue)->sum('remaining_amount'),
+                'expenses' => (float) (clone $expenses)->sum('amount'), 'net_cash_flow' => (float) (clone $payments)->sum('amount') - (float) (clone $expenses)->sum('amount'),
             ], 'monthly_collections' => $monthlyCollections, 'agent_performance' => $agentPerformance, 'project_performance' => $projectPerformance,
             'recent_bookings' => $recentBookings, 'recent_payments' => $recentPayments,
         ]);
