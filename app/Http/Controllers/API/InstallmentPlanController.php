@@ -38,7 +38,7 @@ class InstallmentPlanController extends Controller
         $data = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
             'plan_name' => 'required|string|max:100',
-            'frequency' => 'required|in:monthly,quarterly,half_yearly,yearly,custom',
+            'frequency' => 'required|in:monthly,quarterly,half_yearly,yearly',
             'total_amount' => 'required|numeric|min:0.01',
             'down_payment' => 'nullable|numeric|min:0',
             'installment_amount' => 'required|numeric|min:0.01',
@@ -75,10 +75,6 @@ class InstallmentPlanController extends Controller
             if (round($installmentAmount * $count, 2) != round($total, 2)) {
                 abort(422, 'All installments must equal the plan total amount.');
             }
-            if ($data['frequency'] === 'custom' && $count > 1) {
-                abort(422, 'Custom frequency requires an explicit installment schedule and is not supported by automatic plan generation.');
-            }
-
             $startDate = \Carbon\Carbon::parse($data['start_date'])->startOfDay();
             if ($startDate->lt(\Carbon\Carbon::parse($booking->booking_date)->startOfDay())) {
                 abort(422, 'Installment plan start date cannot be before the booking date.');
@@ -108,6 +104,16 @@ class InstallmentPlanController extends Controller
                     'status' => 'pending',
                 ]);
             }
+
+            FinancialAudit::create([
+                'entity_type'=>'installment_plan',
+                'entity_id'=>$plan->id,
+                'action'=>'created',
+                'user_id'=>auth()->id(),
+                'before_data'=>null,
+                'after_data'=>$plan->fresh()->load('installments')->toArray(),
+                'reason'=>'Installment plan created',
+            ]);
 
             return $plan;
         });
@@ -183,8 +189,19 @@ class InstallmentPlanController extends Controller
             if (Payment::whereIn('installment_id', $installmentIds)->exists()) {
                 abort(422, 'This plan has payment history and cannot be deleted. Cancel it instead.');
             }
+            $before = $plan->load('installments')->toArray();
             $plan->installments()->delete();
             $plan->delete();
+
+            FinancialAudit::create([
+                'entity_type'=>'installment_plan',
+                'entity_id'=>$plan->id,
+                'action'=>'deleted',
+                'user_id'=>auth()->id(),
+                'before_data'=>$before,
+                'after_data'=>null,
+                'reason'=>'Unused installment plan deleted',
+            ]);
         });
         return response()->json(['message' => 'Installment plan deleted.']);
     }
