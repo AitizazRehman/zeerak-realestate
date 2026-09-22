@@ -29,7 +29,7 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\BookingDocumentController;
 use App\Http\Controllers\API\CompanySettingController;
 
-Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login']); });
+Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::prefix('auth')->group(function () { Route::get('/me', [AuthController::class, 'me']); Route::post('/logout', [AuthController::class, 'logout']); });
     Route::get('sales-agents', [UserController::class, 'salesAgents'])->middleware('permission:sales.view');
