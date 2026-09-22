@@ -4,7 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\ChecksBranchAccess;
-use App\Models\{Payment, Booking, Installment, PropertyStatusHistory, FinancialAudit};
+use App\Models\{Payment, Booking, Installment, InstallmentPlan, PropertyStatusHistory, FinancialAudit};
 use App\Models\Property;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -154,6 +154,11 @@ class PaymentController extends Controller
                 $i->status=$i->paid_amount<=0?'pending':($i->remaining_amount<=0?'paid':'partial');
                 $i->paid_date=$i->status==='paid'?$i->paid_date:null;
                 $i->save();
+
+                $plan=InstallmentPlan::lockForUpdate()->findOrFail($i->installment_plan_id);
+                if($plan->status==='completed'){
+                    $plan->update(['status'=>'active']);
+                }
             }
 
             $p->update(['status'=>'reversed','reversed_at'=>now(),'reversed_by'=>$r->user()->id,'reversal_reason'=>$data['reason']]);
@@ -188,6 +193,12 @@ class PaymentController extends Controller
             $installment->status=$installment->remaining_amount<=0?'paid':'partial';
             $installment->paid_date=$installment->remaining_amount<=0?now()->toDateString():null;
             $installment->save();
+
+            $plan=InstallmentPlan::lockForUpdate()->findOrFail($installment->installment_plan_id);
+            if($plan->status==='cancelled') abort(422,'Payments cannot be recorded against a cancelled installment plan.');
+            if(!$plan->installments()->where('remaining_amount','>',0)->exists()){
+                $plan->update(['status'=>'completed']);
+            }
         }
 
         if($completeWhenPaid&&$b->remaining_amount<=0&&$b->status==='confirmed'){
