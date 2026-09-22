@@ -99,7 +99,7 @@ class BookingController extends Controller
 
             $final = max(0, $price - $discount);
             $booking = Booking::create(array_merge($data, [
-                'booking_number' => 'BKG-' . now()->format('Ym') . '-' . strtoupper(Str::random(6)),
+                'booking_number' => $this->generateBookingNumber(),
                 'status' => 'reserved',
                 'property_price' => $price,
                 'discount' => $discount,
@@ -157,20 +157,34 @@ class BookingController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $branchId = $booking->property->project->branch_id;
-        $this->ensureSalesAgentAccess($data['sales_agent_id'] ?? null, $branchId);
+        DB::transaction(function () use (&$booking, $data) {
+            $booking = $this->applyBranchScope(Booking::with('property.project')->lockForUpdate())
+                ->findOrFail($booking->id);
 
-        if (array_key_exists('discount', $data)) {
-            $discount = (float) $data['discount'];
-            if ($discount > (float) $booking->property_price) {
-                return response()->json(['message' => 'Discount cannot exceed booking property price.'], 422);
+            if (in_array($booking->status, ['completed', 'cancelled'], true)) {
+                abort(422, 'This booking can no longer be edited.');
             }
 
-            $data['final_price'] = max(0, (float) $booking->property_price - $discount);
-            $data['remaining_amount'] = max(0, $data['final_price'] - (float) $booking->paid_amount);
-        }
+            $branchId = $booking->property->project->branch_id;
+            $this->ensureSalesAgentAccess($data['sales_agent_id'] ?? $booking->sales_agent_id, $branchId);
 
-        $booking->update($data);
+            $changes = $data;
+            if (array_key_exists('discount', $changes)) {
+                $discount = round((float) $changes['discount'], 2);
+                if ($discount > (float) $booking->property_price) abort(422, 'Discount cannot exceed booking property price.');
+
+                $finalPrice = round((float) $booking->property_price - $discount, 2);
+                if ($finalPrice < (float) $booking->paid_amount) {
+                    abort(422, 'Discount cannot reduce the booking price below the amount already paid.');
+                }
+
+                $changes['discount'] = $discount;
+                $changes['final_price'] = $finalPrice;
+                $changes['remaining_amount'] = round($finalPrice - (float) $booking->paid_amount, 2);
+            }
+
+            $booking->update($changes);
+        });
 
         return response()->json([
             'message' => 'Booking updated.',
@@ -180,14 +194,42 @@ class BookingController extends Controller
 
     public function destroy(Booking $booking)
     {
-        $this->applyBranchScope(Booking::query())->findOrFail($booking->id);
+        DB::transaction(function () use ($booking) {
+            $booking = $this->applyBranchScope(Booking::query()->lockForUpdate())->findOrFail($booking->id);
 
-        if (in_array($booking->status, ['completed', 'cancelled'], true)) {
-            return response()->json(['message' => 'Completed or cancelled bookings cannot be deleted.'], 422);
-        }
+            if (in_array($booking->status, ['completed', 'cancelled'], true)) abort(422, 'Completed or cancelled bookings cannot be deleted.');
+            if ((float) $booking->paid_amount > 0 || $booking->payments()->where('status', 'verified')->exists()) {
+                abort(422, 'Bookings with payments cannot be deleted. Reverse the payments first.');
+            }
+            if ($booking->installments()->whereIn('status', ['partial','paid'])->exists()) {
+                abort(422, 'Bookings with paid installments cannot be deleted.');
+            }
 
-        $booking->delete();
+            $property = Property::lockForUpdate()->findOrFail($booking->property_id);
+            $oldStatus = $property->status;
+            $booking->delete();
 
-        return response()->json(['message' => 'Booking deleted.']);
+            if (in_array($oldStatus, ['reserved','booked'], true)) {
+                $property->update(['status' => 'available']);
+                PropertyStatusHistory::create([
+                    'property_id' => $property->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => 'available',
+                    'changed_by' => auth()->id(),
+                    'notes' => 'Booking '.$booking->booking_number.' deleted; property released.',
+                ]);
+            }
+        });
+
+        return response()->json(['message' => 'Booking deleted and property released.']);
+    }
+
+    private function generateBookingNumber()
+    {
+        do {
+            $number = 'BKG-' . now()->format('Ym') . '-' . strtoupper(Str::random(10));
+        } while (Booking::withTrashed()->where('booking_number', $number)->exists());
+
+        return $number;
     }
 }
