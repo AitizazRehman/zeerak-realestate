@@ -15,7 +15,7 @@ class AuthController extends Controller
     {
         $user->load('roles');
 
-        $data = $user->only(['id', 'name', 'email', 'branch_id']);
+        $data = $user->only(['id', 'name', 'email', 'branch_id', 'profile_photo']);
         $data['roles'] = $user->roles->map(function ($role) {
             return [
                 'id' => $role->id,
