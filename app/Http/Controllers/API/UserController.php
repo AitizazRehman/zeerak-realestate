@@ -60,7 +60,7 @@ class UserController extends Controller
     public function index(Request $request)
     {
         $query = User::with(['roles:id,name', 'branch:id,name'])
-            ->select(['id', 'name', 'email', 'branch_id', 'created_at']);
+            ->select(['id', 'name', 'email', 'branch_id', 'is_active', 'created_at']);
         if (!$this->canAccessAllBranches()) $query->where('branch_id', auth()->user()->branch_id);
         if ($request->filled('search')) {
             $search = trim($request->search);
@@ -92,6 +92,7 @@ class UserController extends Controller
             'password' => ['required', 'string', 'min:8'],
             'branch_id' => ['nullable', 'exists:branches,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
         $role = $data['role'] ?? null;
         $this->protectRoleAssignment($role);
@@ -113,6 +114,7 @@ class UserController extends Controller
             'password' => ['nullable', 'string', 'min:8'],
             'branch_id' => ['nullable', 'exists:branches,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
+            'is_active' => ['nullable', 'boolean'],
         ]);
         if (!$this->canAccessAllBranches()) {
             $this->ensureBranchAccess($user->branch_id);
@@ -126,7 +128,10 @@ class UserController extends Controller
         }
         unset($data['role']);
         if (!empty($data['password'])) $data['password'] = Hash::make($data['password']); else unset($data['password']);
+        if (array_key_exists('is_active', $data) && !$data['is_active'] && auth()->user()->is($user)) abort(422, 'You cannot deactivate your own account.');
+        $deactivating = array_key_exists('is_active', $data) && !$data['is_active'] && $user->is_active;
         $user->update($data);
+        if ($deactivating) $user->tokens()->delete();
         if ($roleProvided) $role ? $user->syncRoles([$role]) : $user->syncRoles([]);
         return response()->json(['success' => true, 'message' => 'User updated successfully.', 'data' => $user->fresh()->load(['roles:id,name', 'branch:id,name'])]);
     }
