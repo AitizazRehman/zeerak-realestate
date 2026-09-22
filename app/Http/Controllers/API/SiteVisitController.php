@@ -47,9 +47,13 @@ class SiteVisitController extends Controller
         }
         if(!empty($data['lead_id'])){
             $lead=$this->scopeBranch(Lead::with(['project','assignee']))->findOrFail($data['lead_id']);
+            if (in_array($lead->status, ['converted','lost'], true)) abort(422,'Site visits cannot be scheduled against a closed lead.');
             $leadBranch=$lead->project ? $lead->project->branch_id : optional($lead->assignee)->branch_id;
             if($branchId && $leadBranch && (int)$branchId !== (int)$leadBranch) abort(422,'Lead and property belong to different branches.');
             $branchId=$branchId ?: $leadBranch;
+        }
+        if(!empty($data['customer_id']) && !empty($data['lead_id']) && $lead->customer_id && (int)$lead->customer_id !== (int)$data['customer_id']) {
+            abort(422,'Selected customer does not match the lead customer.');
         }
         if(!empty($data['assigned_to'])){
             $user=User::where('is_active', true)->findOrFail($data['assigned_to']);
@@ -81,5 +85,13 @@ class SiteVisitController extends Controller
     }
     public function show(SiteVisit $siteVisit){$this->scopeBranch(SiteVisit::query())->findOrFail($siteVisit->id);return response()->json($siteVisit->load(['customer','lead','property.project','property.block','assignee']));}
     public function update(Request $request, SiteVisit $siteVisit){$data=$request->validate(['customer_id'=>'nullable|exists:customers,id','lead_id'=>'nullable|exists:leads,id','property_id'=>'nullable|exists:properties,id','assigned_to'=>'nullable|exists:users,id','visit_at'=>'required|date','status'=>'nullable|in:scheduled,completed,cancelled,no_show','feedback'=>'nullable|string','notes'=>'nullable|string']);$this->scopeBranch(SiteVisit::query())->findOrFail($siteVisit->id);$this->validateBranchRefs($data);$siteVisit->update($data);return response()->json(['message'=>'Site visit updated.','site_visit'=>$siteVisit->fresh()->load(['customer','lead','property','assignee'])]);}
-    public function destroy(SiteVisit $siteVisit){$this->scopeBranch(SiteVisit::query())->findOrFail($siteVisit->id);$siteVisit->delete();return response()->json(['message'=>'Site visit deleted.']);}
+    public function destroy(SiteVisit $siteVisit)
+    {
+        $siteVisit=$this->scopeBranch(SiteVisit::query())->findOrFail($siteVisit->id);
+        if (in_array($siteVisit->status, ['completed','no_show'], true) || !empty($siteVisit->feedback)) {
+            abort(422,'Completed/no-show site visits or visits with feedback cannot be deleted. Cancel the visit instead to preserve CRM history.');
+        }
+        $siteVisit->delete();
+        return response()->json(['message'=>'Site visit deleted.']);
+    }
 }
