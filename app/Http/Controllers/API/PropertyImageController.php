@@ -38,18 +38,25 @@ class PropertyImageController extends Controller
         ]);
 
         foreach ($request->file('images') as $index => $image) {
+            if (!$image->isValid()) abort(422, 'One of the uploaded images is invalid.');
 
             $path = $image->store(
                 'properties/' . $property->id,
                 'public'
             );
+            if (!$path) abort(500, 'Property image could not be stored.');
 
-            $property->images()->create([
-                'file_path' => $path,
-                'title' => $image->getClientOriginalName(),
-                'is_primary' => $property->images()->count() === 0,
-                'sort_order' => $index,
-            ]);
+            try {
+                $property->images()->create([
+                    'file_path' => $path,
+                    'title' => $image->getClientOriginalName(),
+                    'is_primary' => $property->images()->count() === 0,
+                    'sort_order' => $index,
+                ]);
+            } catch (\Throwable $e) {
+                Storage::disk('public')->delete($path);
+                throw $e;
+            }
         }
 
         return response()->json([
@@ -62,14 +69,14 @@ class PropertyImageController extends Controller
     {
         $image->loadMissing('property.project');
         $this->checkProperty($image->property);
-        if ($image->file_path) {
-            Storage::disk('public')
-                ->delete($image->file_path);
-        }
-
+        $path = $image->file_path;
         $wasPrimary = (bool) $image->is_primary;
         $property = $image->property;
         $image->delete();
+
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
 
         if ($wasPrimary) {
             $replacement = $property->images()->orderBy('sort_order')->orderBy('id')->first();
