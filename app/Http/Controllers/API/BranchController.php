@@ -3,14 +3,20 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Branch;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
+    use ChecksBranchAccess;
     public function index(Request $request)
     {
         $query = Branch::query();
+
+        if (!$this->canAccessAllBranches()) {
+            $query->where('id', auth()->user()->branch_id);
+        }
 
         if ($request->has('is_active')) {
             $query->where(
@@ -42,9 +48,11 @@ class BranchController extends Controller
 
     public function show($id)
     {
+        if (!$this->canAccessAllBranches()) $this->ensureBranchAccess($id);
+
         return response()->json([
             'data' => Branch::with([
-                'users',
+                'users:id,name,email,branch_id',
                 'projects'
             ])->findOrFail($id)
         ]);
