@@ -67,7 +67,14 @@ class PropertyImageController extends Controller
                 ->delete($image->file_path);
         }
 
+        $wasPrimary = (bool) $image->is_primary;
+        $property = $image->property;
         $image->delete();
+
+        if ($wasPrimary) {
+            $replacement = $property->images()->orderBy('sort_order')->orderBy('id')->first();
+            if ($replacement) $replacement->update(['is_primary' => true]);
+        }
 
         return response()->json([
             'message' => 'Property image deleted successfully.',
