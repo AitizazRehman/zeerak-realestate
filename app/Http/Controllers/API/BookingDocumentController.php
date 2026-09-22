@@ -32,8 +32,11 @@ class BookingDocumentController extends Controller
             'notes'=>['nullable','string','max:1000'],
         ]);
         $file=$request->file('document');
+        if (!$file->isValid()) abort(422, 'The uploaded document is invalid.');
         $path=$file->store('bookings/'.$booking->id.'/documents', 'local');
-        $document=$booking->documents()->create([
+        if (!$path) abort(500, 'Document could not be stored.');
+        try {
+            $document=$booking->documents()->create([
             'document_type'=>$request->document_type,
             'name'=>$file->getClientOriginalName(),
             'file_path'=>$path,
@@ -41,7 +44,11 @@ class BookingDocumentController extends Controller
             'mime_type'=>$file->getMimeType(),
             'uploaded_by'=>auth()->id(),
             'notes'=>$request->notes,
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
         return response()->json(['message'=>'Document uploaded successfully.','document'=>$document],201);
     }
 
@@ -57,8 +64,9 @@ class BookingDocumentController extends Controller
     {
         $document->loadMissing('booking.property.project');
         $this->checkBooking($document->booking);
-        if($document->file_path) Storage::disk('local')->delete($document->file_path);
+        $path = $document->file_path;
         $document->delete();
+        if($path) Storage::disk('local')->delete($path);
         return response()->json(['message'=>'Document deleted successfully.']);
     }
 }
