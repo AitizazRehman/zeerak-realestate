@@ -115,7 +115,9 @@ class PropertyController extends Controller
         $projectId = array_key_exists('project_id', $data) ? $data['project_id'] : $currentProjectId;
         $blockId = array_key_exists('block_id', $data) ? $data['block_id'] : $currentBlockId;
         if ($projectId) {
-            $this->applyBranchScope(Project::query())->findOrFail($projectId);
+            $this->applyBranchScope(Project::query())
+                ->where('is_active', true)
+                ->findOrFail($projectId);
         }
 
         if (!empty($data['assigned_agent_id'])) {
@@ -196,6 +198,18 @@ class PropertyController extends Controller
         return DB::transaction(function () use ($request, $property) {
             $property = $this->applyBranchScope(Property::query())->lockForUpdate()->findOrFail($property->id);
             $data = $this->validateRelations($request->validated(), $property->project_id, $property->block_id);
+
+            $newProjectId = array_key_exists('project_id', $data) ? $data['project_id'] : $property->project_id;
+            $newBlockId = array_key_exists('block_id', $data) ? $data['block_id'] : $property->block_id;
+            $ownershipChanged = (int) $newProjectId !== (int) $property->project_id ||
+                (int) $newBlockId !== (int) $property->block_id;
+
+            if ($ownershipChanged && (
+                $property->bookings()->exists() ||
+                $property->statusHistories()->count() > 1
+            )) {
+                abort(422, 'A property with booking or status history cannot be moved to another project or block.');
+            }
 
             $oldStatus = $property->status;
             $property->update($data);
