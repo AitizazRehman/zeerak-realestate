@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Property;
 use App\Models\PropertyStatusHistory;
 use Illuminate\Http\Request;
@@ -11,10 +12,18 @@ use Illuminate\Validation\Rule;
 
 class PropertyStatusController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function checkProperty(Property $property)
+    {
+        $property->loadMissing('project');
+        $this->ensureBranchAccess($property->project->branch_id);
+    }
     public function update(
         Request $request,
         Property $property
     ) {
+        $this->checkProperty($property);
         $validated = $request->validate([
             'status' => [
                 'required',
@@ -41,7 +50,8 @@ class PropertyStatusController extends Controller
             $property,
             $validated
         ) {
-
+            $property = Property::with('project')->lockForUpdate()->findOrFail($property->id);
+            $this->ensureBranchAccess($property->project->branch_id);
             $oldStatus = $property->status;
 
             if ($oldStatus === $validated['status']) {
@@ -72,6 +82,7 @@ class PropertyStatusController extends Controller
 
     public function history(Property $property)
     {
+        $this->checkProperty($property);
         $history = $property
             ->statusHistories()
             ->with('changedBy:id,name,email')
