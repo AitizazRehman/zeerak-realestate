@@ -16,6 +16,7 @@ class UserController extends Controller
     public function salesAgents(Request $request)
     {
         $query = User::query()
+            ->where('is_active', true)
             ->whereHas('roles', function ($q) {
                 $q->where('name', 'Sales Agent');
             })
