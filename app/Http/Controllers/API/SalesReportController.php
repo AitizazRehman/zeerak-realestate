@@ -11,6 +11,7 @@ use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SalesReportController extends Controller
 {
@@ -94,5 +95,75 @@ class SalesReportController extends Controller
         $q=Commission::with(['agent:id,name','booking:id,booking_number,booking_date,customer_id','booking.customer:id,name'])
             ->whereHas('booking',function($x)use($from,$to){$x->whereBetween('booking_date',[$from,$to]);});
         return response()->json($q->orderByDesc('id')->paginate(min(max((int)$request->get('per_page',25),1),100)));
+    }
+    public function export(Request $request, $type, $format)
+    {
+        if (!in_array($type, ['sales','collections','installments','expenses','commissions'])) {
+            abort(404, 'Unknown report type.');
+        }
+        if (!in_array($format, ['xls','pdf'])) {
+            abort(404, 'Unknown export format.');
+        }
+
+        list($from,$to)=$this->dates($request);
+        $rows=$this->exportRows($type,$request,$from,$to);
+        $title=ucfirst($type).' Report';
+        $file=$type.'-report-'.$from.'-to-'.$to;
+
+        if ($format === 'pdf') {
+            return Pdf::loadView('reports.financial', compact('title','rows','from','to'))
+                ->setPaper('a4', 'landscape')->download($file.'.pdf');
+        }
+
+        $html=view('reports.financial', compact('title','rows','from','to'))->render();
+        return response("\xEF\xBB\xBF".$html, 200, [
+            'Content-Type'=>'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition'=>'attachment; filename="'.$file.'.xls"',
+            'Cache-Control'=>'max-age=0',
+        ]);
+    }
+
+    private function exportRows($type, Request $request, $from, $to)
+    {
+        if ($type === 'sales') {
+            return Booking::with(['customer','property.project','salesAgent'])
+                ->whereIn('status',['confirmed','completed'])->whereBetween('booking_date',[$from,$to])
+                ->orderByDesc('booking_date')->get()->map(function($x){return [
+                    'Booking'=>$x->booking_number,'Customer'=>optional($x->customer)->name,
+                    'Property'=>optional($x->property)->property_number,'Project'=>optional(optional($x->property)->project)->name,
+                    'Date'=>optional($x->booking_date)->format('Y-m-d'),'Sale Value'=>$x->final_price,
+                    'Paid'=>$x->paid_amount,'Balance'=>$x->remaining_amount,'Status'=>$x->status
+                ];});
+        }
+        if ($type === 'collections') {
+            return Payment::with(['customer','booking'])->where('status','verified')->whereBetween('payment_date',[$from,$to])
+                ->orderByDesc('payment_date')->get()->map(function($x){return [
+                    'Receipt'=>$x->receipt_number,'Customer'=>optional($x->customer)->name,
+                    'Booking'=>optional($x->booking)->booking_number,'Date'=>optional($x->payment_date)->format('Y-m-d'),
+                    'Method'=>$x->payment_method,'Reference'=>$x->reference_number,'Amount'=>$x->amount
+                ];});
+        }
+        if ($type === 'installments') {
+            $q=Installment::with(['booking.customer','booking.property'])->whereBetween('due_date',[$from,$to]);
+            if($request->boolean('overdue')) $q->where('due_date','<',now()->toDateString())->where('remaining_amount','>',0);
+            return $q->orderBy('due_date')->get()->map(function($x){return [
+                'Installment'=>$x->installment_number,'Customer'=>optional(optional($x->booking)->customer)->name,
+                'Property'=>optional(optional($x->booking)->property)->property_number,'Due Date'=>optional($x->due_date)->format('Y-m-d'),
+                'Amount'=>$x->amount,'Paid'=>$x->paid_amount,'Remaining'=>$x->remaining_amount,'Status'=>$x->status
+            ];});
+        }
+        if ($type === 'expenses') {
+            return Expense::with(['project','property'])->whereBetween('expense_date',[$from,$to])->orderByDesc('expense_date')->get()->map(function($x){return [
+                'Expense #'=>$x->expense_number,'Project'=>optional($x->project)->name,'Property'=>optional($x->property)->property_number,
+                'Category'=>$x->category,'Vendor'=>$x->vendor_name,'Date'=>optional($x->expense_date)->format('Y-m-d'),
+                'Method'=>$x->payment_method,'Amount'=>$x->amount
+            ];});
+        }
+        return Commission::with(['agent','booking.customer'])->whereHas('booking',function($q)use($from,$to){$q->whereBetween('booking_date',[$from,$to]);})
+            ->orderByDesc('id')->get()->map(function($x){return [
+                'Booking'=>optional($x->booking)->booking_number,'Customer'=>optional(optional($x->booking)->customer)->name,
+                'Agent'=>optional($x->agent)->name,'Percentage'=>$x->percentage,'Base Amount'=>$x->base_amount,
+                'Commission'=>$x->commission_amount,'Status'=>$x->status
+            ];});
     }
 }
