@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
@@ -15,9 +16,27 @@ use Illuminate\Support\Str;
 
 class CustomerController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function scopeBranch($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $query->whereHas('bookings.property.project', function ($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            });
+        }
+        return $query;
+    }
+
+    private function ensureCustomerAccess(Customer $customer)
+    {
+        if ($this->canAccessAllBranches()) return;
+        $this->scopeBranch(Customer::query())->findOrFail($customer->id);
+    }
     public function index(Request $request)
     {
-        $query = Customer::query();
+        $query = $this->scopeBranch(Customer::query());
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -42,14 +61,17 @@ class CustomerController extends Controller
 
     public function show(Customer $customer)
     {
+        $this->ensureCustomerAccess($customer);
         return response()->json($customer->load(['bookings.property.project', 'payments']));
     }
 
     public function ledger(Customer $customer)
     {
-        $bookings = Booking::with(['property.project','installments'])->where('customer_id',$customer->id)->whereNotIn('status',['cancelled'])->orderBy('booking_date')->get();
-        $payments = Payment::where('customer_id',$customer->id)->where('status','verified')->orderBy('payment_date')->get();
-        $installments = Installment::with('booking:id,booking_number,customer_id')->whereHas('booking', function ($q) use ($customer) { $q->where('customer_id',$customer->id); })->orderBy('due_date')->get();
+        $this->ensureCustomerAccess($customer);
+        $branchId = auth()->user()->branch_id;
+        $bookings = Booking::with(['property.project','installments'])->where('customer_id',$customer->id)->when(!$this->canAccessAllBranches(), function($q) use ($branchId){$q->whereHas('property.project', function($p) use ($branchId){$p->where('branch_id',$branchId);});})->whereNotIn('status',['cancelled'])->orderBy('booking_date')->get();
+        $payments = Payment::where('customer_id',$customer->id)->when(!$this->canAccessAllBranches(), function($q) use ($branchId){$q->whereHas('booking.property.project', function($p) use ($branchId){$p->where('branch_id',$branchId);});})->where('status','verified')->orderBy('payment_date')->get();
+        $installments = Installment::with('booking:id,booking_number,customer_id')->whereHas('booking', function ($q) use ($customer, $branchId) { $q->where('customer_id',$customer->id); if(!$this->canAccessAllBranches()) $q->whereHas('property.project', function($p) use ($branchId){$p->where('branch_id',$branchId);}); })->orderBy('due_date')->get();
         return response()->json([
             'customer'=>$customer,
             'summary'=>[
@@ -71,12 +93,14 @@ class CustomerController extends Controller
 
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
+        $this->ensureCustomerAccess($customer);
         $customer->update($request->validated());
         return response()->json(['message' => 'Customer updated successfully.', 'customer' => $customer->fresh()]);
     }
 
     public function destroy(Customer $customer)
     {
+        $this->ensureCustomerAccess($customer);
         $customer->delete();
         return response()->json(['message' => 'Customer deleted successfully.']);
     }
