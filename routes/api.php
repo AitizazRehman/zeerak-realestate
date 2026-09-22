@@ -30,7 +30,7 @@ use App\Http\Controllers\API\BookingDocumentController;
 use App\Http\Controllers\API\CompanySettingController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login']); });
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::prefix('auth')->group(function () { Route::get('/me', [AuthController::class, 'me']); Route::post('/logout', [AuthController::class, 'logout']); });
     Route::get('sales-agents', [UserController::class, 'salesAgents'])->middleware('permission:sales.view');
     Route::get('users/roles', [UserController::class, 'roles'])->middleware('permission:users.view');
