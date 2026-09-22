@@ -57,6 +57,17 @@ class FinancialAuditController extends Controller
                           });
                   });
             })->orWhere(function ($q) use ($branchId) {
+                $q->where('entity_type', 'installment_plan')
+                  ->whereExists(function ($sub) use ($branchId) {
+                      $sub->selectRaw('1')
+                          ->from('installment_plans')
+                          ->join('bookings', 'bookings.id', '=', 'installment_plans.booking_id')
+                          ->join('properties', 'properties.id', '=', 'bookings.property_id')
+                          ->join('projects', 'projects.id', '=', 'properties.project_id')
+                          ->whereColumn('installment_plans.id', 'financial_audits.entity_id')
+                          ->where('projects.branch_id', $branchId);
+                  });
+            })->orWhere(function ($q) use ($branchId) {
                 $q->where('entity_type', 'commission')
                   ->whereExists(function ($sub) use ($branchId) {
                       $sub->selectRaw('1')
