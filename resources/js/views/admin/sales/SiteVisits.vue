@@ -45,6 +45,7 @@
       <template v-slot:item.status="{item}"><v-chip x-small :color="statusColor(item.status)" dark>{{statusLabel(item.status)}}</v-chip></template>
       <template v-slot:item.actions="{item}">
         <v-btn v-if="$can('site_visits.edit')" icon small title="Edit visit" @click="edit(item)"><v-icon small>mdi-pencil</v-icon></v-btn>
+        <v-btn v-if="$can('sales.create') && item.customer_id && item.status!=='cancelled'" icon small color="#165134" title="Create booking" @click="createBooking(item)"><v-icon small>mdi-bookmark-plus</v-icon></v-btn>
         <v-btn v-if="$can('site_visits.delete')" icon small color="error" title="Delete visit" @click="openDelete(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
       </template>
       <template v-slot:no-data><div class="pa-8 text-center grey--text"><v-icon large color="grey lighten-1">mdi-calendar-search</v-icon><div class="mt-2">No site visits found.</div></div></template>
@@ -89,6 +90,7 @@ export default{
  },
  mounted(){this.load();if(this.$route.query.lead_id)this.openFromQuery()},
  methods:{
+  createBooking(item){this.$router.push({name:'bookings',query:{customer_id:item.customer_id,sales_agent_id:item.assigned_to||'',project_id:item.property&&item.property.project?item.property.project.id:'',property_id:item.property_id||''}})},
   blank(){return{customer_id:null,lead_id:null,property_id:null,assigned_to:null,visit_date:'',visit_time:'',status:'scheduled',feedback:'',notes:''}},
   toggleStatus(s){this.statusFilter=this.statusFilter===s?null:s},
   async loadLookups(){this.loadingCustomers=true;this.loadingProperties=true;this.loadingLeads=true;try{const[c,p]=await Promise.all([api.get('/customers',{params:{per_page:100}}),api.get('/properties',{params:{per_page:100}})]);this.customers=c.data.data||[];this.properties=p.data.data||[];if(this.$can('leads.view')){try{const l=await api.get('/leads',{params:{per_page:100}});this.leads=(l.data.data||[]).filter(x=>x.status!=='lost')}catch(e){this.leads=[]}}}catch(e){this.$root.$emit('show-error','Unable to load visit selections.')}finally{this.loadingCustomers=false;this.loadingProperties=false;this.loadingLeads=false}},
