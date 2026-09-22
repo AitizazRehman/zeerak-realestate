@@ -13,6 +13,7 @@ use App\Models\PropertyStatusHistory;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PropertyController extends Controller
 {
@@ -252,7 +253,26 @@ class PropertyController extends Controller
             abort(422, 'Property with status history cannot be deleted. Mark it unavailable instead.');
         }
 
-        $property->delete();
+        $imagePaths = $property->images()->whereNotNull('file_path')->pluck('file_path')->all();
+        $documentPaths = $property->documents()->whereNotNull('file_path')->pluck('file_path')->all();
+
+        DB::transaction(function () use ($property) {
+            $property->images()->delete();
+            $property->documents()->delete();
+            $property->features()->delete();
+            $property->statusHistories()->delete();
+            $property->delete();
+        });
+
+        foreach ($imagePaths as $path) {
+            Storage::disk('public')->delete($path);
+        }
+        foreach ($documentPaths as $path) {
+            Storage::disk('local')->delete($path);
+        }
+
+        Storage::disk('public')->deleteDirectory('properties/' . $property->id);
+        Storage::disk('local')->deleteDirectory('properties/' . $property->id);
 
         return response()->json([
             'message' => 'Property deleted successfully.',
