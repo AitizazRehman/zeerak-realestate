@@ -53,6 +53,11 @@ class AuthController extends Controller
             ]);
         }
 
+        if (!$user->is_active) {
+            RateLimiter::hit($key, 60);
+            throw ValidationException::withMessages(['email' => ['This account has been deactivated. Please contact an administrator.']]);
+        }
+
         RateLimiter::clear($key);
 
         // Keep browser/API token sprawl under control: one active admin-session token per user.
