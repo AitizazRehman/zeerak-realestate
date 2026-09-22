@@ -207,6 +207,16 @@ class PaymentController extends Controller
         }
 
         if($completeWhenPaid&&$b->remaining_amount<=0&&$b->status==='confirmed'){
+            $verifiedPaid = round((float) Payment::where('booking_id',$b->id)->where('status','verified')->sum('amount'),2);
+            if (abs($verifiedPaid - round((float)$b->final_price,2)) > 0.01) {
+                abort(409,'Booking cannot be completed because verified payments do not match the final booking price.');
+            }
+            if ($b->installmentPlans()->where('status','active')->whereHas('installments', function ($query) {
+                $query->where('remaining_amount','>',0);
+            })->exists()) {
+                abort(422,'Booking cannot be completed while an active installment plan has an outstanding balance.');
+            }
+
             $property=Property::lockForUpdate()->findOrFail($b->property_id);
             $old=$property->status;
             $property->update(['status'=>'sold']);
