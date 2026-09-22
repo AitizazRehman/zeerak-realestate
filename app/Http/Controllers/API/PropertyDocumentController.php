@@ -28,16 +28,23 @@ class PropertyDocumentController extends Controller
         ]);
 
         $file=$request->file('document');
+        if (!$file->isValid()) abort(422, 'The uploaded document is invalid.');
         $path=$file->store('properties/'.$property->id.'/documents', 'local');
 
-        $document=$property->documents()->create([
+        if (!$path) abort(500, 'Document could not be stored.');
+        try {
+            $document=$property->documents()->create([
             'document_type'=>$request->document_type,
             'name'=>$file->getClientOriginalName(),
             'file_path'=>$path,
             'file_size'=>$file->getSize(),
             'mime_type'=>$file->getMimeType(),
             'uploaded_by'=>auth()->id(),
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
 
         return response()->json(['message'=>'Document uploaded successfully.','document'=>$document],201);
     }
@@ -54,8 +61,9 @@ class PropertyDocumentController extends Controller
     {
         $document->loadMissing('property.project');
         $this->checkProperty($document->property);
-        if($document->file_path) Storage::disk('local')->delete($document->file_path);
+        $path = $document->file_path;
         $document->delete();
+        if($path) Storage::disk('local')->delete($path);
         return response()->json(['message'=>'Document deleted successfully.']);
     }
 }
