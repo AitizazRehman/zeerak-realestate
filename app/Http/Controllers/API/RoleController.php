@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
@@ -10,6 +11,12 @@ use Spatie\Permission\Models\Role;
 
 class RoleController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function ensureRoleAdministrator()
+    {
+        abort_unless($this->canAccessAllBranches(), 403, 'Only administrators can manage roles and permissions.');
+    }
     /**
      * Return roles with their permissions and the number of assigned users.
      *
@@ -18,6 +25,7 @@ class RoleController extends Controller
      */
     public function index()
     {
+        $this->ensureRoleAdministrator();
         $roles = Role::where('guard_name', 'web')
             ->with(['permissions:id,name'])
             ->orderBy('name')
@@ -32,6 +40,7 @@ class RoleController extends Controller
 
     public function permissions()
     {
+        $this->ensureRoleAdministrator();
         $permissions = Permission::where('guard_name', 'web')
             ->orderBy('name')
             ->get(['id', 'name', 'guard_name']);
@@ -41,6 +50,7 @@ class RoleController extends Controller
 
     public function show(Role $role)
     {
+        $this->ensureRoleAdministrator();
         abort_unless($role->guard_name === 'web', 404);
 
         $role->load('permissions:id,name');
@@ -54,6 +64,7 @@ class RoleController extends Controller
 
     public function store(Request $request)
     {
+        $this->ensureRoleAdministrator();
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:roles,name'],
             'permissions' => ['nullable', 'array'],
@@ -81,7 +92,10 @@ class RoleController extends Controller
 
     public function update(Request $request, Role $role)
     {
+        $this->ensureRoleAdministrator();
         abort_unless($role->guard_name === 'web', 404);
+
+        if (in_array($role->name, ['Super Admin', 'Admin'], true)) abort(422, 'Administrator roles cannot be modified through this endpoint.');
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:roles,name,' . $role->id],
@@ -107,12 +121,13 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        $this->ensureRoleAdministrator();
         abort_unless($role->guard_name === 'web', 404);
 
-        if ($role->name === 'Super Admin') {
+        if (in_array($role->name, ['Super Admin', 'Admin'], true)) {
             return response()->json([
                 'success' => false,
-                'message' => 'The Super Admin role cannot be deleted.',
+                'message' => 'Administrator roles cannot be deleted.',
             ], 422);
         }
 
