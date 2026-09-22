@@ -7,6 +7,8 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
 use App\Models\Project;
+use App\Models\Branch;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
@@ -58,6 +60,9 @@ class ProjectController extends Controller
     {
         $data = $request->validated();
         $this->enforceUserBranchOnCreate($data);
+        if (empty($data['branch_id']) || !Branch::where('id', $data['branch_id'])->where('is_active', true)->exists()) {
+            abort(422, 'Projects can only be assigned to an active branch.');
+        }
 
         $data['area_unit'] = $data['area_unit'] ?? 'Marla';
         $data['status'] = $data['status'] ?? 'planning';
@@ -108,8 +113,14 @@ class ProjectController extends Controller
 
         if (!$this->canAccessAllBranches()) {
             unset($data['branch_id']);
-        } else {
-            $this->ensureBranchAccess($data['branch_id']);
+        } elseif (array_key_exists('branch_id', $data)) {
+            if (!Branch::where('id', $data['branch_id'])->where('is_active', true)->exists()) {
+                abort(422, 'Projects can only be assigned to an active branch.');
+            }
+            if ((int) $data['branch_id'] !== (int) $project->branch_id &&
+                ($project->blocks()->exists() || $project->properties()->exists())) {
+                abort(422, 'A project with blocks or property inventory cannot be moved to another branch.');
+            }
         }
 
         $project->update($data);
