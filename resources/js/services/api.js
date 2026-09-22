@@ -34,7 +34,10 @@ api.interceptors.response.use(
 
         if (
             error.response &&
-            error.response.status === 401
+            (error.response.status === 401 ||
+             (error.response.status === 403 &&
+              error.response.data &&
+              /deactivat|inactive/i.test(error.response.data.message || '')))
         ) {
             localStorage.removeItem(
                 'zeerak_token'
@@ -44,7 +47,9 @@ api.interceptors.response.use(
                 'zeerak_user'
             );
 
-            window.location.href = '/login';
+            if (window.location.pathname !== '/login') {
+                window.location.replace('/login');
+            }
         }
 
         return Promise.reject(error);
