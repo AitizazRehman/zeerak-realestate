@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Booking;
 use App\Models\Commission;
 use App\Models\Expense;
@@ -15,6 +16,17 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class SalesReportController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function branch($query, $relation = 'property.project')
+    {
+        if (!$this->canAccessAllBranches()) {
+            $query->whereHas($relation, function ($q) {
+                $q->where('branch_id', auth()->user()->branch_id);
+            });
+        }
+        return $query;
+    }
     private function dates(Request $request)
     {
         $from = $request->filled('from') ? Carbon::parse($request->get('from'))->toDateString() : now()->startOfYear()->toDateString();
@@ -26,13 +38,13 @@ class SalesReportController extends Controller
     {
         list($from, $to) = $this->dates($request);
 
-        $sales = Booking::whereIn('status', ['confirmed','completed'])->whereBetween('booking_date', [$from,$to]);
-        $collections = Payment::where('status','verified')->whereBetween('payment_date', [$from,$to]);
-        $expenses = Expense::whereBetween('expense_date', [$from,$to]);
-        $commissions = Commission::whereIn('status',['approved','paid'])->whereHas('booking', function ($q) use ($from,$to) {
+        $sales = $this->branch(Booking::query())->whereIn('status', ['confirmed','completed'])->whereBetween('booking_date', [$from,$to]);
+        $collections = $this->branch(Payment::query(),'booking.property.project')->where('status','verified')->whereBetween('payment_date', [$from,$to]);
+        $expenses = $this->branch(Expense::query(),'project')->whereBetween('expense_date', [$from,$to]);
+        $commissions = $this->branch(Commission::query(),'booking.property.project')->whereIn('status',['approved','paid'])->whereHas('booking', function ($q) use ($from,$to) {
             $q->whereBetween('booking_date', [$from,$to]);
         });
-        $overdue = Installment::whereIn('status',['pending','partial','overdue'])->where('due_date','<',now()->toDateString())->where('remaining_amount','>',0);
+        $overdue = $this->branch(Installment::query(),'booking.property.project')->whereIn('status',['pending','partial','overdue'])->where('due_date','<',now()->toDateString())->where('remaining_amount','>',0);
 
         return response()->json([
             'period'=>['from'=>$from,'to'=>$to],
@@ -42,11 +54,11 @@ class SalesReportController extends Controller
                 'collections'=>(float)(clone $collections)->sum('amount'),
                 'expenses'=>(float)(clone $expenses)->sum('amount'),
                 'commissions'=>(float)(clone $commissions)->sum('commission_amount'),
-                'receivables'=>(float)Booking::whereNotIn('status',['cancelled'])->sum('remaining_amount'),
+                'receivables'=>(float)$this->branch(Booking::query())->whereNotIn('status',['cancelled'])->sum('remaining_amount'),
                 'overdue_amount'=>(float)(clone $overdue)->sum('remaining_amount'),
                 'overdue_count'=>(int)(clone $overdue)->count(),
             ],
-            'monthly'=>Payment::selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as amount")
+            'monthly'=>$this->branch(Payment::selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as amount"),'booking.property.project')
                 ->where('status','verified')->whereBetween('payment_date',[$from,$to])
                 ->groupBy(DB::raw("DATE_FORMAT(payment_date, '%Y-%m')"))->orderBy('month')->get(),
         ]);
@@ -55,7 +67,7 @@ class SalesReportController extends Controller
     public function sales(Request $request)
     {
         list($from,$to)=$this->dates($request);
-        $q=Booking::with(['customer:id,name,phone','property:id,project_id,block_id,property_number','property.project:id,name','property.block:id,name','salesAgent:id,name'])
+        $q=$this->branch(Booking::with(['customer:id,name,phone','property:id,project_id,block_id,property_number','property.project:id,name','property.block:id,name','salesAgent:id,name']))
             ->whereIn('status',['confirmed','completed'])->whereBetween('booking_date',[$from,$to]);
         if($request->filled('project_id')) $q->whereHas('property',function($x)use($request){$x->where('project_id',(int)$request->get('project_id'));});
         if($request->filled('customer_id')) $q->where('customer_id',(int)$request->get('customer_id'));
@@ -65,7 +77,7 @@ class SalesReportController extends Controller
     public function collections(Request $request)
     {
         list($from,$to)=$this->dates($request);
-        $q=Payment::with(['customer:id,name,phone','booking:id,booking_number,property_id','booking.property:id,property_number,project_id'])
+        $q=$this->branch(Payment::with(['customer:id,name,phone','booking:id,booking_number,property_id','booking.property:id,property_number,project_id']),'booking.property.project')
             ->where('status','verified')->whereBetween('payment_date',[$from,$to]);
         if($request->filled('customer_id')) $q->where('customer_id',(int)$request->get('customer_id'));
         return response()->json($q->orderByDesc('payment_date')->paginate(min(max((int)$request->get('per_page',25),1),100)));
@@ -74,7 +86,7 @@ class SalesReportController extends Controller
     public function installments(Request $request)
     {
         list($from,$to)=$this->dates($request);
-        $q=Installment::with(['booking.customer:id,name,phone','booking.property:id,property_number,project_id'])
+        $q=$this->branch(Installment::with(['booking.customer:id,name,phone','booking.property:id,property_number,project_id']),'booking.property.project')
             ->whereBetween('due_date',[$from,$to]);
         if($request->boolean('overdue')) $q->where('due_date','<',now()->toDateString())->where('remaining_amount','>',0);
         if($request->filled('status')) $q->where('status',$request->get('status'));
@@ -84,7 +96,7 @@ class SalesReportController extends Controller
     public function expenses(Request $request)
     {
         list($from,$to)=$this->dates($request);
-        $q=Expense::with(['project:id,name','property:id,property_number'])->whereBetween('expense_date',[$from,$to]);
+        $q=$this->branch(Expense::with(['project:id,name','property:id,property_number']),'project')->whereBetween('expense_date',[$from,$to]);
         if($request->filled('project_id')) $q->where('project_id',(int)$request->get('project_id'));
         return response()->json($q->orderByDesc('expense_date')->paginate(min(max((int)$request->get('per_page',25),1),100)));
     }
@@ -92,7 +104,7 @@ class SalesReportController extends Controller
     public function commissions(Request $request)
     {
         list($from,$to)=$this->dates($request);
-        $q=Commission::with(['agent:id,name','booking:id,booking_number,booking_date,customer_id','booking.customer:id,name'])
+        $q=$this->branch(Commission::with(['agent:id,name','booking:id,booking_number,booking_date,customer_id','booking.customer:id,name']),'booking.property.project')
             ->whereHas('booking',function($x)use($from,$to){$x->whereBetween('booking_date',[$from,$to]);});
         return response()->json($q->orderByDesc('id')->paginate(min(max((int)$request->get('per_page',25),1),100)));
     }
@@ -126,7 +138,7 @@ class SalesReportController extends Controller
     private function exportRows($type, Request $request, $from, $to)
     {
         if ($type === 'sales') {
-            return Booking::with(['customer','property.project','salesAgent'])
+            return $this->branch(Booking::with(['customer','property.project','salesAgent']))
                 ->whereIn('status',['confirmed','completed'])->whereBetween('booking_date',[$from,$to])
                 ->orderByDesc('booking_date')->get()->map(function($x){return [
                     'Booking'=>$x->booking_number,'Customer'=>optional($x->customer)->name,
@@ -136,7 +148,7 @@ class SalesReportController extends Controller
                 ];});
         }
         if ($type === 'collections') {
-            return Payment::with(['customer','booking'])->where('status','verified')->whereBetween('payment_date',[$from,$to])
+            return $this->branch(Payment::with(['customer','booking']),'booking.property.project')->where('status','verified')->whereBetween('payment_date',[$from,$to])
                 ->orderByDesc('payment_date')->get()->map(function($x){return [
                     'Receipt'=>$x->receipt_number,'Customer'=>optional($x->customer)->name,
                     'Booking'=>optional($x->booking)->booking_number,'Date'=>optional($x->payment_date)->format('Y-m-d'),
@@ -144,7 +156,7 @@ class SalesReportController extends Controller
                 ];});
         }
         if ($type === 'installments') {
-            $q=Installment::with(['booking.customer','booking.property'])->whereBetween('due_date',[$from,$to]);
+            $q=$this->branch(Installment::with(['booking.customer','booking.property']),'booking.property.project')->whereBetween('due_date',[$from,$to]);
             if($request->boolean('overdue')) $q->where('due_date','<',now()->toDateString())->where('remaining_amount','>',0);
             return $q->orderBy('due_date')->get()->map(function($x){return [
                 'Installment'=>$x->installment_number,'Customer'=>optional(optional($x->booking)->customer)->name,
@@ -153,13 +165,13 @@ class SalesReportController extends Controller
             ];});
         }
         if ($type === 'expenses') {
-            return Expense::with(['project','property'])->whereBetween('expense_date',[$from,$to])->orderByDesc('expense_date')->get()->map(function($x){return [
+            return $this->branch(Expense::with(['project','property']),'project')->whereBetween('expense_date',[$from,$to])->orderByDesc('expense_date')->get()->map(function($x){return [
                 'Expense #'=>$x->expense_number,'Project'=>optional($x->project)->name,'Property'=>optional($x->property)->property_number,
                 'Category'=>$x->category,'Vendor'=>$x->vendor_name,'Date'=>optional($x->expense_date)->format('Y-m-d'),
                 'Method'=>$x->payment_method,'Amount'=>$x->amount
             ];});
         }
-        return Commission::with(['agent','booking.customer'])->whereHas('booking',function($q)use($from,$to){$q->whereBetween('booking_date',[$from,$to]);})
+        return $this->branch(Commission::with(['agent','booking.customer']),'booking.property.project')->whereHas('booking',function($q)use($from,$to){$q->whereBetween('booking_date',[$from,$to]);})
             ->orderByDesc('id')->get()->map(function($x){return [
                 'Booking'=>optional($x->booking)->booking_number,'Customer'=>optional(optional($x->booking)->customer)->name,
                 'Agent'=>optional($x->agent)->name,'Percentage'=>$x->percentage,'Base Amount'=>$x->base_amount,
