@@ -13,4 +13,5 @@ class Lead extends Model
     public function customer(){ return $this->belongsTo(Customer::class); }
     public function assignee(){ return $this->belongsTo(User::class,'assigned_to'); }
     public function project(){ return $this->belongsTo(Project::class); }
+    public function siteVisits(){ return $this->hasMany(SiteVisit::class); }
 }
