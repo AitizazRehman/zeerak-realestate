@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Project;
 use App\Models\Property;
 use App\Models\Expense;
+use App\Models\FinancialAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,8 +19,15 @@ class ExpenseController extends Controller
     private function applyBranchScope($query)
     {
         if (!$this->canAccessAllBranches()) {
-            $query->whereHas('project', function ($q) {
-                $q->where('branch_id', auth()->user()->branch_id);
+            $branchId = auth()->user()->branch_id;
+            $query->where(function ($q) use ($branchId) {
+                $q->whereHas('project', function ($project) use ($branchId) {
+                    $project->where('branch_id', $branchId);
+                })->orWhere(function ($legacy) use ($branchId) {
+                    $legacy->whereNull('project_id')->whereHas('property.project', function ($project) use ($branchId) {
+                        $project->where('branch_id', $branchId);
+                    });
+                });
             });
         }
         return $query;
@@ -80,7 +88,14 @@ class ExpenseController extends Controller
         $data = $this->validateBranchRefs($data);
         $data['created_by'] = $request->user()->id;
         $data['expense_number'] = 'EXP-'.now()->format('Ym').'-'.strtoupper(Str::random(7));
-        $expense = DB::transaction(fn () => Expense::create($data));
+        $expense = DB::transaction(function () use ($data) {
+            $expense = Expense::create($data);
+            FinancialAudit::create([
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'action'=>'created',
+                'user_id'=>auth()->id(), 'after_data'=>$expense->fresh()->toArray()
+            ]);
+            return $expense;
+        });
         return response()->json(['message'=>'Expense recorded successfully.','expense'=>$expense->load(['project','property','createdBy'])], 201);
     }
 
@@ -99,16 +114,32 @@ class ExpenseController extends Controller
             'payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
             'reference_number'=>'nullable|string|max:100', 'vendor_name'=>'nullable|string|max:255', 'notes'=>'nullable|string',
         ]);
-        $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
-        $data = $this->validateBranchRefs($data);
-        $expense->update($data);
+        $expense = DB::transaction(function () use ($expense, $data) {
+            $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
+            $before = $expense->toArray();
+            $validated = $this->validateBranchRefs($data);
+            $expense->update($validated);
+            FinancialAudit::create([
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'action'=>'updated',
+                'user_id'=>auth()->id(), 'before_data'=>$before, 'after_data'=>$expense->fresh()->toArray()
+            ]);
+            return $expense;
+        });
         return response()->json(['message'=>'Expense updated successfully.','expense'=>$expense->fresh()->load(['project','property','createdBy'])]);
     }
 
     public function destroy(Expense $expense)
     {
-        $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
-        $expense->delete();
+        DB::transaction(function () use ($expense) {
+            $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
+            $before = $expense->toArray();
+            FinancialAudit::create([
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'action'=>'deleted',
+                'user_id'=>auth()->id(), 'before_data'=>$before,
+                'reason'=>'Expense deleted by authorized user'
+            ]);
+            $expense->delete();
+        });
         return response()->json(['message'=>'Expense deleted successfully.']);
     }
 }
