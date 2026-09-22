@@ -37,6 +37,24 @@ class SiteVisitController extends Controller
         return $query;
     }
 
+    private function scopeLeadBranch($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $query->where(function ($lead) use ($branchId) {
+                $lead->whereHas('project', function ($project) use ($branchId) {
+                    $project->where('branch_id', $branchId);
+                })->orWhere(function ($fallback) use ($branchId) {
+                    $fallback->whereNull('project_id')
+                        ->whereHas('assignee', function ($user) use ($branchId) {
+                            $user->where('branch_id', $branchId);
+                        });
+                });
+            });
+        }
+        return $query;
+    }
+
     private function validateBranchRefs(array &$data)
     {
         $branchId=null;
@@ -46,7 +64,7 @@ class SiteVisitController extends Controller
             $branchId=$property->project->branch_id;
         }
         if(!empty($data['lead_id'])){
-            $lead=$this->scopeBranch(Lead::with(['project','assignee']))->findOrFail($data['lead_id']);
+            $lead=$this->scopeLeadBranch(Lead::with(['project','assignee']))->findOrFail($data['lead_id']);
             if (in_array($lead->status, ['converted','lost'], true)) abort(422,'Site visits cannot be scheduled against a closed lead.');
             $leadBranch=$lead->project ? $lead->project->branch_id : optional($lead->assignee)->branch_id;
             if($branchId && $leadBranch && (int)$branchId !== (int)$leadBranch) abort(422,'Lead and property belong to different branches.');
