@@ -51,18 +51,33 @@ class CommissionController extends Controller
 
     public function update(Request $r, Commission $commission)
     {
-        $this->scopeBranch(Commission::query())->findOrFail($commission->id);
         $d = $r->validate(['status'=>'required|in:pending,approved,paid,cancelled','notes'=>'nullable|string']);
-        $allowed = ['pending'=>['pending','approved','cancelled'], 'approved'=>['approved','paid','cancelled'], 'paid'=>['paid'], 'cancelled'=>['cancelled']];
-        if (!in_array($d['status'], $allowed[$commission->status] ?? [], true)) abort(422, 'Invalid commission status transition.');
-        if (in_array($d['status'], ['approved','paid'], true)) {
-            $booking = Booking::with('property.project')->findOrFail($commission->booking_id);
+
+        $commission = DB::transaction(function () use ($commission, $d) {
+            $commission = $this->scopeBranch(Commission::query())->lockForUpdate()->findOrFail($commission->id);
+            $booking = Booking::with('property.project')->lockForUpdate()->findOrFail($commission->booking_id);
             $this->ensureBranchAccess($booking->property->project->branch_id);
-            if ($booking->status === 'cancelled') abort(422, 'Commission cannot be approved or paid for a cancelled booking.');
-        }
-        if ($d['status']==='approved') $d['approved_date'] = $commission->approved_date ?: now()->toDateString();
-        if ($d['status']==='paid') $d['paid_date'] = $commission->paid_date ?: now()->toDateString();
-        $commission->update($d);
+
+            $allowed = ['pending'=>['pending','approved','cancelled'], 'approved'=>['approved','paid','cancelled'], 'paid'=>['paid'], 'cancelled'=>['cancelled']];
+            if (!in_array($d['status'], $allowed[$commission->status] ?? [], true)) abort(422, 'Invalid commission status transition.');
+
+            if (in_array($d['status'], ['approved','paid'], true)) {
+                if ($booking->status === 'cancelled') abort(422, 'Commission cannot be approved or paid for a cancelled booking.');
+                if (!$booking->sales_agent_id || (int)$booking->sales_agent_id !== (int)$commission->agent_id) {
+                    abort(422, 'Commission agent no longer matches the booking sales agent.');
+                }
+            }
+            if ($d['status'] === 'paid' && $commission->status !== 'approved') {
+                abort(422, 'Commission must be approved before it can be paid.');
+            }
+
+            $changes = $d;
+            if ($changes['status']==='approved') $changes['approved_date'] = $commission->approved_date ?: now()->toDateString();
+            if ($changes['status']==='paid') $changes['paid_date'] = $commission->paid_date ?: now()->toDateString();
+            $commission->update($changes);
+            return $commission;
+        });
+
         return response()->json(['message'=>'Commission updated.','commission'=>$commission->fresh()->load(['booking','agent'])]);
     }
 }
