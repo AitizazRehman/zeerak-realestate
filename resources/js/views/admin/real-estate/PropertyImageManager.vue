@@ -183,7 +183,7 @@ export default {
           `/properties/${this.propertyId}`
         )
 
-        this.images = response.data.images || []
+        this.images = (response.data.property && response.data.property.images) || response.data.images || []
 
       } catch (error) {
         this.showMessage(
