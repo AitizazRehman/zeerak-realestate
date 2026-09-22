@@ -141,9 +141,6 @@ class InstallmentPlanController extends Controller
             if ($data['status'] === 'cancelled' && $hasPayments) {
                 abort(422, 'An installment plan with verified payments cannot be cancelled. Reverse the payments first.');
             }
-            if ($data['status'] === 'cancelled' && Payment::whereIn('installment_id', $installmentIds)->exists()) {
-                abort(422, 'An installment plan with payment history cannot be cancelled. Retain it for financial audit history.');
-            }
             if ($data['status'] === 'completed' && $plan->installments()->where('remaining_amount', '>', 0)->exists()) {
                 abort(422, 'All installments must be fully paid before completing the plan.');
             }
