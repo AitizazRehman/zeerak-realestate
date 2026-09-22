@@ -66,7 +66,7 @@
           <v-card-text>
             <v-btn v-if="$can('properties.view')" block outlined color="#165134" class="mb-3" @click="openProperties"><v-icon left>mdi-home-search-outline</v-icon>View Properties</v-btn>
             <v-btn v-if="$can('properties.create')" block outlined color="#165134" class="mb-3" @click="$router.push('/admin/properties/create')"><v-icon left>mdi-home-plus-outline</v-icon>Add Property</v-btn>
-            <v-btn v-if="$can('projects.create')" block outlined color="#165134" @click="$router.push('/admin/blocks')"><v-icon left>mdi-plus-box-multiple-outline</v-icon>Add Block</v-btn>
+            <v-btn v-if="$can('projects.create')" block outlined color="#165134" @click="$router.push({name:'blocks',query:{project_id:project.id,create:'1'}})"><v-icon left>mdi-plus-box-multiple-outline</v-icon>Add Block</v-btn>
           </v-card-text>
         </v-card>
 
