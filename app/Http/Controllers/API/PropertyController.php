@@ -8,6 +8,7 @@ use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
 use App\Models\Property;
 use App\Models\Project;
+use App\Models\ProjectBlock;
 use App\Models\PropertyStatusHistory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -108,14 +109,30 @@ class PropertyController extends Controller
         ]);
     }
 
+    private function validateRelations(array $data, $currentProjectId = null)
+    {
+        $projectId = $data['project_id'] ?? $currentProjectId;
+        if ($projectId) {
+            $this->applyBranchScope(Project::query())->findOrFail($projectId);
+        }
+
+        if (!empty($data['block_id'])) {
+            $block = ProjectBlock::findOrFail($data['block_id']);
+            $this->applyBranchScope(Project::query())->findOrFail($block->project_id);
+            if ($projectId && (int) $block->project_id !== (int) $projectId) {
+                abort(422, 'Selected block does not belong to the selected project.');
+            }
+        }
+
+        return $data;
+    }
+
     public function store(StorePropertyRequest $request)
     {
         return DB::transaction(function () use ($request) {
             $data = $request->validated();
 
-            $this->applyBranchScope(Project::query())
-                ->findOrFail($data['project_id']);
-
+            $data = $this->validateRelations($data);
             $property = Property::create($data);
 
             PropertyStatusHistory::create([
@@ -167,13 +184,8 @@ class PropertyController extends Controller
         Property $property
     ) {
         return DB::transaction(function () use ($request, $property) {
-            $this->applyBranchScope(Property::query())->findOrFail($property->id);
-
-            $data = $request->validated();
-
-            if (isset($data['project_id'])) {
-                $this->applyBranchScope(Project::query())->findOrFail($data['project_id']);
-            }
+            $property = $this->applyBranchScope(Property::query())->lockForUpdate()->findOrFail($property->id);
+            $data = $this->validateRelations($request->validated(), $property->project_id);
 
             $oldStatus = $property->status;
             $property->update($data);
@@ -207,7 +219,11 @@ class PropertyController extends Controller
 
     public function destroy(Property $property)
     {
-        $this->applyBranchScope(Property::query())->findOrFail($property->id);
+        $property = $this->applyBranchScope(Property::query())->findOrFail($property->id);
+
+        if ($property->bookings()->whereIn('status', ['reserved','confirmed','completed'])->exists()) {
+            abort(422, 'Property with an active or completed booking cannot be deleted.');
+        }
 
         $property->delete();
 
