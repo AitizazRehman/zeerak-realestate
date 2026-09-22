@@ -202,6 +202,7 @@ class InstallmentPlanController extends Controller
             if (Payment::whereIn('installment_id', $installmentIds)->exists()) {
                 abort(422, 'This plan has payment history and cannot be deleted. Cancel it instead.');
             }
+            $booking = Booking::with('property.project')->findOrFail($plan->booking_id);
             $before = $plan->load('installments')->toArray();
             $plan->installments()->delete();
             $plan->delete();
