@@ -20,6 +20,22 @@ class SalesDashboardController extends Controller
 {
     use ChecksBranchAccess;
     private function branch($q,$relation='property.project'){if(!$this->canAccessAllBranches())$q->whereHas($relation,function($x){$x->where('branch_id',auth()->user()->branch_id);});return $q;}
+    private function branchExpenses($q)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $q->where(function ($x) use ($branchId) {
+                $x->whereHas('project', function ($project) use ($branchId) {
+                    $project->where('branch_id', $branchId);
+                })->orWhere(function ($legacy) use ($branchId) {
+                    $legacy->whereNull('project_id')->whereHas('property.project', function ($project) use ($branchId) {
+                        $project->where('branch_id', $branchId);
+                    });
+                });
+            });
+        }
+        return $q;
+    }
     public function index(Request $request)
     {
         $from = $request->filled('from') ? Carbon::parse($request->from)->startOfDay() : now()->startOfMonth()->subMonths(5)->startOfMonth();
@@ -31,7 +47,7 @@ class SalesDashboardController extends Controller
         $projectPerformance = $this->branch(Property::query(),'project')->select('properties.project_id', 'projects.name as project_name', DB::raw('COUNT(bookings.id) as bookings'), DB::raw('COALESCE(SUM(bookings.final_price),0) as sales_value'), DB::raw('COALESCE(SUM(bookings.paid_amount),0) as collected'))->join('projects', 'projects.id', '=', 'properties.project_id')->leftJoin('bookings', function ($join) use ($from, $to) { $join->on('bookings.property_id', '=', 'properties.id')->whereIn('bookings.status', ['confirmed', 'completed'])->whereBetween('bookings.booking_date', [$from->toDateString(), $to->toDateString()]); })->groupBy('properties.project_id', 'projects.name')->orderByDesc('sales_value')->limit(10)->get();
         $overdue = $this->branch(Installment::query(),'booking.property.project')->whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', now()->toDateString())->where('remaining_amount', '>', 0);
         $receivables = $this->branch(Booking::query())->whereNotIn('status', ['cancelled']);
-        $expenses = $this->branch(Expense::query(),'project')->whereBetween('expense_date', [$from->toDateString(), $to->toDateString()]);
+        $expenses = $this->branchExpenses(Expense::query())->whereBetween('expense_date', [$from->toDateString(), $to->toDateString()]);
         $recentBookings = $this->branch(Booking::with(['customer:id,name','property:id,property_number']))->whereIn('status',['confirmed','completed'])->orderByDesc('booking_date')->limit(5)->get();
         $recentPayments = $this->branch(Payment::with(['customer:id,name','booking:id,booking_number']),'booking.property.project')->where('status','verified')->orderByDesc('payment_date')->limit(5)->get();
         return response()->json([
