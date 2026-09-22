@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
+use App\Models\Project;
+use App\Models\Property;
 use App\Models\Expense;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,7 +15,7 @@ class ExpenseController extends Controller
 {
     public function index(Request $request)
     {
-        $q = Expense::with(['project:id,name','property:id,property_number','createdBy:id,name']);
+        $q = $this->applyBranchScope(Expense::with(['project:id,name','property:id,property_number','createdBy:id,name']));
         foreach (['project_id','property_id','category','payment_method'] as $field) {
             if ($request->filled($field)) $q->where($field, $request->input($field));
         }
@@ -39,6 +42,7 @@ class ExpenseController extends Controller
             'payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
             'reference_number'=>'nullable|string|max:100', 'vendor_name'=>'nullable|string|max:255', 'notes'=>'nullable|string',
         ]);
+        $this->validateBranchRefs($data);
         $data['created_by'] = $request->user()->id;
         $data['expense_number'] = 'EXP-'.now()->format('Ym').'-'.strtoupper(Str::random(7));
         $expense = DB::transaction(fn () => Expense::create($data));
@@ -47,6 +51,7 @@ class ExpenseController extends Controller
 
     public function show(Expense $expense)
     {
+        $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
         return response()->json($expense->load(['project','property','createdBy']));
     }
 
@@ -59,12 +64,15 @@ class ExpenseController extends Controller
             'payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
             'reference_number'=>'nullable|string|max:100', 'vendor_name'=>'nullable|string|max:255', 'notes'=>'nullable|string',
         ]);
+        $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
+        $this->validateBranchRefs($data);
         $expense->update($data);
         return response()->json(['message'=>'Expense updated successfully.','expense'=>$expense->fresh()->load(['project','property','createdBy'])]);
     }
 
     public function destroy(Expense $expense)
     {
+        $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
         $expense->delete();
         return response()->json(['message'=>'Expense deleted successfully.']);
     }
