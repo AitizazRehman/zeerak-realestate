@@ -99,7 +99,13 @@ class SiteVisitController extends Controller
     public function store(Request $request){
         $data=$request->validate(['customer_id'=>'nullable|exists:customers,id','lead_id'=>'nullable|exists:leads,id','property_id'=>'nullable|exists:properties,id','assigned_to'=>'nullable|exists:users,id','visit_at'=>'required|date','status'=>'nullable|in:scheduled,completed,cancelled,no_show','feedback'=>'nullable|string','notes'=>'nullable|string']);
         $this->validateBranchRefs($data);
-        return response()->json(['message'=>'Site visit scheduled.','site_visit'=>SiteVisit::create($data)->load(['customer','lead','property','assignee'])],201);
+        $siteVisit = SiteVisit::create($data);
+        if (!empty($data['lead_id'])) {
+            Lead::where('id', $data['lead_id'])
+                ->whereNotIn('status', ['converted', 'lost'])
+                ->update(['status' => 'site_visit']);
+        }
+        return response()->json(['message'=>'Site visit scheduled.','site_visit'=>$siteVisit->load(['customer','lead','property','assignee'])],201);
     }
     public function show(SiteVisit $siteVisit){$this->scopeBranch(SiteVisit::query())->findOrFail($siteVisit->id);return response()->json($siteVisit->load(['customer','lead','property.project','property.block','assignee']));}
     public function update(Request $request, SiteVisit $siteVisit){$data=$request->validate(['customer_id'=>'nullable|exists:customers,id','lead_id'=>'nullable|exists:leads,id','property_id'=>'nullable|exists:properties,id','assigned_to'=>'nullable|exists:users,id','visit_at'=>'required|date','status'=>'nullable|in:scheduled,completed,cancelled,no_show','feedback'=>'nullable|string','notes'=>'nullable|string']);$this->scopeBranch(SiteVisit::query())->findOrFail($siteVisit->id);$this->validateBranchRefs($data);$siteVisit->update($data);return response()->json(['message'=>'Site visit updated.','site_visit'=>$siteVisit->fresh()->load(['customer','lead','property','assignee'])]);}
