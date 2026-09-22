@@ -46,6 +46,58 @@ class BranchController extends Controller
         );
     }
 
+    public function store(Request $request)
+    {
+        if (!$this->canAccessAllBranches()) abort(403, 'Only administrators can create branches.');
+        $data = $this->validateBranch($request);
+        $branch = Branch::create($data);
+        return response()->json(['message' => 'Branch created successfully.', 'data' => $branch], 201);
+    }
+
+    public function update(Request $request, $id)
+    {
+        if (!$this->canAccessAllBranches()) abort(403, 'Only administrators can update branches.');
+        $branch = Branch::findOrFail($id);
+        $data = $this->validateBranch($request, $branch->id);
+        $branch->update($data);
+        return response()->json(['message' => 'Branch updated successfully.', 'data' => $branch->fresh()]);
+    }
+
+    public function destroy($id)
+    {
+        if (!$this->canAccessAllBranches()) abort(403, 'Only administrators can deactivate branches.');
+        $branch = Branch::withCount(['users', 'projects'])->findOrFail($id);
+        if ($branch->is_head_office) abort(422, 'Head Office cannot be deleted. Edit it or mark another branch as Head Office first.');
+        if ($branch->users_count > 0 || $branch->projects_count > 0) {
+            $branch->update(['is_active' => false]);
+            return response()->json(['message' => 'Branch has linked users/projects, so it was deactivated instead of deleted.']);
+        }
+        $branch->delete();
+        return response()->json(['message' => 'Branch deleted successfully.']);
+    }
+
+    private function validateBranch(Request $request, $id = null)
+    {
+        $data = $request->validate([
+            'name' => 'required|string|max:150',
+            'code' => 'required|string|max:30|unique:branches,code'.($id ? ','.$id : ''),
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:150',
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:100',
+            'province' => 'nullable|string|max:100',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
+            'manager_name' => 'nullable|string|max:150',
+            'is_head_office' => 'boolean',
+            'is_active' => 'boolean',
+        ]);
+        if (!empty($data['is_head_office'])) {
+            Branch::where('is_head_office', true)->when($id, function ($q) use ($id) { $q->where('id', '!=', $id); })->update(['is_head_office' => false]);
+        }
+        return $data;
+    }
+
     public function show($id)
     {
         if (!$this->canAccessAllBranches()) $this->ensureBranchAccess($id);
