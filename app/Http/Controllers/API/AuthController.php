@@ -15,7 +15,7 @@ class AuthController extends Controller
     {
         $user->load('roles');
 
-        $data = $user->toArray();
+        $data = $user->only(['id', 'name', 'email', 'branch_id']);
         $data['roles'] = $user->roles->map(function ($role) {
             return [
                 'id' => $role->id,
@@ -44,7 +44,7 @@ class AuthController extends Controller
             ]);
         }
 
-        $user = User::where('email', $credentials['email'])->first();
+        $user = User::whereRaw('LOWER(email) = ?', [strtolower($credentials['email'])])->first();
 
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             RateLimiter::hit($key, 60);
@@ -55,6 +55,8 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
 
+        // Keep browser/API token sprawl under control: one active admin-session token per user.
+        $user->tokens()->where('name', 'zeerak-admin')->delete();
         $token = $user->createToken('zeerak-admin')->plainTextToken;
 
         return response()->json([
