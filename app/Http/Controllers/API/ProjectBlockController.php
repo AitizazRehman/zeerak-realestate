@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StoreProjectBlockRequest;
 use App\Http\Requests\UpdateProjectBlockRequest;
 use App\Models\ProjectBlock;
+use App\Models\Project;
 use Illuminate\Http\Request;
 
 class ProjectBlockController extends Controller
@@ -53,7 +54,8 @@ class ProjectBlockController extends Controller
     public function store(StoreProjectBlockRequest $request)
     {
         $data = $request->validated();
-        $project = $this->applyBranchScope(\App\Models\Project::query())
+        $project = $this->applyBranchScope(Project::query())
+            ->where('is_active', true)
             ->findOrFail($data['project_id']);
 
         $data['area_unit'] = $data['area_unit'] ?? 'Marla';
@@ -88,8 +90,14 @@ class ProjectBlockController extends Controller
         $data = $request->validated();
 
         if (isset($data['project_id'])) {
-            $this->applyBranchScope(\App\Models\Project::query())
+            $this->applyBranchScope(Project::query())
+                ->where('is_active', true)
                 ->findOrFail($data['project_id']);
+
+            if ((int) $data['project_id'] !== (int) $block->project_id &&
+                $block->properties()->exists()) {
+                abort(422, 'A block containing properties cannot be moved to another project.');
+            }
         }
 
         $block->update($data);
