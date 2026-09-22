@@ -65,7 +65,7 @@ class SiteVisitController extends Controller
         }
         if(!empty($data['lead_id'])){
             $lead=$this->scopeLeadBranch(Lead::with(['project','assignee']))->findOrFail($data['lead_id']);
-            if (in_array($lead->status, ['converted','lost'], true)) abort(422,'Site visits cannot be scheduled against a closed lead.');
+            if ($lead->status === 'lost') abort(422,'Site visits cannot be scheduled against a lost lead. Reopen the lead first.');
             $leadBranch=$lead->project ? $lead->project->branch_id : optional($lead->assignee)->branch_id;
             if($branchId && $leadBranch && (int)$branchId !== (int)$leadBranch) abort(422,'Lead and property belong to different branches.');
             $branchId=$branchId ?: $leadBranch;
