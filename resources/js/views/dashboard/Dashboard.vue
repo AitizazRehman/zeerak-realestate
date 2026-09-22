@@ -1,28 +1,54 @@
 <template>
-  <div class="dashboard">
-    <div class="d-flex align-center flex-wrap mb-6">
-      <div><div class="text-overline">ZEERAK REAL ESTATE & BUILDERS</div><h1 class="text-h4 font-weight-bold">Dashboard</h1><div class="grey--text">Sales, inventory and collection snapshot.</div></div>
-      <v-spacer/><v-btn color="#165134" dark depressed to="/admin/properties/create"><v-icon left>mdi-home-plus</v-icon>Add Property</v-btn>
+<div class="dashboard">
+  <v-card flat class="hero pa-5 mb-5">
+    <div class="d-flex flex-wrap align-center">
+      <v-avatar tile size="70" color="white" class="mr-4"><v-img src="/images/zeerak-logo.jpeg" contain/></v-avatar>
+      <div><div class="text-overline">ZEERAK REAL ESTATE & BUILDERS</div><h1 class="text-h4 font-weight-bold">Management Dashboard</h1><div class="grey--text">Live business, sales, inventory and collection overview.</div></div>
+      <v-spacer/><v-btn text color="#165134" :loading="loading" @click="load"><v-icon left>mdi-refresh</v-icon>Refresh</v-btn>
     </div>
-    <v-row>
-      <v-col v-for="stat in statistics" :key="stat.title" cols="12" sm="6" lg="3"><v-card flat class="stat pa-5"><div class="d-flex align-center"><v-avatar size="48" color="#165134"><v-icon dark>{{stat.icon}}</v-icon></v-avatar><div class="ml-4"><div class="text-caption grey--text">{{stat.title}}</div><div class="text-h6 font-weight-bold">{{stat.value}}</div></div></div></v-card></v-col>
-    </v-row>
-    <v-row class="mt-2">
-      <v-col cols="12" lg="7"><v-card flat class="pa-5 fill-height"><div class="d-flex align-center mb-3"><div><div class="text-h6 font-weight-bold">Inventory</div><div class="text-caption grey--text">Current property pipeline</div></div><v-spacer/><v-btn text small to="/admin/properties">View inventory</v-btn></div><v-row><v-col v-for="item in propertyStatus" :key="item.title" cols="6" sm="3"><div class="inventory-box"><div class="text-h5 font-weight-bold">{{item.value}}</div><div class="text-caption grey--text">{{item.title}}</div></div></v-col></v-row></v-card></v-col>
-      <v-col cols="12" lg="5"><v-card flat class="pa-5 fill-height"><div class="text-h6 font-weight-bold mb-1">Collections</div><div class="text-caption grey--text">Verified payment activity and receivables</div><div class="metric-row mt-5"><span>Total collected</span><b>PKR {{format(collections)}}</b></div><div class="metric-row"><span>Outstanding</span><b class="error--text">PKR {{format(receivables)}}</b></div><div class="metric-row"><span>Overdue installments</span><b>{{overdue}}</b></div><v-btn block outlined color="#165134" class="mt-5" to="/admin/payments">Open collections</v-btn></v-card></v-col>
-    </v-row>
-  </div>
+  </v-card>
+
+  <v-alert v-if="error" type="error" dense text>{{ error }}</v-alert>
+  <v-row><v-col v-for="card in cards" :key="card.key" cols="12" sm="6" lg="3"><v-card outlined class="stat fill-height"><v-card-text class="d-flex align-center"><v-avatar size="46" color="grey lighten-4" class="mr-3"><v-icon :color="card.color">{{card.icon}}</v-icon></v-avatar><div><div class="caption grey--text text-uppercase">{{card.label}}</div><div class="text-h6 font-weight-bold">{{card.money?'PKR '+format(metrics[card.key]):format(metrics[card.key])}}</div></div></v-card-text></v-card></v-col></v-row>
+
+  <v-row class="mt-2">
+    <v-col cols="12" lg="7"><v-card outlined class="fill-height"><v-card-title>Monthly Collections<v-spacer/><v-btn text small color="#165134" to="/admin/reports">Reports</v-btn></v-card-title><v-card-text><div v-if="!monthly.length" class="empty">No collection activity.</div><div v-for="m in monthly" :key="m.month" class="mb-4"><div class="d-flex justify-space-between caption mb-1"><span>{{month(m.month)}}</span><strong>PKR {{format(m.amount)}}</strong></div><v-progress-linear rounded height="10" color="#165134" :value="percent(m.amount)"/></div></v-card-text></v-card></v-col>
+    <v-col cols="12" lg="5"><v-card outlined class="fill-height"><v-card-title>Property Pipeline</v-card-title><v-card-text><div v-for="p in pipeline" :key="p.label" class="pipeline mb-4"><div class="d-flex justify-space-between mb-1"><span>{{p.label}}</span><strong>{{p.value}}</strong></div><v-progress-linear rounded height="10" :color="p.color" :value="p.percent"/></div><v-btn block outlined color="#165134" to="/admin/properties">Open Property Inventory</v-btn></v-card-text></v-card></v-col>
+  </v-row>
+
+  <v-row>
+    <v-col cols="12" lg="6"><v-card outlined><v-card-title>Recent Bookings<v-spacer/><v-btn text small to="/admin/bookings">View all</v-btn></v-card-title><v-data-table dense hide-default-footer :headers="bookingHeaders" :items="recentBookings"><template v-slot:item.final_price="{item}">PKR {{format(item.final_price)}}</template><template v-slot:item.booking_date="{item}">{{date(item.booking_date)}}</template></v-data-table></v-card></v-col>
+    <v-col cols="12" lg="6"><v-card outlined><v-card-title>Recent Payments<v-spacer/><v-btn text small to="/admin/payments">View all</v-btn></v-card-title><v-data-table dense hide-default-footer :headers="paymentHeaders" :items="recentPayments"><template v-slot:item.amount="{item}"><strong>PKR {{format(item.amount)}}</strong></template><template v-slot:item.payment_date="{item}">{{date(item.payment_date)}}</template></v-data-table></v-card></v-col>
+  </v-row>
+
+  <v-row>
+    <v-col cols="12" lg="6"><v-card outlined><v-card-title>Top Sales Agents</v-card-title><v-data-table dense hide-default-footer :headers="agentHeaders" :items="agents"><template v-slot:item.sales_value="{item}">PKR {{format(item.sales_value)}}</template></v-data-table></v-card></v-col>
+    <v-col cols="12" lg="6"><v-card outlined><v-card-title>Project Performance</v-card-title><v-data-table dense hide-default-footer :headers="projectHeaders" :items="projects"><template v-slot:item.sales_value="{item}">PKR {{format(item.sales_value)}}</template></v-data-table></v-card></v-col>
+  </v-row>
+</div>
 </template>
 <script>
 import api from '../../services/api'
-export default {
-  name:'Dashboard',
-  data(){return{loading:false,statistics:[{title:'Properties',value:'—',icon:'mdi-home-city'},{title:'Customers',value:'—',icon:'mdi-account-group'},{title:'Bookings',value:'—',icon:'mdi-bookmark-check'},{title:'Sales Value',value:'PKR —',icon:'mdi-cash-multiple'}],propertyStatus:[{title:'Available',value:0},{title:'Reserved',value:0},{title:'Booked',value:0},{title:'Sold',value:0}],collections:0,receivables:0,overdue:0}},
-  mounted(){this.load()},
-  methods:{
-    async load(){this.loading=true;try{const [p,c,b,pay,i]=await Promise.all([api.get('/properties/inventory',{params:{per_page:1}}),api.get('/customers',{params:{per_page:1}}),api.get('/bookings',{params:{per_page:100}}),api.get('/payments',{params:{per_page:100}}),api.get('/installments',{params:{status:'overdue',per_page:100}})]);const inv=p.data.summary||{};this.propertyStatus=[{title:'Available',value:Number(inv.available||0)},{title:'Reserved',value:Number(inv.reserved||0)},{title:'Booked',value:Number(inv.booked||0)},{title:'Sold',value:Number(inv.sold||0)}];const bookings=b.data.data||[];const payments=pay.data.data||[];this.collections=payments.reduce((s,x)=>s+Number(x.amount||0),0);this.receivables=bookings.reduce((s,x)=>s+Number(x.remaining_amount||0),0);this.overdue=(i.data.data||[]).length;this.statistics=[{title:'Properties',value:String(Number(inv.total||0)),icon:'mdi-home-city'},{title:'Customers',value:String(c.data.total||0),icon:'mdi-account-group'},{title:'Bookings',value:String(b.data.total||bookings.length),icon:'mdi-bookmark-check'},{title:'Sales Value',value:'PKR '+this.format(bookings.reduce((s,x)=>s+Number(x.final_price||0),0)),icon:'mdi-cash-multiple'}]}catch(e){this.$root.$emit('show-error','Unable to load dashboard statistics.')}finally{this.loading=false}},
-    format(v){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(v||0))}
-  }
+export default{
+ name:'Dashboard',
+ data(){return{loading:false,error:'',metrics:{},monthly:[],agents:[],projects:[],recentBookings:[],recentPayments:[],
+ cards:[
+ {key:'sales_value',label:'Sales Value',money:true,icon:'mdi-cash-multiple',color:'green darken-2'},
+ {key:'collections',label:'Collections',money:true,icon:'mdi-bank-check',color:'teal'},
+ {key:'receivables',label:'Receivables',money:true,icon:'mdi-cash-clock',color:'orange darken-2'},
+ {key:'overdue_amount',label:'Overdue',money:true,icon:'mdi-alert-circle',color:'red'},
+ {key:'available_properties',label:'Available Properties',icon:'mdi-home-check',color:'green'},
+ {key:'sold_properties',label:'Sold Properties',icon:'mdi-home-lock',color:'blue'},
+ {key:'expenses',label:'Expenses',money:true,icon:'mdi-cash-minus',color:'deep-orange'},
+ {key:'net_cash_flow',label:'Net Cash Flow',money:true,icon:'mdi-chart-line',color:'purple'}],
+ bookingHeaders:[{text:'Booking',value:'booking_number'},{text:'Customer',value:'customer.name'},{text:'Property',value:'property.property_number'},{text:'Date',value:'booking_date'},{text:'Value',value:'final_price',align:'right'}],
+ paymentHeaders:[{text:'Receipt',value:'receipt_number'},{text:'Customer',value:'customer.name'},{text:'Booking',value:'booking.booking_number'},{text:'Date',value:'payment_date'},{text:'Amount',value:'amount',align:'right'}],
+ agentHeaders:[{text:'Agent',value:'sales_agent.name'},{text:'Bookings',value:'bookings'},{text:'Sales',value:'sales_value',align:'right'}],
+ projectHeaders:[{text:'Project',value:'project_name'},{text:'Bookings',value:'bookings'},{text:'Sales',value:'sales_value',align:'right'}]
+ }},
+ computed:{pipeline(){const a=[['Available','available_properties','green'],['Reserved','reserved_properties','orange'],['Booked','booked_properties','blue'],['Sold','sold_properties','red']].map(x=>({label:x[0],value:Number(this.metrics[x[1]]||0),color:x[2]}));const max=Math.max(...a.map(x=>x.value),1);return a.map(x=>Object.assign(x,{percent:x.value/max*100}))},maxCollection(){return Math.max(...this.monthly.map(x=>Number(x.amount||0)),1)}},
+ mounted(){this.load()},
+ methods:{async load(){this.loading=true;this.error='';try{const r=await api.get('/sales/dashboard');const d=r.data||{};this.metrics=d.metrics||{};this.monthly=d.monthly_collections||[];this.agents=d.agent_performance||[];this.projects=d.project_performance||[];this.recentBookings=d.recent_bookings||[];this.recentPayments=d.recent_payments||[]}catch(e){this.error=(e.response&&e.response.data&&e.response.data.message)||'Unable to load dashboard.'}finally{this.loading=false}},format(v){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(v||0))},date(v){return v?String(v).slice(0,10):'—'},month(v){const p=String(v).split('-');return p.length===2?p[1]+'/'+p[0]:v},percent(v){return Number(v||0)/this.maxCollection*100}}
 }
 </script>
-<style scoped>.stat,.fill-height{border:1px solid rgba(0,0,0,.06);border-radius:14px}.stat{transition:transform .2s}.stat:hover{transform:translateY(-2px)}.inventory-box{padding:18px;border-radius:12px;background:rgba(22,81,52,.05)}.metric-row{display:flex;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(0,0,0,.08)}.dashboard{width:100%}</style>
+<style scoped>.dashboard{width:100%}.hero{border-left:4px solid #165134}.stat{border-radius:14px;transition:.2s}.stat:hover{transform:translateY(-2px)}.empty{min-height:120px;display:flex;align-items:center;justify-content:center;color:#888}</style>
