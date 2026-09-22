@@ -55,6 +55,44 @@ class CommissionController extends Controller
         return response()->json(['message'=>'Commission created.','commission'=>$c->load(['booking.customer','booking.property','agent'])],201);
     }
 
+    public function reverse(Request $r, Commission $commission)
+    {
+        $data = $r->validate(['reason'=>'required|string|max:1000']);
+
+        $commission = DB::transaction(function () use ($commission, $data) {
+            $commission = $this->scopeBranch(Commission::query())->lockForUpdate()->findOrFail($commission->id);
+            $booking = Booking::with('property.project')->lockForUpdate()->findOrFail($commission->booking_id);
+            $this->ensureBranchAccess($booking->property->project->branch_id);
+
+            if ($commission->status !== 'paid') abort(422, 'Only paid commissions can be reversed.');
+
+            $before = $commission->toArray();
+            $note = trim(($commission->notes ? $commission->notes."\n" : '').'Paid commission reversed: '.$data['reason']);
+            $commission->update([
+                'status'=>'approved',
+                'paid_date'=>null,
+                'notes'=>$note,
+            ]);
+
+            FinancialAudit::create([
+                'entity_type'=>'commission',
+                'entity_id'=>$commission->id,
+                'action'=>'payment_reversed',
+                'user_id'=>auth()->id(),
+                'before_data'=>$before,
+                'after_data'=>$commission->fresh()->toArray(),
+                'reason'=>$data['reason'],
+            ]);
+
+            return $commission;
+        });
+
+        return response()->json([
+            'message'=>'Commission payment reversed successfully. Commission returned to approved status.',
+            'commission'=>$commission->fresh()->load(['booking','agent']),
+        ]);
+    }
+
     public function update(Request $r, Commission $commission)
     {
         $d = $r->validate(['status'=>'required|in:pending,approved,paid,cancelled','notes'=>'nullable|string']);
