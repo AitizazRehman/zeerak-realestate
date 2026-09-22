@@ -7,6 +7,8 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Booking;
 use App\Models\Property;
 use App\Models\PropertyStatusHistory;
+use App\Models\Commission;
+use App\Models\FinancialAudit;
 use Illuminate\Support\Facades\DB;
 
 class BookingStatusController extends Controller
@@ -40,6 +42,17 @@ class BookingStatusController extends Controller
             if ($bookingStatus === 'completed' && $b->status !== 'confirmed') abort(422, 'Only confirmed bookings can be completed.');
             if ($bookingStatus === 'completed' && (float) $b->remaining_amount > 0) abort(422, 'Booking cannot be completed until fully paid.');
             if ($bookingStatus === 'cancelled' && (float) $b->paid_amount > 0) abort(422, 'A booking with payments cannot be cancelled. Reverse its payments first.');
+            if ($bookingStatus === 'cancelled') {
+                $commissions = Commission::where('booking_id', $b->id)->lockForUpdate()->get();
+                if ($commissions->where('status', 'paid')->isNotEmpty()) {
+                    abort(422, 'A booking with a paid commission cannot be cancelled. Resolve the paid commission first.');
+                }
+                foreach ($commissions->whereIn('status', ['pending', 'approved']) as $commission) {
+                    $before = $commission->toArray();
+                    $commission->update(['status' => 'cancelled', 'notes' => trim(($commission->notes ? $commission->notes."\n" : '').'Automatically cancelled because booking '.$b->booking_number.' was cancelled.')]);
+                    FinancialAudit::create(['entity_type'=>'commission','entity_id'=>$commission->id,'action'=>'status_changed','user_id'=>auth()->id(),'before_data'=>$before,'after_data'=>$commission->fresh()->toArray(),'reason'=>'Booking cancelled']);
+                }
+            }
 
             $p->update(['status' => $propertyStatus]);
             $b->update(['status' => $bookingStatus]);
