@@ -15,7 +15,7 @@ class Booking extends Model
     public function salesAgent(){return $this->belongsTo(User::class,'sales_agent_id');}
     public function installmentPlans(){return $this->hasMany(InstallmentPlan::class);}
     public function installments(){return $this->hasMany(Installment::class);}
-    public function payments(){return $this->hasMany(Payment::class);}
+    public function payments(){return $this->hasMany(Payment::class);} public function documents(){return $this->hasMany(BookingDocument::class);}
     public function commissions(){return $this->hasMany(Commission::class);}
     public function getProjectAttribute(){return $this->property ? $this->property->project : null;}
 }
