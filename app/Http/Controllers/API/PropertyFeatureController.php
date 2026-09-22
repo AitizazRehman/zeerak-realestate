@@ -3,16 +3,25 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Property;
 use App\Models\PropertyFeature;
 use Illuminate\Http\Request;
 
 class PropertyFeatureController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function checkProperty(Property $property)
+    {
+        $property->loadMissing('project');
+        $this->ensureBranchAccess($property->project->branch_id);
+    }
     public function store(
         Request $request,
         Property $property
     ) {
+        $this->checkProperty($property);
         $validated = $request->validate([
             'features' => [
                 'required',
@@ -54,6 +63,8 @@ class PropertyFeatureController extends Controller
 
     public function destroy(PropertyFeature $feature)
     {
+        $feature->loadMissing('property.project');
+        $this->checkProperty($feature->property);
         $feature->delete();
 
         return response()->json([
