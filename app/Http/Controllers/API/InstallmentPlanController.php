@@ -7,6 +7,7 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Booking;
 use App\Models\Installment;
 use App\Models\InstallmentPlan;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -117,9 +118,10 @@ class InstallmentPlanController extends Controller
 
         $plan = DB::transaction(function () use ($installmentPlan, $data) {
             $plan = $this->scopeBranch(InstallmentPlan::query())->lockForUpdate()->findOrFail($installmentPlan->id);
-            $hasPayments = $plan->installments()->where(function ($q) {
-                $q->where('paid_amount', '>', 0)->orWhereIn('status', ['paid', 'partial']);
-            })->exists();
+            $installmentIds = $plan->installments()->pluck('id');
+            $hasPayments = Payment::whereIn('installment_id', $installmentIds)
+                ->where('status', 'verified')
+                ->exists();
 
             if ($data['status'] === 'cancelled' && $hasPayments) {
                 abort(422, 'An installment plan with payments cannot be cancelled.');
@@ -141,8 +143,18 @@ class InstallmentPlanController extends Controller
     public function destroy(InstallmentPlan $installmentPlan)
     {
         $this->scopeBranch(InstallmentPlan::query())->findOrFail($installmentPlan->id);
-        if ($installmentPlan->installments()->whereIn('status', ['paid', 'partial'])->exists()) abort(422, 'Plans with payments cannot be deleted.');
-        $installmentPlan->delete();
+        DB::transaction(function () use ($installmentPlan) {
+            $plan = $this->scopeBranch(InstallmentPlan::query())->lockForUpdate()->findOrFail($installmentPlan->id);
+            $installmentIds = $plan->installments()->pluck('id');
+            if (Payment::whereIn('installment_id', $installmentIds)->where('status', 'verified')->exists()) {
+                abort(422, 'Plans with verified payments cannot be deleted. Reverse the payments first.');
+            }
+            if (Payment::whereIn('installment_id', $installmentIds)->exists()) {
+                abort(422, 'This plan has payment history and cannot be deleted. Cancel it instead.');
+            }
+            $plan->installments()->delete();
+            $plan->delete();
+        });
         return response()->json(['message' => 'Installment plan deleted.']);
     }
 }
