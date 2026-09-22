@@ -21,12 +21,7 @@
 
                     <div class="text-center mb-8">
 
-                        <v-icon
-                            size="60"
-                            color="primary"
-                        >
-                            mdi-home-city
-                        </v-icon>
+                        <v-img src="/images/zeerak-logo.jpeg" contain max-height="150" class="mx-auto mb-3" alt="ZeeraK logo"></v-img>
 
                         <h2 class="mt-3">
                             Zeerak
