@@ -13,6 +13,41 @@ use Illuminate\Support\Str;
 
 class ExpenseController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function applyBranchScope($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $query->whereHas('project', function ($q) {
+                $q->where('branch_id', auth()->user()->branch_id);
+            });
+        }
+        return $query;
+    }
+
+    private function validateBranchRefs(array $data)
+    {
+        if (!empty($data['project_id'])) {
+            $project = Project::findOrFail($data['project_id']);
+            $this->ensureBranchAccess($project->branch_id);
+        }
+
+        if (!empty($data['property_id'])) {
+            $property = Property::with('project')->findOrFail($data['property_id']);
+            $this->ensureBranchAccess($property->project->branch_id);
+
+            if (!empty($data['project_id']) && (int) $property->project_id !== (int) $data['project_id']) {
+                abort(422, 'Property does not belong to the selected project.');
+            }
+        }
+
+        if (empty($data['project_id']) && !empty($data['property_id'])) {
+            $data['project_id'] = Property::findOrFail($data['property_id'])->project_id;
+        }
+
+        return $data;
+    }
+
     public function index(Request $request)
     {
         $q = $this->applyBranchScope(Expense::with(['project:id,name','property:id,property_number','createdBy:id,name']));
@@ -42,7 +77,7 @@ class ExpenseController extends Controller
             'payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
             'reference_number'=>'nullable|string|max:100', 'vendor_name'=>'nullable|string|max:255', 'notes'=>'nullable|string',
         ]);
-        $this->validateBranchRefs($data);
+        $data = $this->validateBranchRefs($data);
         $data['created_by'] = $request->user()->id;
         $data['expense_number'] = 'EXP-'.now()->format('Ym').'-'.strtoupper(Str::random(7));
         $expense = DB::transaction(fn () => Expense::create($data));
@@ -65,7 +100,7 @@ class ExpenseController extends Controller
             'reference_number'=>'nullable|string|max:100', 'vendor_name'=>'nullable|string|max:255', 'notes'=>'nullable|string',
         ]);
         $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
-        $this->validateBranchRefs($data);
+        $data = $this->validateBranchRefs($data);
         $expense->update($data);
         return response()->json(['message'=>'Expense updated successfully.','expense'=>$expense->fresh()->load(['project','property','createdBy'])]);
     }
