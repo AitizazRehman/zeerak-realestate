@@ -40,10 +40,21 @@ class UserController extends Controller
 
     public function roles()
     {
+        $query = Role::where('guard_name', 'web');
+        if (!$this->canAccessAllBranches()) {
+            $query->whereNotIn('name', ['Super Admin', 'Admin']);
+        }
         return response()->json([
             'success' => true,
-            'data' => Role::where('guard_name', 'web')->orderBy('name')->get(['id', 'name'])
+            'data' => $query->orderBy('name')->get(['id', 'name'])
         ]);
+    }
+
+    private function protectRoleAssignment($role)
+    {
+        if (!$this->canAccessAllBranches() && in_array($role, ['Super Admin', 'Admin'], true)) {
+            abort(403, 'You are not authorized to assign this role.');
+        }
     }
 
     public function index(Request $request)
@@ -83,6 +94,10 @@ class UserController extends Controller
             'role' => ['nullable', 'string', 'exists:roles,name'],
         ]);
         $role = $data['role'] ?? null;
+        $this->protectRoleAssignment($role);
+        if (!$this->canAccessAllBranches()) {
+            $data['branch_id'] = auth()->user()->branch_id;
+        }
         unset($data['role']);
         $data['password'] = Hash::make($data['password']);
         $user = User::create($data);
@@ -99,8 +114,16 @@ class UserController extends Controller
             'branch_id' => ['nullable', 'exists:branches,id'],
             'role' => ['nullable', 'string', 'exists:roles,name'],
         ]);
+        if (!$this->canAccessAllBranches()) {
+            $this->ensureBranchAccess($user->branch_id);
+        }
         $roleProvided = array_key_exists('role', $data);
         $role = $data['role'] ?? null;
+        $this->protectRoleAssignment($role);
+        if (!$this->canAccessAllBranches()) {
+            $data['branch_id'] = auth()->user()->branch_id;
+            if ($user->hasAnyRole(['Super Admin', 'Admin'])) abort(403, 'You are not authorized to modify an administrator account.');
+        }
         unset($data['role']);
         if (!empty($data['password'])) $data['password'] = Hash::make($data['password']); else unset($data['password']);
         $user->update($data);
@@ -111,6 +134,10 @@ class UserController extends Controller
     public function destroy(Request $request, User $user)
     {
         if ($request->user()->is($user)) return response()->json(['success' => false, 'message' => 'You cannot delete your own account.'], 422);
+        if (!$this->canAccessAllBranches()) {
+            $this->ensureBranchAccess($user->branch_id);
+            if ($user->hasAnyRole(['Super Admin', 'Admin'])) abort(403, 'You are not authorized to delete an administrator account.');
+        }
         $user->tokens()->delete();
         $user->delete();
         return response()->json(['success' => true, 'message' => 'User deleted successfully.']);
