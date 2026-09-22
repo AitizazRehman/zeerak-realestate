@@ -34,6 +34,21 @@ class CustomerController extends Controller
         if ($this->canAccessAllBranches()) return;
         $this->scopeBranch(Customer::query())->findOrFail($customer->id);
     }
+    private function ensureCustomerMutationAccess(Customer $customer)
+    {
+        if ($this->canAccessAllBranches()) return;
+
+        $branchId = auth()->user()->branch_id;
+        $hasOtherBranchBookings = $customer->bookings()
+            ->whereHas('property.project', function ($q) use ($branchId) {
+                $q->where('branch_id', '!=', $branchId);
+            })->exists();
+
+        if ($hasOtherBranchBookings) {
+            abort(403, 'This customer is shared with another branch and can only be modified by an administrator.');
+        }
+    }
+
     public function index(Request $request)
     {
         $query = $this->scopeBranch(Customer::query());
@@ -54,9 +69,18 @@ class CustomerController extends Controller
     public function store(StoreCustomerRequest $request)
     {
         $customer = Customer::create(array_merge($request->validated(), [
-            'customer_number' => 'CUS-' . now()->format('Ym') . '-' . strtoupper(Str::random(6)),
+            'customer_number' => $this->generateCustomerNumber(),
         ]));
         return response()->json(['message' => 'Customer created successfully.', 'customer' => $customer], 201);
+    }
+
+    private function generateCustomerNumber()
+    {
+        do {
+            $number = 'CUS-' . now()->format('Ym') . '-' . strtoupper(Str::random(10));
+        } while (Customer::withTrashed()->where('customer_number', $number)->exists());
+
+        return $number;
     }
 
     public function show(Customer $customer)
@@ -94,6 +118,7 @@ class CustomerController extends Controller
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
         $this->ensureCustomerAccess($customer);
+        $this->ensureCustomerMutationAccess($customer);
         $customer->update($request->validated());
         return response()->json(['message' => 'Customer updated successfully.', 'customer' => $customer->fresh()]);
     }
@@ -101,6 +126,12 @@ class CustomerController extends Controller
     public function destroy(Customer $customer)
     {
         $this->ensureCustomerAccess($customer);
+        $this->ensureCustomerMutationAccess($customer);
+
+        if ($customer->bookings()->exists() || $customer->payments()->exists()) {
+            abort(422, 'Customers with booking or payment history cannot be deleted. Deactivate the customer instead.');
+        }
+
         $customer->delete();
         return response()->json(['message' => 'Customer deleted successfully.']);
     }
