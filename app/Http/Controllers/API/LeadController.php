@@ -7,7 +7,9 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\Lead;
+use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class LeadController extends Controller
@@ -84,6 +86,54 @@ class LeadController extends Controller
         $data=$request->validate(['customer_id'=>'nullable|exists:customers,id','assigned_to'=>'nullable|exists:users,id','name'=>'required|string|max:150','phone'=>'required|string|max:30','email'=>'nullable|email|max:150','source'=>'nullable|string|max:100','status'=>'nullable|in:new,contacted,qualified,site_visit,negotiation,converted,lost','priority'=>'nullable|in:low,medium,high','project_id'=>'nullable|exists:projects,id','budget'=>'nullable|numeric|min:0','next_follow_up'=>'nullable|date','notes'=>'nullable|string']);
         $this->scopeBranch(Lead::query())->findOrFail($lead->id); $this->validateBranchRefs($data); $lead->update($data); return response()->json(['message'=>'Lead updated successfully.','lead'=>$lead->fresh()->load(['customer','assignee','project'])]);
     }
+    public function convert(Lead $lead)
+    {
+        $customer = DB::transaction(function () use ($lead) {
+            $lead = $this->scopeBranch(Lead::with(['project','assignee'])->lockForUpdate())->findOrFail($lead->id);
+
+            if ($lead->status === 'lost') {
+                abort(422, 'A lost lead must be reopened before it can be converted.');
+            }
+
+            if ($lead->customer_id) {
+                $existing = Customer::findOrFail($lead->customer_id);
+                $lead->siteVisits()->whereNull('customer_id')->update(['customer_id' => $existing->id]);
+                if ($lead->status !== 'converted') $lead->update(['status' => 'converted']);
+                return $existing;
+            }
+
+            do {
+                $number = 'CUS-' . now()->format('Ym') . '-' . strtoupper(Str::random(10));
+            } while (Customer::withTrashed()->where('customer_number', $number)->exists());
+
+            $customer = Customer::create([
+                'customer_number' => $number,
+                'name' => $lead->name,
+                'phone' => $lead->phone,
+                'email' => $lead->email,
+                'source' => $lead->source,
+                'notes' => $lead->notes,
+                'is_active' => true,
+            ]);
+
+            $lead->update([
+                'customer_id' => $customer->id,
+                'status' => 'converted',
+                'next_follow_up' => null,
+            ]);
+
+            $lead->siteVisits()->whereNull('customer_id')->update(['customer_id' => $customer->id]);
+
+            return $customer;
+        });
+
+        return response()->json([
+            'message' => 'Lead converted to customer successfully.',
+            'customer' => $customer,
+            'lead' => $lead->fresh()->load(['customer','assignee','project']),
+        ]);
+    }
+
     public function destroy(Lead $lead)
     {
         $lead = $this->scopeBranch(Lead::query())->findOrFail($lead->id);
