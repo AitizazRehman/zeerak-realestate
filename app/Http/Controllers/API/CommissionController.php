@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Commission;
 use App\Models\Booking;
+use App\Models\FinancialAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -44,7 +45,12 @@ class CommissionController extends Controller
             $d['base_amount'] = $base;
             $d['commission_amount'] = round($base * (float)$d['percentage'] / 100, 2);
             $d['status'] = 'pending';
-            return Commission::create($d);
+            $commission = Commission::create($d);
+            FinancialAudit::create([
+                'entity_type'=>'commission', 'entity_id'=>$commission->id, 'action'=>'created',
+                'user_id'=>auth()->id(), 'after_data'=>$commission->fresh()->toArray()
+            ]);
+            return $commission;
         });
         return response()->json(['message'=>'Commission created.','commission'=>$c->load(['booking.customer','booking.property','agent'])],201);
     }
@@ -71,10 +77,18 @@ class CommissionController extends Controller
                 abort(422, 'Commission must be approved before it can be paid.');
             }
 
+            $before = $commission->toArray();
             $changes = $d;
             if ($changes['status']==='approved') $changes['approved_date'] = $commission->approved_date ?: now()->toDateString();
             if ($changes['status']==='paid') $changes['paid_date'] = $commission->paid_date ?: now()->toDateString();
             $commission->update($changes);
+            $after = $commission->fresh()->toArray();
+            FinancialAudit::create([
+                'entity_type'=>'commission', 'entity_id'=>$commission->id,
+                'action'=>$changes['status'] === $before['status'] ? 'updated' : 'status_changed',
+                'user_id'=>auth()->id(), 'before_data'=>$before, 'after_data'=>$after,
+                'reason'=>$changes['notes'] ?? null
+            ]);
             return $commission;
         });
 
