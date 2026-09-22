@@ -41,7 +41,19 @@ class BookingStatusController extends Controller
             if ($bookingStatus === 'cancelled' && !in_array($b->status, ['reserved', 'confirmed'], true)) abort(422, 'This booking cannot be cancelled.');
             if ($bookingStatus === 'completed' && $b->status !== 'confirmed') abort(422, 'Only confirmed bookings can be completed.');
             if ($bookingStatus === 'completed' && (float) $b->remaining_amount > 0) abort(422, 'Booking cannot be completed until fully paid.');
+            if ($bookingStatus === 'completed') {
+                $verifiedPaid = round((float) $b->payments()->where('status', 'verified')->sum('amount'), 2);
+                if (abs($verifiedPaid - round((float) $b->final_price, 2)) > 0.01) {
+                    abort(422, 'Booking cannot be completed because verified payments do not match the final booking price. Run financial reconciliation first.');
+                }
+                if ($b->installmentPlans()->where('status', 'active')->whereHas('installments', function ($query) {
+                    $query->where('remaining_amount', '>', 0);
+                })->exists()) {
+                    abort(422, 'Booking cannot be completed while an active installment plan has an outstanding balance.');
+                }
+            }
             if ($bookingStatus === 'cancelled' && (float) $b->paid_amount > 0) abort(422, 'A booking with payments cannot be cancelled. Reverse its payments first.');
+            if ($bookingStatus === 'cancelled' && $b->payments()->where('status', 'verified')->exists()) abort(422, 'A booking with verified payment records cannot be cancelled. Reverse its payments first.');
             if ($bookingStatus === 'cancelled') {
                 $commissions = Commission::where('booking_id', $b->id)->lockForUpdate()->get();
                 if ($commissions->where('status', 'paid')->isNotEmpty()) {
