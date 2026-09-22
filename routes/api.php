@@ -28,9 +28,11 @@ use App\Http\Controllers\API\SalesReportController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\BookingDocumentController;
 use App\Http\Controllers\API\CompanySettingController;
+use App\Http\Controllers\API\ProfileController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
+    Route::get('profile', [ProfileController::class, 'show']); Route::put('profile', [ProfileController::class, 'update']); Route::put('profile/password', [ProfileController::class, 'password']); Route::post('profile/photo', [ProfileController::class, 'photo']);
     Route::prefix('auth')->group(function () { Route::get('/me', [AuthController::class, 'me']); Route::post('/logout', [AuthController::class, 'logout']); });
     Route::get('sales-agents', [UserController::class, 'salesAgents'])->middleware('permission:sales.view');
     Route::get('users/roles', [UserController::class, 'roles'])->middleware('permission:users.view');
