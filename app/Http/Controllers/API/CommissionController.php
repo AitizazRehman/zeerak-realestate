@@ -11,6 +11,17 @@ use Illuminate\Support\Facades\DB;
 
 class CommissionController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function scopeBranch($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $query->whereHas('booking.property.project', function ($q) {
+                $q->where('branch_id', auth()->user()->branch_id);
+            });
+        }
+        return $query;
+    }
     public function index(Request $r)
     {
         $q = $this->scopeBranch(Commission::with(['booking.customer','booking.property','agent:id,name']));
@@ -44,6 +55,11 @@ class CommissionController extends Controller
         $d = $r->validate(['status'=>'required|in:pending,approved,paid,cancelled','notes'=>'nullable|string']);
         $allowed = ['pending'=>['pending','approved','cancelled'], 'approved'=>['approved','paid','cancelled'], 'paid'=>['paid'], 'cancelled'=>['cancelled']];
         if (!in_array($d['status'], $allowed[$commission->status] ?? [], true)) abort(422, 'Invalid commission status transition.');
+        if (in_array($d['status'], ['approved','paid'], true)) {
+            $booking = Booking::with('property.project')->findOrFail($commission->booking_id);
+            $this->ensureBranchAccess($booking->property->project->branch_id);
+            if ($booking->status === 'cancelled') abort(422, 'Commission cannot be approved or paid for a cancelled booking.');
+        }
         if ($d['status']==='approved') $d['approved_date'] = $commission->approved_date ?: now()->toDateString();
         if ($d['status']==='paid') $d['paid_date'] = $commission->paid_date ?: now()->toDateString();
         $commission->update($d);
