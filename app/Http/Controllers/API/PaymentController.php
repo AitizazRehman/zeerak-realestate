@@ -49,7 +49,7 @@ class PaymentController extends Controller
             'installment_id'=>'nullable|exists:installments,id',
             'customer_id'=>'required|exists:customers,id',
             'amount'=>'required|numeric|min:0.01',
-            'payment_date'=>'required|date',
+            'payment_date'=>'required|date|before_or_equal:today',
             'payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
             'reference_number'=>'nullable|string|max:100',
             'bank_name'=>'nullable|string|max:100',
@@ -69,6 +69,9 @@ class PaymentController extends Controller
 
             $amount = round((float)$d['amount'],2);
             if ($amount > round((float)$b->remaining_amount,2)) abort(422,'Payment exceeds booking remaining amount.');
+            if (\Carbon\Carbon::parse($d['payment_date'])->startOfDay()->lt(\Carbon\Carbon::parse($b->booking_date)->startOfDay())) {
+                abort(422,'Payment date cannot be before the booking date.');
+            }
 
             $installment = null;
             if (!empty($d['installment_id'])) {
@@ -83,6 +86,16 @@ class PaymentController extends Controller
                 if (round((float)$installment->paid_amount,2) !== $installmentVerifiedPaid) abort(409,'Installment payment totals are inconsistent. Please reconcile the installment before recording another payment.');
                 if ($installment->status === 'paid') abort(422,'This installment is already fully paid.');
                 if ($amount > round((float)$installment->remaining_amount,2)) abort(422,'Payment exceeds installment remaining amount.');
+            } else {
+                $allocatedBalance = round((float) Installment::where('booking_id',$b->id)
+                    ->whereHas('plan', function ($query) {
+                        $query->where('status','active');
+                    })
+                    ->sum('remaining_amount'),2);
+                $unallocatedBalance = max(0,round((float)$b->remaining_amount-$allocatedBalance,2));
+                if ($amount > $unallocatedBalance) {
+                    abort(422,'This amount is reserved by active installment plans. Record the payment against an installment or reduce/cancel the unused plan first.');
+                }
             }
 
             if (!empty($d['reference_number']) && Payment::where('booking_id',$b->id)->where('reference_number',$d['reference_number'])->where('status','verified')->exists()) abort(422,'This payment reference has already been used for this booking.');
@@ -162,14 +175,26 @@ class PaymentController extends Controller
 
                 $plan=InstallmentPlan::lockForUpdate()->findOrFail($i->installment_plan_id);
                 if($plan->status==='completed'){
+                    $planBefore=$plan->toArray();
                     $plan->update(['status'=>'active']);
+                    FinancialAudit::create([
+                        'entity_type'=>'installment_plan','entity_id'=>$plan->id,'action'=>'status_changed',
+                        'user_id'=>$r->user()->id,'before_data'=>$planBefore,'after_data'=>$plan->fresh()->toArray(),
+                        'reason'=>'Reopened automatically after payment reversal '.$p->receipt_number
+                    ]);
                 }
             }
 
             $p->update(['status'=>'reversed','reversed_at'=>now(),'reversed_by'=>$r->user()->id,'reversal_reason'=>$data['reason']]);
 
             if($b->status==='completed'&&$b->remaining_amount>0){
+                $bookingBefore=$b->toArray();
                 $b->update(['status'=>'confirmed']);
+                FinancialAudit::create([
+                    'entity_type'=>'booking','entity_id'=>$b->id,'action'=>'status_changed',
+                    'user_id'=>$r->user()->id,'before_data'=>$bookingBefore,'after_data'=>$b->fresh()->toArray(),
+                    'reason'=>'Reopened automatically after payment reversal '.$p->receipt_number
+                ]);
                 $property=Property::lockForUpdate()->findOrFail($b->property_id);
                 $old=$property->status;
                 if($old==='sold'){
@@ -202,7 +227,13 @@ class PaymentController extends Controller
             $plan=InstallmentPlan::lockForUpdate()->findOrFail($installment->installment_plan_id);
             if($plan->status!=='active') abort(422,'Payments can only be recorded against an active installment plan.');
             if(!$plan->installments()->where('remaining_amount','>',0)->exists()){
+                $planBefore=$plan->toArray();
                 $plan->update(['status'=>'completed']);
+                FinancialAudit::create([
+                    'entity_type'=>'installment_plan','entity_id'=>$plan->id,'action'=>'status_changed',
+                    'user_id'=>auth()->id(),'before_data'=>$planBefore,'after_data'=>$plan->fresh()->toArray(),
+                    'reason'=>'Completed automatically after final installment payment'
+                ]);
             }
         }
 
@@ -219,8 +250,14 @@ class PaymentController extends Controller
 
             $property=Property::lockForUpdate()->findOrFail($b->property_id);
             $old=$property->status;
+            $bookingBefore=$b->toArray();
             $property->update(['status'=>'sold']);
             $b->update(['status'=>'completed']);
+            FinancialAudit::create([
+                'entity_type'=>'booking','entity_id'=>$b->id,'action'=>'status_changed',
+                'user_id'=>auth()->id(),'before_data'=>$bookingBefore,'after_data'=>$b->fresh()->toArray(),
+                'reason'=>'Completed automatically after full verified payment'
+            ]);
             if($old!=='sold')PropertyStatusHistory::create(['property_id'=>$property->id,'old_status'=>$old,'new_status'=>'sold','changed_by'=>auth()->id(),'notes'=>'Booking '.$b->booking_number.' fully paid.']);
         }
     }
