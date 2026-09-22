@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Property;
 use App\Models\PropertyImage;
 use Illuminate\Http\Request;
@@ -10,10 +11,18 @@ use Illuminate\Support\Facades\Storage;
 
 class PropertyImageController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function checkProperty(Property $property)
+    {
+        $property->loadMissing('project');
+        $this->ensureBranchAccess($property->project->branch_id);
+    }
     public function store(
         Request $request,
         Property $property
     ) {
+        $this->checkProperty($property);
         $request->validate([
             'images' => [
                 'required',
@@ -51,6 +60,8 @@ class PropertyImageController extends Controller
 
     public function destroy(PropertyImage $image)
     {
+        $image->loadMissing('property.project');
+        $this->checkProperty($image->property);
         if ($image->file_path) {
             Storage::disk('public')
                 ->delete($image->file_path);
@@ -64,7 +75,9 @@ class PropertyImageController extends Controller
     }
     public function primary(PropertyImage $image)
     {
+        $image->loadMissing('property.project');
         $property = $image->property;
+        $this->checkProperty($property);
 
         $property->images()->update([
             'is_primary' => false
