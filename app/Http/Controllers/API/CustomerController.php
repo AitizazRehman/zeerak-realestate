@@ -22,8 +22,19 @@ class CustomerController extends Controller
     {
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
-            $query->whereHas('bookings.property.project', function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId);
+            $query->where(function ($customerQuery) use ($branchId) {
+                $customerQuery->whereHas('bookings.property.project', function ($q) use ($branchId) {
+                    $q->where('branch_id', $branchId);
+                })->orWhereHas('leads', function ($lead) use ($branchId) {
+                    $lead->whereHas('project', function ($project) use ($branchId) {
+                        $project->where('branch_id', $branchId);
+                    })->orWhere(function ($fallback) use ($branchId) {
+                        $fallback->whereNull('project_id')
+                            ->whereHas('assignee', function ($user) use ($branchId) {
+                                $user->where('branch_id', $branchId);
+                            });
+                    });
+                });
             });
         }
         return $query;
