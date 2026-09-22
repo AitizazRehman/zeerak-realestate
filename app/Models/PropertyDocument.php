@@ -16,10 +16,6 @@ class PropertyDocument extends Model
         'uploaded_by',
     ];
 
-    protected $appends = [
-        'url',
-    ];
-
     public function property()
     {
         return $this->belongsTo(Property::class);
@@ -30,12 +26,4 @@ class PropertyDocument extends Model
         return $this->belongsTo(User::class, 'uploaded_by');
     }
 
-    public function getUrlAttribute()
-    {
-        if (!$this->file_path) {
-            return null;
-        }
-
-        return asset('storage/' . $this->file_path);
-    }
 }
