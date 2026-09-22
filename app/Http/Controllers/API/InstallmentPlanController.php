@@ -108,6 +108,7 @@ class InstallmentPlanController extends Controller
             FinancialAudit::create([
                 'entity_type'=>'installment_plan',
                 'entity_id'=>$plan->id,
+                'branch_id'=>$booking->property->project->branch_id,
                 'action'=>'created',
                 'user_id'=>auth()->id(),
                 'before_data'=>null,
@@ -174,7 +175,8 @@ class InstallmentPlanController extends Controller
             if ($before != $after) {
                 FinancialAudit::create([
                     'entity_type'=>'installment_plan',
-                    'entity_id'=>$plan->id,
+                'entity_id'=>$plan->id,
+                'branch_id'=>$booking->property->project->branch_id,
                     'action'=>$before['status'] !== $after['status'] ? 'status_changed' : 'updated',
                     'user_id'=>auth()->id(),
                     'before_data'=>$before,
@@ -207,6 +209,7 @@ class InstallmentPlanController extends Controller
             FinancialAudit::create([
                 'entity_type'=>'installment_plan',
                 'entity_id'=>$plan->id,
+                'branch_id'=>$booking->property->project->branch_id,
                 'action'=>'deleted',
                 'user_id'=>auth()->id(),
                 'before_data'=>$before,
