@@ -32,7 +32,7 @@ class BookingDocumentController extends Controller
             'notes'=>['nullable','string','max:1000'],
         ]);
         $file=$request->file('document');
-        $path=$file->store('bookings/'.$booking->id.'/documents');
+        $path=$file->store('bookings/'.$booking->id.'/documents', 'local');
         $document=$booking->documents()->create([
             'document_type'=>$request->document_type,
             'name'=>$file->getClientOriginalName(),
