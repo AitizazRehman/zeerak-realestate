@@ -40,9 +40,10 @@ class LeadController extends Controller
         }
 
         if (!empty($data['assigned_to'])) {
-            $user = User::findOrFail($data['assigned_to']);
+            $user = User::where('is_active', true)->findOrFail($data['assigned_to']);
+            if (!$user->hasRole('Sales Agent')) abort(422, 'Leads can only be assigned to an active Sales Agent.');
             if (!$this->canAccessAllBranches()) $this->ensureBranchAccess($user->branch_id);
-            if (!empty($data['project_id']) && $user->branch_id && (int)$user->branch_id !== (int)$project->branch_id) {
+            if (!empty($data['project_id']) && (int)$user->branch_id !== (int)$project->branch_id) {
                 abort(422, 'Assigned user belongs to a different branch than the selected project.');
             }
         }
