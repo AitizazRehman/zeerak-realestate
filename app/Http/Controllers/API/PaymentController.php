@@ -62,7 +62,7 @@ class PaymentController extends Controller
             $this->ensureBranchAccess($b->property->project->branch_id);
 
             if ($b->customer_id != $d['customer_id']) abort(422,'Customer does not belong to this booking.');
-            if ($b->status === 'cancelled') abort(422,'Cancelled bookings cannot receive payments.');
+            if (in_array($b->status, ['cancelled','completed'], true)) abort(422,'This booking cannot receive additional payments.');
 
             $amount = round((float)$d['amount'],2);
             if ($amount > round((float)$b->remaining_amount,2)) abort(422,'Payment exceeds booking remaining amount.');
@@ -75,8 +75,15 @@ class PaymentController extends Controller
                 if ($amount > round((float)$installment->remaining_amount,2)) abort(422,'Payment exceeds installment remaining amount.');
             }
 
+            if (!empty($d['reference_number']) && Payment::where('booking_id',$b->id)->where('reference_number',$d['reference_number'])->where('status','verified')->exists()) abort(422,'This payment reference has already been used for this booking.');
+            if (!empty($d['cheque_number']) && Payment::where('cheque_number',$d['cheque_number'])->where('status','verified')->exists()) abort(422,'This cheque number has already been used for a verified payment.');
+
+            do {
+                $receiptNumber='REC-'.now()->format('Ym').'-'.strtoupper(Str::random(10));
+            } while (Payment::withTrashed()->where('receipt_number',$receiptNumber)->exists());
+
             $payment = Payment::create(array_merge($d,[
-                'receipt_number'=>'REC-'.now()->format('Ym').'-'.strtoupper(Str::random(7)),
+                'receipt_number'=>$receiptNumber,
                 'received_by'=>$r->user()->id,
                 'status'=>'verified'
             ]));
@@ -123,6 +130,8 @@ class PaymentController extends Controller
             if($p->status!=='verified')abort(422,'Only verified payments can be reversed.');
             $before=$p->toArray();
             $amount=round((float)$p->amount,2);
+            $verifiedTotal=(float)Payment::where('booking_id',$b->id)->where('status','verified')->lockForUpdate()->sum('amount');
+            if(round($verifiedTotal,2) < $amount)abort(422,'Payment reversal would make booking balance invalid.');
             if((float)$b->paid_amount<$amount)abort(422,'Payment reversal would make booking balance invalid.');
 
             $b->paid_amount=max(0,round((float)$b->paid_amount-$amount,2));
