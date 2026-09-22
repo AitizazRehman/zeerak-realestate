@@ -52,9 +52,10 @@ class SiteVisitController extends Controller
             $branchId=$branchId ?: $leadBranch;
         }
         if(!empty($data['assigned_to'])){
-            $user=User::findOrFail($data['assigned_to']);
+            $user=User::where('is_active', true)->findOrFail($data['assigned_to']);
+            if(!$user->hasRole('Sales Agent')) abort(422,'Site visits can only be assigned to an active Sales Agent.');
             if(!$this->canAccessAllBranches()) $this->ensureBranchAccess($user->branch_id);
-            if($branchId && $user->branch_id && (int)$branchId !== (int)$user->branch_id) abort(422,'Assigned user belongs to a different branch.');
+            if($branchId && (int)$branchId !== (int)$user->branch_id) abort(422,'Assigned user belongs to a different branch.');
         }
         if(!$this->canAccessAllBranches() && empty($data['property_id']) && empty($data['lead_id']) && empty($data['assigned_to'])){
             $data['assigned_to']=auth()->id();
