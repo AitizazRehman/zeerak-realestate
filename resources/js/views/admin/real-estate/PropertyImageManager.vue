@@ -10,6 +10,7 @@
       <v-spacer />
 
       <v-btn
+        v-if="$can('properties.create')"
         small
         color="#165134"
         dark
@@ -25,6 +26,7 @@
     <v-card-text>
 
       <v-file-input
+        v-if="$can('properties.create')"
         ref="fileInput"
         v-model="files"
         multiple
@@ -76,7 +78,7 @@
               <v-spacer />
 
               <v-btn
-                v-if="!image.is_primary"
+                v-if="$can('properties.edit') && !image.is_primary"
                 icon
                 small
                 title="Set primary"
@@ -88,6 +90,7 @@
               </v-btn>
 
               <v-btn
+                v-if="$can('properties.delete')"
                 icon
                 small
                 color="error"
