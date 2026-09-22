@@ -10,6 +10,7 @@ use App\Models\Property;
 use App\Models\Project;
 use App\Models\ProjectBlock;
 use App\Models\PropertyStatusHistory;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -115,6 +116,14 @@ class PropertyController extends Controller
         $blockId = array_key_exists('block_id', $data) ? $data['block_id'] : $currentBlockId;
         if ($projectId) {
             $this->applyBranchScope(Project::query())->findOrFail($projectId);
+        }
+
+        if (!empty($data['assigned_agent_id'])) {
+            $agent = User::role('Sales Agent')->where('is_active', true)->findOrFail($data['assigned_agent_id']);
+            if ($projectId) {
+                $project = Project::findOrFail($projectId);
+                if ((int) $agent->branch_id !== (int) $project->branch_id) abort(422, 'Assigned sales agent must belong to the property branch.');
+            }
         }
 
         if ($blockId) {
