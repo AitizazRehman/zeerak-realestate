@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Customer;
+use App\Models\Expense;
 use App\Models\Installment;
 use App\Models\Lead;
 use App\Models\Payment;
@@ -27,6 +28,9 @@ class SalesDashboardController extends Controller
         $projectPerformance = Property::query()->select('properties.project_id', 'projects.name as project_name', DB::raw('COUNT(bookings.id) as bookings'), DB::raw('COALESCE(SUM(bookings.final_price),0) as sales_value'), DB::raw('COALESCE(SUM(bookings.paid_amount),0) as collected'))->join('projects', 'projects.id', '=', 'properties.project_id')->leftJoin('bookings', function ($join) use ($from, $to) { $join->on('bookings.property_id', '=', 'properties.id')->whereIn('bookings.status', ['confirmed', 'completed'])->whereBetween('bookings.booking_date', [$from->toDateString(), $to->toDateString()]); })->groupBy('properties.project_id', 'projects.name')->orderByDesc('sales_value')->limit(10)->get();
         $overdue = Installment::whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', now()->toDateString())->where('remaining_amount', '>', 0);
         $receivables = Booking::whereNotIn('status', ['cancelled']);
+        $expenses = Expense::whereBetween('expense_date', [$from->toDateString(), $to->toDateString()]);
+        $recentBookings = Booking::with(['customer:id,name','property:id,property_number'])->whereIn('status',['confirmed','completed'])->orderByDesc('booking_date')->limit(5)->get();
+        $recentPayments = Payment::with(['customer:id,name','booking:id,booking_number'])->where('status','verified')->orderByDesc('payment_date')->limit(5)->get();
         return response()->json([
             'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'metrics' => [
@@ -34,7 +38,9 @@ class SalesDashboardController extends Controller
                 'scheduled_visits' => SiteVisit::where('status', 'scheduled')->where('visit_at', '>=', now())->count(),
                 'available_properties' => Property::where('status', 'available')->count(), 'reserved_properties' => Property::where('status', 'reserved')->count(), 'booked_properties' => Property::where('status', 'booked')->count(), 'sold_properties' => Property::where('status', 'sold')->count(),
                 'sales_value' => (float) $sales->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->sum('final_price'), 'collections' => (float) $payments->sum('amount'), 'receivables' => (float) $receivables->sum('remaining_amount'), 'overdue_count' => (int) $overdue->count(), 'overdue_amount' => (float) $overdue->sum('remaining_amount'),
+                'expenses' => (float) $expenses->sum('amount'), 'net_cash_flow' => (float) $payments->sum('amount') - (float) $expenses->sum('amount'),
             ], 'monthly_collections' => $monthlyCollections, 'agent_performance' => $agentPerformance, 'project_performance' => $projectPerformance,
+            'recent_bookings' => $recentBookings, 'recent_payments' => $recentPayments,
         ]);
     }
 
