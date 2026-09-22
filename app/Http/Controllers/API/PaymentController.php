@@ -74,6 +74,11 @@ class PaymentController extends Controller
             if (!empty($d['installment_id'])) {
                 $installment = Installment::lockForUpdate()->findOrFail($d['installment_id']);
                 if ($installment->booking_id != $b->id) abort(422,'Installment does not belong to this booking.');
+                $plan = InstallmentPlan::lockForUpdate()->findOrFail($installment->installment_plan_id);
+                if ($plan->booking_id != $b->id) abort(422,'Installment plan does not belong to this booking.');
+                if ($plan->status === 'cancelled') abort(422,'Payments cannot be recorded against a cancelled installment plan.');
+                if ($plan->status === 'completed') abort(422,'Payments cannot be recorded against a completed installment plan.');
+                if ($plan->status !== 'active') abort(422,'Payments can only be recorded against an active installment plan.');
                 $installmentVerifiedPaid = round((float) Payment::where('installment_id',$installment->id)->where('status','verified')->sum('amount'),2);
                 if (round((float)$installment->paid_amount,2) !== $installmentVerifiedPaid) abort(409,'Installment payment totals are inconsistent. Please reconcile the installment before recording another payment.');
                 if ($installment->status === 'paid') abort(422,'This installment is already fully paid.');
@@ -195,7 +200,7 @@ class PaymentController extends Controller
             $installment->save();
 
             $plan=InstallmentPlan::lockForUpdate()->findOrFail($installment->installment_plan_id);
-            if($plan->status==='cancelled') abort(422,'Payments cannot be recorded against a cancelled installment plan.');
+            if($plan->status!=='active') abort(422,'Payments can only be recorded against an active installment plan.');
             if(!$plan->installments()->where('remaining_amount','>',0)->exists()){
                 $plan->update(['status'=>'completed']);
             }
