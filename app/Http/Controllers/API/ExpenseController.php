@@ -91,7 +91,7 @@ class ExpenseController extends Controller
         $expense = DB::transaction(function () use ($data) {
             $expense = Expense::create($data);
             FinancialAudit::create([
-                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'action'=>'created',
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id, 'action'=>'created',
                 'user_id'=>auth()->id(), 'after_data'=>$expense->fresh()->toArray()
             ]);
             return $expense;
@@ -120,7 +120,7 @@ class ExpenseController extends Controller
             $validated = $this->validateBranchRefs($data);
             $expense->update($validated);
             FinancialAudit::create([
-                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'action'=>'updated',
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id, 'action'=>'updated',
                 'user_id'=>auth()->id(), 'before_data'=>$before, 'after_data'=>$expense->fresh()->toArray()
             ]);
             return $expense;
@@ -134,7 +134,7 @@ class ExpenseController extends Controller
             $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
             $before = $expense->toArray();
             FinancialAudit::create([
-                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'action'=>'deleted',
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id, 'action'=>'deleted',
                 'user_id'=>auth()->id(), 'before_data'=>$before,
                 'reason'=>'Expense deleted by authorized user'
             ]);
