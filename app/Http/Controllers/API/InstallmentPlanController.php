@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\Installment;
 use App\Models\InstallmentPlan;
 use App\Models\Payment;
+use App\Models\FinancialAudit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -138,10 +139,32 @@ class InstallmentPlanController extends Controller
                 abort(422, 'All installments must be fully paid before completing the plan.');
             }
             if ($plan->status === 'completed' && $data['status'] !== 'completed') {
-                abort(422, 'A completed installment plan cannot be reopened.');
+                abort(422, 'A completed installment plan cannot be reopened manually. Reverse a payment to reopen it.');
+            }
+            if ($plan->status === 'cancelled' && $data['status'] !== 'cancelled') {
+                abort(422, 'A cancelled installment plan cannot be reactivated.');
             }
 
+            $booking = Booking::lockForUpdate()->findOrFail($plan->booking_id);
+            if ($data['status'] === 'active' && in_array($booking->status, ['cancelled', 'completed'], true)) {
+                abort(422, 'An installment plan cannot remain active for a closed booking.');
+            }
+
+            $before = $plan->toArray();
             $plan->update($data);
+            $after = $plan->fresh()->toArray();
+
+            if ($before != $after) {
+                FinancialAudit::create([
+                    'entity_type'=>'installment_plan',
+                    'entity_id'=>$plan->id,
+                    'action'=>$before['status'] !== $after['status'] ? 'status_changed' : 'updated',
+                    'user_id'=>auth()->id(),
+                    'before_data'=>$before,
+                    'after_data'=>$after,
+                    'reason'=>isset($data['notes']) ? $data['notes'] : null,
+                ]);
+            }
             return $plan;
         });
 
