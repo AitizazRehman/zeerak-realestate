@@ -47,7 +47,9 @@ class CommissionController extends Controller
             $d['status'] = 'pending';
             $commission = Commission::create($d);
             FinancialAudit::create([
-                'entity_type'=>'commission', 'entity_id'=>$commission->id, 'action'=>'created',
+                'entity_type'=>'commission',
+                'entity_id'=>$commission->id,
+                'branch_id'=>$booking->property->project->branch_id, 'action'=>'created',
                 'user_id'=>auth()->id(), 'after_data'=>$commission->fresh()->toArray()
             ]);
             return $commission;
@@ -77,6 +79,7 @@ class CommissionController extends Controller
             FinancialAudit::create([
                 'entity_type'=>'commission',
                 'entity_id'=>$commission->id,
+                'branch_id'=>$booking->property->project->branch_id,
                 'action'=>'payment_reversed',
                 'user_id'=>auth()->id(),
                 'before_data'=>$before,
@@ -122,7 +125,9 @@ class CommissionController extends Controller
             $commission->update($changes);
             $after = $commission->fresh()->toArray();
             FinancialAudit::create([
-                'entity_type'=>'commission', 'entity_id'=>$commission->id,
+                'entity_type'=>'commission',
+                'entity_id'=>$commission->id,
+                'branch_id'=>$booking->property->project->branch_id,
                 'action'=>$changes['status'] === $before['status'] ? 'updated' : 'status_changed',
                 'user_id'=>auth()->id(), 'before_data'=>$before, 'after_data'=>$after,
                 'reason'=>$changes['notes'] ?? null
