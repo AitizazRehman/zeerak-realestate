@@ -201,8 +201,17 @@ class BookingController extends Controller
             if ((float) $booking->paid_amount > 0 || $booking->payments()->where('status', 'verified')->exists()) {
                 abort(422, 'Bookings with payments cannot be deleted. Reverse the payments first.');
             }
-            if ($booking->installments()->whereIn('status', ['partial','paid'])->exists()) {
-                abort(422, 'Bookings with paid installments cannot be deleted.');
+            if ($booking->payments()->exists()) {
+                abort(422, 'Bookings with payment history cannot be deleted. Keep the booking for financial audit history.');
+            }
+            if ($booking->installmentPlans()->withTrashed()->exists() || $booking->installments()->exists()) {
+                abort(422, 'Bookings with installment plan history cannot be deleted. Cancel the booking through the booking workflow instead.');
+            }
+            if ($booking->commissions()->exists()) {
+                abort(422, 'Bookings with commission history cannot be deleted. Cancel the booking through the booking workflow instead.');
+            }
+            if ($booking->documents()->exists()) {
+                abort(422, 'Bookings with documents cannot be deleted. Remove the documents first or retain the booking as business history.');
             }
 
             $property = Property::lockForUpdate()->findOrFail($booking->property_id);
