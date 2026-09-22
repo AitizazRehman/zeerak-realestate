@@ -45,7 +45,7 @@ class ProjectBlockController extends Controller
 
         return response()->json(
             $query->latest()->paginate(
-                $request->get('per_page', 20)
+                min(max((int) $request->get('per_page', 20), 1), 100)
             )
         );
     }
@@ -104,6 +104,10 @@ class ProjectBlockController extends Controller
     {
         $block = $this->applyBranchScope(ProjectBlock::query())
             ->findOrFail($id);
+
+        if ($block->properties()->exists()) {
+            abort(422, 'Blocks containing properties cannot be deleted. Move or remove the properties first.');
+        }
 
         $block->delete();
 
