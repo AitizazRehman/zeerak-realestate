@@ -113,7 +113,7 @@ class PaymentController extends Controller
 
             $this->recalculateBooking($b,$installment,$amount,true);
             FinancialAudit::create([
-                'entity_type'=>'payment','entity_id'=>$payment->id,'action'=>'created',
+                'entity_type'=>'payment','entity_id'=>$payment->id,'branch_id'=>$b->property->project->branch_id,'action'=>'created',
                 'user_id'=>$r->user()->id,'after_data'=>$payment->fresh()->toArray()
             ]);
 
@@ -178,7 +178,7 @@ class PaymentController extends Controller
                     $planBefore=$plan->toArray();
                     $plan->update(['status'=>'active']);
                     FinancialAudit::create([
-                        'entity_type'=>'installment_plan','entity_id'=>$plan->id,'action'=>'status_changed',
+                        'entity_type'=>'installment_plan','entity_id'=>$plan->id,'branch_id'=>$b->property->project->branch_id,'action'=>'status_changed',
                         'user_id'=>$r->user()->id,'before_data'=>$planBefore,'after_data'=>$plan->fresh()->toArray(),
                         'reason'=>'Reopened automatically after payment reversal '.$p->receipt_number
                     ]);
@@ -191,7 +191,7 @@ class PaymentController extends Controller
                 $bookingBefore=$b->toArray();
                 $b->update(['status'=>'confirmed']);
                 FinancialAudit::create([
-                    'entity_type'=>'booking','entity_id'=>$b->id,'action'=>'status_changed',
+                    'entity_type'=>'booking','entity_id'=>$b->id,'branch_id'=>$b->property->project->branch_id,'action'=>'status_changed',
                     'user_id'=>$r->user()->id,'before_data'=>$bookingBefore,'after_data'=>$b->fresh()->toArray(),
                     'reason'=>'Reopened automatically after payment reversal '.$p->receipt_number
                 ]);
@@ -204,7 +204,7 @@ class PaymentController extends Controller
             }
 
             $after=$p->fresh()->toArray();
-            FinancialAudit::create(['entity_type'=>'payment','entity_id'=>$p->id,'action'=>'reversed','user_id'=>$r->user()->id,'before_data'=>$before,'after_data'=>$after,'reason'=>$data['reason']]);
+            FinancialAudit::create(['entity_type'=>'payment','entity_id'=>$p->id,'branch_id'=>$b->property->project->branch_id,'action'=>'reversed','user_id'=>$r->user()->id,'before_data'=>$before,'after_data'=>$after,'reason'=>$data['reason']]);
             return $p;
         });
 
@@ -230,7 +230,7 @@ class PaymentController extends Controller
                 $planBefore=$plan->toArray();
                 $plan->update(['status'=>'completed']);
                 FinancialAudit::create([
-                    'entity_type'=>'installment_plan','entity_id'=>$plan->id,'action'=>'status_changed',
+                    'entity_type'=>'installment_plan','entity_id'=>$plan->id,'branch_id'=>$b->property->project->branch_id,'action'=>'status_changed',
                     'user_id'=>auth()->id(),'before_data'=>$planBefore,'after_data'=>$plan->fresh()->toArray(),
                     'reason'=>'Completed automatically after final installment payment'
                 ]);
@@ -254,7 +254,7 @@ class PaymentController extends Controller
             $property->update(['status'=>'sold']);
             $b->update(['status'=>'completed']);
             FinancialAudit::create([
-                'entity_type'=>'booking','entity_id'=>$b->id,'action'=>'status_changed',
+                'entity_type'=>'booking','entity_id'=>$b->id,'branch_id'=>$b->property->project->branch_id,'action'=>'status_changed',
                 'user_id'=>auth()->id(),'before_data'=>$bookingBefore,'after_data'=>$b->fresh()->toArray(),
                 'reason'=>'Completed automatically after full verified payment'
             ]);
