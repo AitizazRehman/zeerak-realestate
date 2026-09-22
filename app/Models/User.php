@@ -16,6 +16,7 @@ class User extends Authenticatable
         'email',
         'password',
         'branch_id',
+        'is_active',
     ];
 
     protected $hidden = [
@@ -25,6 +26,7 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
     
     public function branch()
