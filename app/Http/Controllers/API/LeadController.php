@@ -49,7 +49,12 @@ class LeadController extends Controller
         }
 
         if (!$this->canAccessAllBranches() && empty($data['project_id']) && empty($data['assigned_to'])) {
-            $data['assigned_to'] = auth()->id();
+            $current = auth()->user();
+            if ($current && $current->is_active && $current->hasRole('Sales Agent')) {
+                $data['assigned_to'] = $current->id;
+            } else {
+                abort(422, 'Select an active Sales Agent or a project before creating this lead.');
+            }
         }
     }
     public function index(Request $request)
