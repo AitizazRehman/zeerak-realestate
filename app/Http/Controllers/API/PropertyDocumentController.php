@@ -28,7 +28,7 @@ class PropertyDocumentController extends Controller
         ]);
 
         $file=$request->file('document');
-        $path=$file->store('properties/'.$property->id.'/documents');
+        $path=$file->store('properties/'.$property->id.'/documents', 'local');
 
         $document=$property->documents()->create([
             'document_type'=>$request->document_type,
