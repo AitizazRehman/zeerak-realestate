@@ -67,7 +67,7 @@ class PropertyController extends Controller
             $query->where('is_published', $request->boolean('is_published'));
         }
 
-        $perPage = min((int) $request->get('per_page', 20), 100);
+        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
 
         return response()->json(
             $query->latest()->paginate($perPage)
@@ -101,7 +101,7 @@ class PropertyController extends Controller
                 },
             ])
             ->latest()
-            ->paginate($request->get('per_page', 24));
+            ->paginate(min(max((int) $request->get('per_page', 24), 1), 100));
 
         return response()->json([
             'summary' => $summary,
@@ -109,15 +109,16 @@ class PropertyController extends Controller
         ]);
     }
 
-    private function validateRelations(array $data, $currentProjectId = null)
+    private function validateRelations(array $data, $currentProjectId = null, $currentBlockId = null)
     {
-        $projectId = $data['project_id'] ?? $currentProjectId;
+        $projectId = array_key_exists('project_id', $data) ? $data['project_id'] : $currentProjectId;
+        $blockId = array_key_exists('block_id', $data) ? $data['block_id'] : $currentBlockId;
         if ($projectId) {
             $this->applyBranchScope(Project::query())->findOrFail($projectId);
         }
 
-        if (!empty($data['block_id'])) {
-            $block = ProjectBlock::findOrFail($data['block_id']);
+        if ($blockId) {
+            $block = ProjectBlock::findOrFail($blockId);
             $this->applyBranchScope(Project::query())->findOrFail($block->project_id);
             if ($projectId && (int) $block->project_id !== (int) $projectId) {
                 abort(422, 'Selected block does not belong to the selected project.');
@@ -185,7 +186,7 @@ class PropertyController extends Controller
     ) {
         return DB::transaction(function () use ($request, $property) {
             $property = $this->applyBranchScope(Property::query())->lockForUpdate()->findOrFail($property->id);
-            $data = $this->validateRelations($request->validated(), $property->project_id);
+            $data = $this->validateRelations($request->validated(), $property->project_id, $property->block_id);
 
             $oldStatus = $property->status;
             $property->update($data);
