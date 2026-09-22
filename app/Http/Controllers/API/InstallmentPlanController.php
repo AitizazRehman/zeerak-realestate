@@ -38,9 +38,9 @@ class InstallmentPlanController extends Controller
             'booking_id' => 'required|exists:bookings,id',
             'plan_name' => 'required|string|max:100',
             'frequency' => 'required|in:monthly,quarterly,half_yearly,yearly,custom',
-            'total_amount' => 'required|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0.01',
             'down_payment' => 'nullable|numeric|min:0',
-            'installment_amount' => 'required|numeric|min:0',
+            'installment_amount' => 'required|numeric|min:0.01',
             'number_of_installments' => 'required|integer|min:1',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
@@ -74,6 +74,14 @@ class InstallmentPlanController extends Controller
             if (round($installmentAmount * $count, 2) != round($total, 2)) {
                 abort(422, 'All installments must equal the plan total amount.');
             }
+            if ($data['frequency'] === 'custom' && $count > 1) {
+                abort(422, 'Custom frequency requires an explicit installment schedule and is not supported by automatic plan generation.');
+            }
+
+            $startDate = \Carbon\Carbon::parse($data['start_date'])->startOfDay();
+            if ($startDate->lt(\Carbon\Carbon::parse($booking->booking_date)->startOfDay())) {
+                abort(422, 'Installment plan start date cannot be before the booking date.');
+            }
             if (($data['status'] ?? 'active') !== 'active') {
                 abort(422, 'New installment plans must start with active status.');
             }
@@ -83,11 +91,11 @@ class InstallmentPlanController extends Controller
                 'installment_amount' => $installmentAmount,
             ]));
 
-            $date = \Carbon\Carbon::parse($data['start_date']);
-            $months = ['monthly' => 1, 'quarterly' => 3, 'half_yearly' => 6, 'yearly' => 12, 'custom' => 1][$data['frequency']];
+            $date = $startDate;
+            $months = ['monthly' => 1, 'quarterly' => 3, 'half_yearly' => 6, 'yearly' => 12][$data['frequency']];
 
             for ($i = 1; $i <= $count; $i++) {
-                $due = $date->copy()->addMonths($months * ($i - 1));
+                $due = $date->copy()->addMonthsNoOverflow($months * ($i - 1));
                 Installment::create([
                     'installment_plan_id' => $plan->id,
                     'booking_id' => $booking->id,
