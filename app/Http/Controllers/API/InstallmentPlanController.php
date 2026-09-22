@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Booking;
 use App\Models\Installment;
 use App\Models\InstallmentPlan;
@@ -11,9 +12,20 @@ use Illuminate\Support\Facades\DB;
 
 class InstallmentPlanController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function scopeBranch($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $query->whereHas('booking.property.project', function ($q) {
+                $q->where('branch_id', auth()->user()->branch_id);
+            });
+        }
+        return $query;
+    }
     public function index(Request $request)
     {
-        $query = InstallmentPlan::with(['booking.customer', 'booking.property']);
+        $query = $this->scopeBranch(InstallmentPlan::with(['booking.customer', 'booking.property']));
         if ($request->filled('booking_id')) $query->where('booking_id', $request->booking_id);
         if ($request->filled('status')) $query->where('status', $request->status);
         return response()->json($query->latest()->paginate(min((int) $request->get('per_page', 15), 100)));
@@ -21,6 +33,7 @@ class InstallmentPlanController extends Controller
 
     public function store(Request $request)
     {
+        $this->scopeBranch(InstallmentPlan::query())->findOrFail($installmentPlan->id);
         $data = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
             'plan_name' => 'required|string|max:100',
@@ -36,7 +49,9 @@ class InstallmentPlanController extends Controller
         ]);
 
         $plan = DB::transaction(function () use ($data) {
-            $booking = Booking::lockForUpdate()->findOrFail($data['booking_id']);
+            $booking = Booking::with('property.project')->lockForUpdate()->findOrFail($data['booking_id']);
+            $this->ensureBranchAccess($booking->property->project->branch_id);
+            if (in_array($booking->status, ['cancelled', 'completed'], true)) abort(422, 'Installment plans can only be created for active bookings.');
             $total = (float) $data['total_amount'];
             $downPayment = (float) ($data['down_payment'] ?? 0);
             $installmentAmount = (float) $data['installment_amount'];
@@ -80,6 +95,7 @@ class InstallmentPlanController extends Controller
 
     public function show(InstallmentPlan $installmentPlan)
     {
+        $this->scopeBranch(InstallmentPlan::query())->findOrFail($installmentPlan->id);
         return response()->json($installmentPlan->load(['booking.customer', 'booking.property', 'installments.payments']));
     }
 
@@ -92,6 +108,7 @@ class InstallmentPlanController extends Controller
 
     public function destroy(InstallmentPlan $installmentPlan)
     {
+        $this->scopeBranch(InstallmentPlan::query())->findOrFail($installmentPlan->id);
         if ($installmentPlan->installments()->whereIn('status', ['paid', 'partial'])->exists()) abort(422, 'Plans with payments cannot be deleted.');
         $installmentPlan->delete();
         return response()->json(['message' => 'Installment plan deleted.']);
