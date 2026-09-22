@@ -27,6 +27,13 @@ class ReconcileFinancialBalances extends Command
                     ->sum('amount'), 2);
                 $expectedRemaining = max(0, round((float) $booking->final_price - $verified, 2));
 
+                if ($verified > round((float) $booking->final_price, 2) + 0.01) {
+                    $issues++;
+                    $this->error('Booking '.$booking->booking_number.' (#'.$booking->id.') is OVERPAID: verified '
+                        .number_format($verified, 2, '.', '').' exceeds final price '
+                        .number_format((float) $booking->final_price, 2, '.', '').'. Manual review required.');
+                }
+
                 if (round((float) $booking->paid_amount, 2) !== $verified ||
                     round((float) $booking->remaining_amount, 2) !== $expectedRemaining) {
                     $issues++;
@@ -51,6 +58,17 @@ class ReconcileFinancialBalances extends Command
                     ->sum('amount'), 2);
                 $expectedRemaining = max(0, round((float) $installment->amount - $verified, 2));
                 $expectedStatus = $verified <= 0 ? 'pending' : ($expectedRemaining <= 0 ? 'paid' : 'partial');
+                $verifiedPaidDate = Payment::where('installment_id', $installment->id)
+                    ->where('status', 'verified')
+                    ->orderByDesc('payment_date')
+                    ->value('payment_date');
+
+                if ($verified > round((float) $installment->amount, 2) + 0.01) {
+                    $issues++;
+                    $this->error('Installment #'.$installment->id.' is OVERPAID: verified '
+                        .number_format($verified, 2, '.', '').' exceeds installment amount '
+                        .number_format((float) $installment->amount, 2, '.', '').'. Manual review required.');
+                }
 
                 if (round((float) $installment->paid_amount, 2) !== $verified ||
                     round((float) $installment->remaining_amount, 2) !== $expectedRemaining ||
@@ -66,7 +84,7 @@ class ReconcileFinancialBalances extends Command
                             'paid_amount'=>$verified,
                             'remaining_amount'=>$expectedRemaining,
                             'status'=>$expectedStatus,
-                            'paid_date'=>$expectedStatus === 'paid' ? ($installment->paid_date ?: now()->toDateString()) : null,
+                            'paid_date'=>$expectedStatus === 'paid' ? ($verifiedPaidDate ?: $installment->paid_date) : null,
                         ])->save();
                         $fixed++;
                     }
