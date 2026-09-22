@@ -11,6 +11,7 @@ import NotFound from '../views/errors/NotFound.vue'
 import Forbidden from '../views/errors/Forbidden.vue'
 import Projects from '../views/admin/real-estate/Projects.vue'
 import ProjectForm from '../views/admin/real-estate/ProjectForm.vue'
+import ProjectDetails from '../views/admin/real-estate/ProjectDetails.vue'
 import Blocks from '../views/admin/real-estate/Blocks.vue'
 import Properties from '../views/admin/real-estate/Properties.vue'
 import PropertyForm from '../views/admin/real-estate/PropertyForm.vue'
@@ -47,6 +48,7 @@ const routes = [
             { path: 'projects', name: 'projects', component: Projects, meta: { permission: 'projects.view' } },
             { path: 'projects/create', name: 'project-create', component: ProjectForm, meta: { permission: 'projects.create' } },
             { path: 'projects/:id/edit', name: 'project-edit', component: ProjectForm, meta: { permission: 'projects.edit' } },
+            { path: 'projects/:id', name: 'project-details', component: ProjectDetails, meta: { permission: 'projects.view' } },
             { path: 'blocks', name: 'blocks', component: Blocks, meta: { permission: 'projects.view' } },
             { path: 'properties', name: 'properties', component: Properties, meta: { permission: 'properties.view' } },
             { path: 'properties/create', name: 'property-create', component: PropertyForm, meta: { permission: 'properties.create' } },
