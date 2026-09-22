@@ -12,6 +12,54 @@ use Illuminate\Http\Request;
 
 class SiteVisitController extends Controller
 {
+    use ChecksBranchAccess;
+
+    private function scopeBranch($query)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId=auth()->user()->branch_id;
+            $query->where(function($q) use($branchId){
+                $q->whereHas('property.project',function($p) use($branchId){$p->where('branch_id',$branchId);})
+                  ->orWhere(function($fallback) use($branchId){
+                      $fallback->whereNull('property_id')->whereHas('lead',function($lead) use($branchId){
+                          $lead->whereHas('project',function($p) use($branchId){$p->where('branch_id',$branchId);})
+                               ->orWhere(function($l) use($branchId){
+                                   $l->whereNull('project_id')->whereHas('assignee',function($u) use($branchId){$u->where('branch_id',$branchId);});
+                               });
+                      });
+                  })
+                  ->orWhere(function($fallback) use($branchId){
+                      $fallback->whereNull('property_id')->whereNull('lead_id')
+                               ->whereHas('assignee',function($u) use($branchId){$u->where('branch_id',$branchId);});
+                  });
+            });
+        }
+        return $query;
+    }
+
+    private function validateBranchRefs(array &$data)
+    {
+        $branchId=null;
+        if(!empty($data['property_id'])){
+            $property=Property::with('project')->findOrFail($data['property_id']);
+            $this->ensureBranchAccess($property->project->branch_id);
+            $branchId=$property->project->branch_id;
+        }
+        if(!empty($data['lead_id'])){
+            $lead=$this->scopeBranch(Lead::with(['project','assignee']))->findOrFail($data['lead_id']);
+            $leadBranch=$lead->project ? $lead->project->branch_id : optional($lead->assignee)->branch_id;
+            if($branchId && $leadBranch && (int)$branchId !== (int)$leadBranch) abort(422,'Lead and property belong to different branches.');
+            $branchId=$branchId ?: $leadBranch;
+        }
+        if(!empty($data['assigned_to'])){
+            $user=User::findOrFail($data['assigned_to']);
+            if(!$this->canAccessAllBranches()) $this->ensureBranchAccess($user->branch_id);
+            if($branchId && $user->branch_id && (int)$branchId !== (int)$user->branch_id) abort(422,'Assigned user belongs to a different branch.');
+        }
+        if(!$this->canAccessAllBranches() && empty($data['property_id']) && empty($data['lead_id']) && empty($data['assigned_to'])){
+            $data['assigned_to']=auth()->id();
+        }
+    }
     public function index(Request $request){
         $q=$this->scopeBranch(SiteVisit::with(['customer','lead','property.project','property.block','assignee:id,name']));
         foreach(['customer_id','lead_id','property_id','assigned_to','status'] as $f) if($request->filled($f)) $q->where($f,$request->$f);
