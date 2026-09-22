@@ -36,6 +36,50 @@ class SalesDashboardController extends Controller
         }
         return $q;
     }
+    private function branchLeads($q)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $q->where(function ($x) use ($branchId) {
+                $x->whereHas('project', function ($project) use ($branchId) {
+                    $project->where('branch_id', $branchId);
+                })->orWhere(function ($fallback) use ($branchId) {
+                    $fallback->whereNull('project_id')->whereHas('assignedAgent', function ($agent) use ($branchId) {
+                        $agent->where('branch_id', $branchId);
+                    });
+                });
+            });
+        }
+        return $q;
+    }
+
+    private function branchSiteVisits($q)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $q->where(function ($x) use ($branchId) {
+                $x->whereHas('property.project', function ($project) use ($branchId) {
+                    $project->where('branch_id', $branchId);
+                })->orWhere(function ($viaLead) use ($branchId) {
+                    $viaLead->whereNull('property_id')->whereHas('lead.project', function ($project) use ($branchId) {
+                        $project->where('branch_id', $branchId);
+                    });
+                })->orWhere(function ($viaLeadAgent) use ($branchId) {
+                    $viaLeadAgent->whereNull('property_id')->whereHas('lead', function ($lead) use ($branchId) {
+                        $lead->whereNull('project_id')->whereHas('assignedAgent', function ($agent) use ($branchId) {
+                            $agent->where('branch_id', $branchId);
+                        });
+                    });
+                })->orWhere(function ($viaVisitAgent) use ($branchId) {
+                    $viaVisitAgent->whereNull('property_id')->whereNull('lead_id')->whereHas('assignedAgent', function ($agent) use ($branchId) {
+                        $agent->where('branch_id', $branchId);
+                    });
+                });
+            });
+        }
+        return $q;
+    }
+
     public function index(Request $request)
     {
         $from = $request->filled('from') ? Carbon::parse($request->from)->startOfDay() : now()->startOfMonth()->subMonths(5)->startOfMonth();
@@ -53,8 +97,8 @@ class SalesDashboardController extends Controller
         return response()->json([
             'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'metrics' => [
-                'customers' => $this->canAccessAllBranches() ? Customer::where('is_active', true)->count() : Customer::where('is_active',true)->whereHas('bookings.property.project',function($q){$q->where('branch_id',auth()->user()->branch_id);})->count(), 'active_leads' => $this->branch(Lead::query(),'project')->whereNotIn('status', ['converted', 'lost'])->count(),
-                'scheduled_visits' => $this->branch(SiteVisit::query(),'property.project')->where('status', 'scheduled')->where('visit_at', '>=', now())->count(),
+                'customers' => $this->canAccessAllBranches() ? Customer::where('is_active', true)->count() : Customer::where('is_active',true)->whereHas('bookings.property.project',function($q){$q->where('branch_id',auth()->user()->branch_id);})->count(), 'active_leads' => $this->branchLeads(Lead::query())->whereNotIn('status', ['converted', 'lost'])->count(),
+                'scheduled_visits' => $this->branchSiteVisits(SiteVisit::query())->where('status', 'scheduled')->where('visit_at', '>=', now())->count(),
                 'available_properties' => $this->branch(Property::query(),'project')->where('status', 'available')->count(), 'reserved_properties' => $this->branch(Property::query(),'project')->where('status', 'reserved')->count(), 'booked_properties' => $this->branch(Property::query(),'project')->where('status', 'booked')->count(), 'sold_properties' => $this->branch(Property::query(),'project')->where('status', 'sold')->count(),
                 'sales_value' => (float) (clone $sales)->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->sum('final_price'), 'collections' => (float) (clone $payments)->sum('amount'), 'receivables' => (float) (clone $receivables)->sum('remaining_amount'), 'overdue_count' => (int) (clone $overdue)->count(), 'overdue_amount' => (float) (clone $overdue)->sum('remaining_amount'),
                 'expenses' => (float) (clone $expenses)->sum('amount'), 'net_cash_flow' => (float) (clone $payments)->sum('amount') - (float) (clone $expenses)->sum('amount'),
