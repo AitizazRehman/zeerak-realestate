@@ -64,6 +64,9 @@ class PaymentController extends Controller
             if ($b->customer_id != $d['customer_id']) abort(422,'Customer does not belong to this booking.');
             if (in_array($b->status, ['cancelled','completed'], true)) abort(422,'This booking cannot receive additional payments.');
 
+            $verifiedPaid = round((float) Payment::where('booking_id',$b->id)->where('status','verified')->sum('amount'),2);
+            if (round((float)$b->paid_amount,2) !== $verifiedPaid) abort(409,'Booking payment totals are inconsistent. Please reconcile the booking before recording another payment.');
+
             $amount = round((float)$d['amount'],2);
             if ($amount > round((float)$b->remaining_amount,2)) abort(422,'Payment exceeds booking remaining amount.');
 
@@ -71,6 +74,8 @@ class PaymentController extends Controller
             if (!empty($d['installment_id'])) {
                 $installment = Installment::lockForUpdate()->findOrFail($d['installment_id']);
                 if ($installment->booking_id != $b->id) abort(422,'Installment does not belong to this booking.');
+                $installmentVerifiedPaid = round((float) Payment::where('installment_id',$installment->id)->where('status','verified')->sum('amount'),2);
+                if (round((float)$installment->paid_amount,2) !== $installmentVerifiedPaid) abort(409,'Installment payment totals are inconsistent. Please reconcile the installment before recording another payment.');
                 if ($installment->status === 'paid') abort(422,'This installment is already fully paid.');
                 if ($amount > round((float)$installment->remaining_amount,2)) abort(422,'Payment exceeds installment remaining amount.');
             }
@@ -130,9 +135,9 @@ class PaymentController extends Controller
             if($p->status!=='verified')abort(422,'Only verified payments can be reversed.');
             $before=$p->toArray();
             $amount=round((float)$p->amount,2);
-            $verifiedTotal=(float)Payment::where('booking_id',$b->id)->where('status','verified')->lockForUpdate()->sum('amount');
-            if(round($verifiedTotal,2) < $amount)abort(422,'Payment reversal would make booking balance invalid.');
-            if((float)$b->paid_amount<$amount)abort(422,'Payment reversal would make booking balance invalid.');
+            $verifiedTotal=round((float)Payment::where('booking_id',$b->id)->where('status','verified')->lockForUpdate()->sum('amount'),2);
+            if(round((float)$b->paid_amount,2) !== $verifiedTotal) abort(409,'Booking payment totals are inconsistent. Please reconcile the booking before reversing a payment.');
+            if($verifiedTotal < $amount)abort(422,'Payment reversal would make booking balance invalid.');
 
             $b->paid_amount=max(0,round((float)$b->paid_amount-$amount,2));
             $b->remaining_amount=max(0,round((float)$b->final_price-(float)$b->paid_amount,2));
@@ -141,6 +146,9 @@ class PaymentController extends Controller
             if($p->installment_id){
                 $i=Installment::lockForUpdate()->findOrFail($p->installment_id);
                 if($i->booking_id != $b->id) abort(422,'Installment does not belong to this booking.');
+                $installmentVerifiedTotal=round((float)Payment::where('installment_id',$i->id)->where('status','verified')->lockForUpdate()->sum('amount'),2);
+                if(round((float)$i->paid_amount,2) !== $installmentVerifiedTotal) abort(409,'Installment payment totals are inconsistent. Please reconcile the installment before reversing a payment.');
+                if($installmentVerifiedTotal < $amount) abort(422,'Payment reversal would make installment balance invalid.');
                 $i->paid_amount=max(0,round((float)$i->paid_amount-$amount,2));
                 $i->remaining_amount=max(0,round((float)$i->amount-(float)$i->paid_amount,2));
                 $i->status=$i->paid_amount<=0?'pending':($i->remaining_amount<=0?'paid':'partial');
