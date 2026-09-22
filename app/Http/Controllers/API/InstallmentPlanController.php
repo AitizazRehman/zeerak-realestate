@@ -56,20 +56,29 @@ class InstallmentPlanController extends Controller
             $installmentAmount = (float) $data['installment_amount'];
             $count = (int) $data['number_of_installments'];
 
-            $allocated = (float) InstallmentPlan::where('booking_id', $booking->id)
-                ->whereIn('status', ['active', 'completed'])
-                ->sum('total_amount');
-            $availableForPlans = max(0, (float) $booking->remaining_amount - $allocated);
+            // booking.remaining_amount already excludes verified payments. Only unpaid
+            // obligations in active plans should reserve that remaining balance.
+            $allocated = (float) Installment::where('booking_id', $booking->id)
+                ->whereHas('plan', function ($q) {
+                    $q->where('status', 'active');
+                })
+                ->sum('remaining_amount');
+            $availableForPlans = max(0, round((float) $booking->remaining_amount - $allocated, 2));
             if ($total > $availableForPlans) {
                 abort(422, 'Installment plan exceeds the unallocated booking balance. Available: '.number_format($availableForPlans, 2));
             }
-            if ($downPayment > $total) abort(422, 'Down payment cannot exceed plan total.');
-            if (round($downPayment + ($installmentAmount * $count), 2) != round($total, 2)) {
-                abort(422, 'Down payment plus all installments must equal the plan total amount.');
+            if ($downPayment > 0) {
+                abort(422, 'Down payment must be recorded as a booking payment before creating the installment plan. Create the plan for the remaining financed amount only.');
+            }
+            if (round($installmentAmount * $count, 2) != round($total, 2)) {
+                abort(422, 'All installments must equal the plan total amount.');
+            }
+            if (($data['status'] ?? 'active') !== 'active') {
+                abort(422, 'New installment plans must start with active status.');
             }
 
             $plan = InstallmentPlan::create(array_merge($data, [
-                'down_payment' => $downPayment,
+                'down_payment' => 0,
                 'installment_amount' => $installmentAmount,
             ]));
 
