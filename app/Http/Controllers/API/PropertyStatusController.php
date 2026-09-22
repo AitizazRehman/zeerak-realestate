@@ -61,6 +61,20 @@ class PropertyStatusController extends Controller
                 ]);
             }
 
+            $hasActiveBooking = $property->bookings()
+                ->whereNotIn('status', ['cancelled'])
+                ->exists();
+
+            if ($hasActiveBooking && in_array($validated['status'], [
+                'available', 'reserved', 'under_construction', 'rented', 'unavailable', 'cancelled'
+            ], true)) {
+                abort(422, 'Property status is controlled by its active booking. Cancel or complete the booking through the booking workflow first.');
+            }
+
+            if (in_array($validated['status'], ['booked', 'sold'], true) && !$hasActiveBooking) {
+                abort(422, 'Booked or sold status must be created through the booking/payment workflow.');
+            }
+
             $property->update([
                 'status' => $validated['status'],
             ]);
