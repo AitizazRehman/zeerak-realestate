@@ -39,10 +39,10 @@ class BranchController extends Controller
             });
         }
 
+        $perPage = min(max((int) $request->get('per_page', 25), 1), 100);
+
         return response()->json(
-            $query->orderBy('name')->paginate(
-                $request->get('per_page', 100)
-            )
+            $query->orderBy('name')->paginate($perPage)
         );
     }
 
@@ -52,8 +52,15 @@ class BranchController extends Controller
 
         return response()->json([
             'data' => Branch::with([
-                'users:id,name,email,branch_id',
-                'projects'
+                'users' => function ($query) {
+                    $query->select('id', 'name', 'email', 'branch_id')
+                        ->where('is_active', true)
+                        ->orderBy('name');
+                },
+                'projects' => function ($query) {
+                    $query->select('id', 'name', 'branch_id')
+                        ->orderBy('name');
+                }
             ])->findOrFail($id)
         ]);
     }
