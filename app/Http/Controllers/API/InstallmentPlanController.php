@@ -28,12 +28,11 @@ class InstallmentPlanController extends Controller
         $query = $this->scopeBranch(InstallmentPlan::with(['booking.customer', 'booking.property']));
         if ($request->filled('booking_id')) $query->where('booking_id', $request->booking_id);
         if ($request->filled('status')) $query->where('status', $request->status);
-        return response()->json($query->latest()->paginate(min((int) $request->get('per_page', 15), 100)));
+        return response()->json($query->latest()->paginate(min(max((int) $request->get('per_page', 15), 1), 100)));
     }
 
     public function store(Request $request)
     {
-        $this->scopeBranch(InstallmentPlan::query())->findOrFail($installmentPlan->id);
         $data = $request->validate([
             'booking_id' => 'required|exists:bookings,id',
             'plan_name' => 'required|string|max:100',
@@ -57,8 +56,12 @@ class InstallmentPlanController extends Controller
             $installmentAmount = (float) $data['installment_amount'];
             $count = (int) $data['number_of_installments'];
 
-            if ($total > (float) $booking->remaining_amount) {
-                abort(422, 'Installment plan cannot exceed the booking remaining amount.');
+            $allocated = (float) InstallmentPlan::where('booking_id', $booking->id)
+                ->whereIn('status', ['active', 'completed'])
+                ->sum('total_amount');
+            $availableForPlans = max(0, (float) $booking->remaining_amount - $allocated);
+            if ($total > $availableForPlans) {
+                abort(422, 'Installment plan exceeds the unallocated booking balance. Available: '.number_format($availableForPlans, 2));
             }
             if ($downPayment > $total) abort(422, 'Down payment cannot exceed plan total.');
             if (round($downPayment + ($installmentAmount * $count), 2) != round($total, 2)) {
@@ -102,8 +105,28 @@ class InstallmentPlanController extends Controller
     public function update(Request $request, InstallmentPlan $installmentPlan)
     {
         $data = $request->validate(['plan_name' => 'required|string|max:100', 'status' => 'required|in:active,completed,cancelled', 'notes' => 'nullable|string']);
-        $installmentPlan->update($data);
-        return response()->json(['message' => 'Installment plan updated.', 'plan' => $installmentPlan->fresh()->load('installments')]);
+
+        $plan = DB::transaction(function () use ($installmentPlan, $data) {
+            $plan = $this->scopeBranch(InstallmentPlan::query())->lockForUpdate()->findOrFail($installmentPlan->id);
+            $hasPayments = $plan->installments()->where(function ($q) {
+                $q->where('paid_amount', '>', 0)->orWhereIn('status', ['paid', 'partial']);
+            })->exists();
+
+            if ($data['status'] === 'cancelled' && $hasPayments) {
+                abort(422, 'An installment plan with payments cannot be cancelled.');
+            }
+            if ($data['status'] === 'completed' && $plan->installments()->where('remaining_amount', '>', 0)->exists()) {
+                abort(422, 'All installments must be fully paid before completing the plan.');
+            }
+            if ($plan->status === 'completed' && $data['status'] !== 'completed') {
+                abort(422, 'A completed installment plan cannot be reopened.');
+            }
+
+            $plan->update($data);
+            return $plan;
+        });
+
+        return response()->json(['message' => 'Installment plan updated.', 'plan' => $plan->fresh()->load('installments')]);
     }
 
     public function destroy(InstallmentPlan $installmentPlan)
