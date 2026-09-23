@@ -34,7 +34,8 @@ class SalesReportController extends Controller
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
             $query->where(function ($q) use ($branchId) {
-                $q->whereHas('project', function ($project) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->orWhereHas('project', function ($project) use ($branchId) {
                     $project->where('branch_id', $branchId);
                 })->orWhere(function ($legacy) use ($branchId) {
                     $legacy->whereNull('project_id')->whereHas('property.project', function ($project) use ($branchId) {
