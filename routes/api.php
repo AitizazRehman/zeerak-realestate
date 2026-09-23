@@ -29,6 +29,7 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\BookingDocumentController;
 use App\Http\Controllers\API\CompanySettingController;
 use App\Http\Controllers\API\ProfileController;
+use App\Http\Controllers\API\FinancialDocumentController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
@@ -54,6 +55,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('installments', [InstallmentController::class, 'index'])->middleware('permission:installments.view'); Route::get('installments/{installment}', [InstallmentController::class, 'show'])->middleware('permission:installments.view');
     Route::get('payments', [PaymentController::class, 'index'])->middleware('permission:payments.view'); Route::post('payments', [PaymentController::class, 'store'])->middleware('permission:payments.create'); Route::get('payments/{payment}', [PaymentController::class, 'show'])->middleware('permission:payments.view'); Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->middleware('permission:payments.view'); Route::post('payments/{payment}/reverse', [PaymentController::class, 'reverse'])->middleware('permission:payments.edit');
     Route::get('financial-audits', [FinancialAuditController::class, 'index'])->middleware('permission:reports.view');
+    Route::get('financial-documents/{type}/{id}', [FinancialDocumentController::class, 'index']);
+    Route::post('financial-documents/{type}/{id}', [FinancialDocumentController::class, 'store']);
+    Route::get('financial-document-files/{document}', [FinancialDocumentController::class, 'download']);
+    Route::delete('financial-documents/{document}', [FinancialDocumentController::class, 'destroy']);
 
     Route::prefix('reports')->middleware('permission:reports.view')->group(function () {
         Route::get('summary', [SalesReportController::class, 'summary']);
