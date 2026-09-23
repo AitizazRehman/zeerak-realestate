@@ -10,4 +10,9 @@ class Commission extends Model
     protected $casts = ['percentage'=>'decimal:2','base_amount'=>'decimal:2','commission_amount'=>'decimal:2','approved_date'=>'date','paid_date'=>'date'];
     public function booking(){return $this->belongsTo(Booking::class);}
     public function agent(){return $this->belongsTo(User::class,'agent_id');}
+
+    public function financialDocuments()
+    {
+        return $this->hasMany(FinancialDocument::class, 'entity_id')->where('entity_type', 'commission');
+    }
 }
