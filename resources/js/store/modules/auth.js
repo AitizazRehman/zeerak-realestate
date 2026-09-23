@@ -24,6 +24,10 @@ const mutations = {
         localStorage.setItem('zeerak_token', payload.token);
         localStorage.setItem('zeerak_user', JSON.stringify(payload.user));
     },
+    UPDATE_USER(state, payload) {
+        state.user = Object.assign({}, state.user || {}, payload || {});
+        localStorage.setItem('zeerak_user', JSON.stringify(state.user));
+    },
     CLEAR_AUTH(state) {
         state.token = null;
         state.user = null;
