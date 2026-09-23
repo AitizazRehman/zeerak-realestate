@@ -104,27 +104,20 @@ export default {
         uiBus.$on('api:finish', this.finishLoading)
         uiBus.$on('message', this.showMessage)
 
-        this.$on('show-success', message => {
-            this.showMessage({ type: 'success', text: message })
-        })
-
-        this.$on('show-error', message => {
-            this.showMessage({ type: 'error', text: message })
-        })
-
-        this.$on('show-warning', message => {
-            this.showMessage({ type: 'warning', text: message })
-        })
-
-        this.$on('show-info', message => {
-            this.showMessage({ type: 'info', text: message })
-        })
+        this.$root.$on('show-success', this.onSuccessMessage)
+        this.$root.$on('show-error', this.onErrorMessage)
+        this.$root.$on('show-warning', this.onWarningMessage)
+        this.$root.$on('show-info', this.onInfoMessage)
     },
 
     beforeDestroy() {
         uiBus.$off('api:start', this.startLoading)
         uiBus.$off('api:finish', this.finishLoading)
         uiBus.$off('message', this.showMessage)
+        this.$root.$off('show-success', this.onSuccessMessage)
+        this.$root.$off('show-error', this.onErrorMessage)
+        this.$root.$off('show-warning', this.onWarningMessage)
+        this.$root.$off('show-info', this.onInfoMessage)
 
         if (this.loaderTimer) {
             clearTimeout(this.loaderTimer)
@@ -132,6 +125,22 @@ export default {
     },
 
     methods: {
+        onSuccessMessage(message) {
+            this.showMessage({ type: 'success', text: message })
+        },
+
+        onErrorMessage(message) {
+            this.showMessage({ type: 'error', text: message })
+        },
+
+        onWarningMessage(message) {
+            this.showMessage({ type: 'warning', text: message })
+        },
+
+        onInfoMessage(message) {
+            this.showMessage({ type: 'info', text: message })
+        },
+
         startLoading() {
             this.activeRequests += 1
 
