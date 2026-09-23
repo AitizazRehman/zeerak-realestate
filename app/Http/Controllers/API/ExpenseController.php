@@ -22,7 +22,8 @@ class ExpenseController extends Controller
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
             $query->where(function ($q) use ($branchId) {
-                $q->whereHas('project', function ($project) use ($branchId) {
+                $q->where('branch_id', $branchId)
+                  ->orWhereHas('project', function ($project) use ($branchId) {
                     $project->where('branch_id', $branchId);
                 })->orWhere(function ($legacy) use ($branchId) {
                     $legacy->whereNull('project_id')->whereHas('property.project', function ($project) use ($branchId) {
@@ -36,14 +37,18 @@ class ExpenseController extends Controller
 
     private function validateBranchRefs(array $data)
     {
+        $branchId = null;
+
         if (!empty($data['project_id'])) {
             $project = Project::findOrFail($data['project_id']);
             $this->ensureBranchAccess($project->branch_id);
+            $branchId = $project->branch_id;
         }
 
         if (!empty($data['property_id'])) {
             $property = Property::with('project')->findOrFail($data['property_id']);
             $this->ensureBranchAccess($property->project->branch_id);
+            $branchId = $property->project->branch_id;
 
             if (!empty($data['project_id']) && (int) $property->project_id !== (int) $data['project_id']) {
                 abort(422, 'Property does not belong to the selected project.');
@@ -54,12 +59,21 @@ class ExpenseController extends Controller
             $data['project_id'] = Property::findOrFail($data['property_id'])->project_id;
         }
 
+        if (!$branchId && !$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            if (!$branchId) {
+                abort(422, 'Your user account must be assigned to a branch before recording expenses.');
+            }
+        }
+
+        $data['branch_id'] = $branchId;
+
         return $data;
     }
 
     public function index(Request $request)
     {
-        $q = $this->applyBranchScope(Expense::with(['project:id,name','property:id,property_number','createdBy:id,name'])->withCount('financialDocuments'));
+        $q = $this->applyBranchScope(Expense::with(['branch:id,name','project:id,name','property:id,property_number','createdBy:id,name'])->withCount('financialDocuments'));
         foreach (['project_id','property_id','category','payment_method'] as $field) {
             if ($request->filled($field)) $q->where($field, $request->input($field));
         }
@@ -92,18 +106,18 @@ class ExpenseController extends Controller
         $expense = DB::transaction(function () use ($data) {
             $expense = Expense::create($data);
             FinancialAudit::create([
-                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id, 'action'=>'created',
+                'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->branch_id ?: ($expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id), 'action'=>'created',
                 'user_id'=>auth()->id(), 'after_data'=>$expense->fresh()->toArray()
             ]);
             return $expense;
         });
-        return response()->json(['message'=>'Expense recorded successfully.','expense'=>$expense->load(['project','property','createdBy'])], 201);
+        return response()->json(['message'=>'Expense recorded successfully.','expense'=>$expense->load(['branch','project','property','createdBy'])], 201);
     }
 
     public function show(Expense $expense)
     {
         $this->applyBranchScope(Expense::query())->findOrFail($expense->id);
-        return response()->json($expense->load(['project','property','createdBy']));
+        return response()->json($expense->load(['branch','project','property','createdBy']));
     }
 
     public function update(Request $request, Expense $expense)
@@ -126,7 +140,7 @@ class ExpenseController extends Controller
             ]);
             return $expense;
         });
-        return response()->json(['message'=>'Expense updated successfully.','expense'=>$expense->fresh()->load(['project','property','createdBy'])]);
+        return response()->json(['message'=>'Expense updated successfully.','expense'=>$expense->fresh()->load(['branch','project','property','createdBy'])]);
     }
 
     public function destroy(Expense $expense)
