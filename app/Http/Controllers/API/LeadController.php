@@ -109,8 +109,13 @@ class LeadController extends Controller
                 $number = 'CUS-' . now()->format('Ym') . '-' . strtoupper(Str::random(10));
             } while (Customer::withTrashed()->where('customer_number', $number)->exists());
 
+            $branchId = $lead->project
+                ? $lead->project->branch_id
+                : optional($lead->assignee)->branch_id;
+
             $customer = Customer::create([
                 'customer_number' => $number,
+                'branch_id' => $branchId,
                 'name' => $lead->name,
                 'phone' => $lead->phone,
                 'email' => $lead->email,
