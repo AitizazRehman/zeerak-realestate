@@ -27,4 +27,9 @@ class Payment extends Model
     public function customer() { return $this->belongsTo(Customer::class); }
     public function receivedBy() { return $this->belongsTo(User::class, 'received_by'); }
     public function reversedBy() { return $this->belongsTo(User::class, 'reversed_by'); }
+
+    public function financialDocuments()
+    {
+        return $this->hasMany(FinancialDocument::class, 'entity_id')->where('entity_type', 'payment');
+    }
 }
