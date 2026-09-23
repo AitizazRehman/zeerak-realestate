@@ -10,11 +10,16 @@ class Customer extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'customer_number', 'name', 'cnic', 'phone', 'alternate_phone',
+        'customer_number', 'branch_id', 'name', 'cnic', 'phone', 'alternate_phone',
         'email', 'address', 'city', 'source', 'notes', 'is_active',
     ];
 
     protected $casts = ['is_active' => 'boolean'];
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class);
+    }
 
     public function bookings()
     {
