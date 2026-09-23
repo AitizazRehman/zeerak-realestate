@@ -536,12 +536,12 @@ export default {
     },
 
     chartX(index){
-      if(this.financials.length<=1)return377
-      return54+(646*(index/(this.financials.length-1)))
+      if(this.financials.length<=1) return 377
+      return 54 + (646 * (index / (this.financials.length - 1)))
     },
 
     chartY(value){
-      return196-(168*(Number(value||0)/this.chartMax))
+      return 196 - (168 * (Number(value || 0) / this.chartMax))
     },
 
     chartPoints(key){
