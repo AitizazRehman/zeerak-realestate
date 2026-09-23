@@ -100,6 +100,14 @@ class LeadController extends Controller
 
             if ($lead->customer_id) {
                 $existing = Customer::findOrFail($lead->customer_id);
+                if (!$existing->branch_id) {
+                    $existingBranchId = $lead->project
+                        ? $lead->project->branch_id
+                        : optional($lead->assignee)->branch_id;
+                    if ($existingBranchId) {
+                        $existing->update(['branch_id' => $existingBranchId]);
+                    }
+                }
                 $lead->siteVisits()->whereNull('customer_id')->update(['customer_id' => $existing->id]);
                 if ($lead->status !== 'converted') $lead->update(['status' => 'converted']);
                 return $existing;
