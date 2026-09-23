@@ -23,7 +23,7 @@
         <template v-slot:item.status="{ item }"><v-chip x-small :color="item.status === 'reversed' ? 'error' : 'success'" outlined>{{ item.status }}</v-chip></template>
         <template v-slot:item.actions="{ item }">
           <v-btn v-if="$can('payments.view')" icon small title="View payment" @click="view(item)"><v-icon small>mdi-eye</v-icon></v-btn>
-          <v-btn v-if="$can('payments.view')" icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn>
+          <v-badge v-if="$can('payments.view')" :content="item.financial_documents_count" :value="item.financial_documents_count" color="#165134" overlap><v-btn icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn></v-badge>
           <v-btn v-if="$can('payments.view')" icon small color="#165134" @click="receipt(item)" :loading="receiptLoading===item.id"><v-icon small>mdi-file-pdf-box</v-icon></v-btn>
           <v-btn v-if="$can('payments.edit') && item.status === 'verified'" icon small color="error" @click="openReverse(item)"><v-icon small>mdi-undo</v-icon></v-btn>
         </template>
@@ -55,7 +55,7 @@
 
     <v-dialog v-model="detailsDialog" max-width="520"><v-card v-if="selectedPayment"><v-card-title>Payment Receipt</v-card-title><v-card-text><div class="receipt"><div class="text-h6 font-weight-bold">{{ selectedPayment.receipt_number }}</div><div class="mt-3"><strong>Customer:</strong> {{ customerName(selectedPayment) }}</div><div><strong>Booking:</strong> {{ bookingNumber(selectedPayment) }}</div><div><strong>Amount:</strong> {{ money(selectedPayment.amount) }}</div><div><strong>Method:</strong> {{ selectedPayment.payment_method }}</div><div><strong>Date:</strong> {{ selectedPayment.payment_date | dateOnly }}</div><div><strong>Status:</strong> {{ selectedPayment.status }}</div><div v-if="selectedPayment.reference_number"><strong>Reference:</strong> {{ selectedPayment.reference_number }}</div><div v-if="selectedPayment.reversal_reason"><strong>Reversal reason:</strong> {{ selectedPayment.reversal_reason }}</div></div></v-card-text><v-card-actions><v-spacer/><v-btn text @click="detailsDialog=false">Close</v-btn><v-btn v-if="$can('payments.view')" color="#165134" dark @click="receipt(selectedPayment)"><v-icon left>mdi-file-pdf-box</v-icon>Receipt PDF</v-btn></v-card-actions></v-card></v-dialog>
 
-    <financial-documents-dialog v-model="documentsDialog" entity-type="payment" :entity-id="documentEntity ? documentEntity.id : null" :title="documentEntity ? 'Payment Documents — '+documentEntity.receipt_number : 'Payment Documents'" :can-upload="$can('payments.create') || $can('payments.edit')" :can-delete="$can('payments.edit')"/>
+    <financial-documents-dialog v-model="documentsDialog" entity-type="payment" :entity-id="documentEntity ? documentEntity.id : null" :title="documentEntity ? 'Payment Documents — '+documentEntity.receipt_number : 'Payment Documents'" :can-upload="$can('payments.create') || $can('payments.edit')" :can-delete="$can('payments.edit')" @updated="load"/>
 
     <v-dialog v-model="reverseDialog" max-width="500" persistent>
       <v-card>
