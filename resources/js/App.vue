@@ -58,6 +58,8 @@ export default {
             loaderTimer: null,
             lastMessage: '',
             lastMessageAt: 0,
+            lastApiMessageAt: 0,
+            lastApiMessageType: '',
             snackbar: {
                 show: false,
                 type: 'success',
@@ -177,6 +179,11 @@ export default {
             if (!text) return
 
             const now = Date.now()
+            const type = data.type || 'success'
+
+            if (!data.source && type === this.lastApiMessageType && now - this.lastApiMessageAt < 900) {
+                return
+            }
 
             if (text === this.lastMessage && now - this.lastMessageAt < 1200) {
                 return
@@ -185,9 +192,14 @@ export default {
             this.lastMessage = text
             this.lastMessageAt = now
 
+            if (data.source === 'api') {
+                this.lastApiMessageAt = now
+                this.lastApiMessageType = type
+            }
+
             this.snackbar = {
                 show: true,
-                type: data.type || 'success',
+                type: type,
                 text: text,
                 timeout: data.timeout || (data.type === 'error' ? 6000 : 4200)
             }
