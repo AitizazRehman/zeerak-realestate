@@ -12,7 +12,7 @@
           <v-btn v-if="$can('payments.create')" small color="#165134" dark depressed to="/admin/payments"><v-icon left small>mdi-cash-plus</v-icon>Payment</v-btn>
           <v-btn v-if="$can('installments.view')" small outlined color="#165134" :to="{name:'installments',query:{status:'overdue'}}"><v-icon left small>mdi-alert-clock-outline</v-icon>Overdue</v-btn>
           <v-btn v-if="$can('expenses.create')" small outlined color="#165134" to="/admin/expenses"><v-icon left small>mdi-cash-minus</v-icon>Expense</v-btn>
-          <v-btn text small color="#165134" :loading="loading" @click="load"><v-icon left small>mdi-refresh</v-icon>Refresh</v-btn>
+          <v-btn text small color="#165134" @click="load"><v-icon left small>mdi-refresh</v-icon>Refresh</v-btn>
         </div>
       </div>
     </v-card>
@@ -23,7 +23,7 @@
         <v-col cols="12" sm="4"><v-text-field v-model="filters.to" type="date" label="To date" outlined dense hide-details/></v-col>
         <v-col cols="12" sm="4" class="text-sm-right">
           <v-btn text color="grey darken-1" :disabled="loading || (!filters.from && !filters.to)" @click="clearFilters"><v-icon left>mdi-filter-remove</v-icon>Clear</v-btn>
-          <v-btn color="#165134" dark depressed :loading="loading" @click="load"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
+          <v-btn color="#165134" dark depressed @click="load"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
         </v-col>
       </v-row>
     </v-card>
@@ -81,7 +81,7 @@
         <v-card flat class="section-card">
           <v-card-title><v-icon left color="#165134">mdi-account-tie</v-icon>Top Sales Agents</v-card-title>
           <v-divider/>
-          <v-data-table :headers="agentHeaders" :items="agentPerformance" :loading="loading" dense hide-default-footer :items-per-page="10">
+          <v-data-table :headers="agentHeaders" :items="agentPerformance" dense hide-default-footer :items-per-page="10">
             <template v-slot:item.sales_value="{item}">PKR {{money(item.sales_value)}}</template>
             <template v-slot:item.collected="{item}">PKR {{money(item.collected)}}</template>
             <template v-slot:no-data><div class="pa-6 grey--text text-center">No sales data for this period.</div></template>
@@ -92,7 +92,7 @@
         <v-card flat class="section-card">
           <v-card-title><v-icon left color="#165134">mdi-office-building-outline</v-icon>Project Performance</v-card-title>
           <v-divider/>
-          <v-data-table :headers="projectHeaders" :items="projectPerformance" :loading="loading" dense hide-default-footer :items-per-page="10">
+          <v-data-table :headers="projectHeaders" :items="projectPerformance" dense hide-default-footer :items-per-page="10">
             <template v-slot:item.sales_value="{item}">PKR {{money(item.sales_value)}}</template>
             <template v-slot:item.collected="{item}">PKR {{money(item.collected)}}</template>
             <template v-slot:no-data><div class="pa-6 grey--text text-center">No project sales data for this period.</div></template>
