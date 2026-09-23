@@ -45,12 +45,12 @@
     <v-row dense align="center">
       <v-col cols="12" md="5"><v-select v-model="filters.project_id" :items="projects" item-text="name" item-value="id" label="Project" outlined dense hide-details clearable prepend-inner-icon="mdi-office-building" @change="projectFilterChanged"/></v-col>
       <v-col cols="12" md="5"><v-text-field v-model="filters.search" label="Search block name or code" prepend-inner-icon="mdi-magnify" outlined dense hide-details clearable @keyup.enter="loadBlocks" @click:clear="loadBlocks"/></v-col>
-      <v-col cols="12" md="2" class="text-md-right"><v-btn color="#165134" dark depressed :loading="loading" @click="loadBlocks"><v-icon left>mdi-magnify</v-icon>Search</v-btn></v-col>
+      <v-col cols="12" md="2" class="text-md-right"><v-btn color="#165134" dark depressed @click="loadBlocks"><v-icon left>mdi-magnify</v-icon>Search</v-btn></v-col>
     </v-row>
   </v-card>
 
   <v-card flat class="table-card">
-    <v-data-table :headers="headers" :items="blocks" :loading="loading" :server-items-length="total" :options.sync="options" @update:options="loadBlocks">
+    <v-data-table :headers="headers" :items="blocks" :server-items-length="total" :options.sync="options" @update:options="loadBlocks">
       <template v-slot:item.name="{item}">
         <div class="d-flex align-center py-2">
           <v-avatar size="38" class="soft-green mr-3"><v-icon color="#165134">mdi-view-grid-plus-outline</v-icon></v-avatar>
@@ -91,7 +91,7 @@
           </v-row>
         </v-form>
       </v-card-text>
-      <v-card-actions class="px-6 pb-5"><v-spacer/><v-btn text @click="dialog=false">Cancel</v-btn><v-btn v-if="canSave" color="#165134" dark depressed :loading="saving" @click="saveBlock">Save Block</v-btn></v-card-actions>
+      <v-card-actions class="px-6 pb-5"><v-spacer/><v-btn text @click="dialog=false">Cancel</v-btn><v-btn v-if="canSave" color="#165134" dark depressed @click="saveBlock">Save Block</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
 
@@ -99,7 +99,7 @@
     <v-card>
       <v-card-title>Delete Block</v-card-title>
       <v-card-text><v-alert type="warning" outlined dense>Delete <strong>{{deleteItem ? deleteItem.name : ''}}</strong>? Blocks containing properties are protected and cannot be deleted.</v-alert></v-card-text>
-      <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" :loading="deleting" @click="confirmDelete">Delete Block</v-btn></v-card-actions>
+      <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDelete">Delete Block</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
 </div>
