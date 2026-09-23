@@ -297,7 +297,7 @@ class SalesReportController extends Controller
 
         $q=$this->applyExpenseProject(
             $this->branchExpenses(
-                Expense::with(['project:id,name','property:id,property_number'])
+                Expense::with(['branch:id,name','project:id,name','property:id,property_number'])
             )->whereBetween('expense_date',[$from,$to]),
             $projectId
         );
@@ -501,7 +501,7 @@ class SalesReportController extends Controller
 
         if ($type === 'expenses') {
             $q=$this->applyExpenseProject(
-                $this->branchExpenses(Expense::with(['project','property']))
+                $this->branchExpenses(Expense::with(['branch','project','property']))
                     ->whereBetween('expense_date',[$from,$to]),
                 $projectId
             );
@@ -509,6 +509,7 @@ class SalesReportController extends Controller
             return $q->orderByDesc('expense_date')->get()->map(function($x){
                 return [
                     'Expense #'=>$x->expense_number,
+                    'Branch'=>optional($x->branch)->name,
                     'Project'=>optional($x->project)->name,
                     'Property'=>optional($x->property)->property_number,
                     'Category'=>$x->category,
