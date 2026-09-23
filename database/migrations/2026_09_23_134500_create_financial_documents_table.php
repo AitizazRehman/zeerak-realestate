@@ -23,7 +23,7 @@ class CreateFinancialDocumentsTable extends Migration
             $table->softDeletes();
 
             $table->index(['entity_type', 'entity_id'], 'financial_documents_entity_index');
-            $table->foreign('uploaded_by')->references('id')->on('users')->nullOnDelete();
+            $table->foreign('uploaded_by')->references('id')->on('users')->onDelete('set null');
         });
     }
 
