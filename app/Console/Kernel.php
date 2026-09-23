@@ -13,7 +13,9 @@ class Kernel extends ConsoleKernel
 
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command('zeerak:update-overdue-installments')->dailyAt('00:10');
+        $schedule->command('zeerak:update-overdue-installments')
+            ->dailyAt('00:10')
+            ->withoutOverlapping(30);
     }
 
     protected function commands()
