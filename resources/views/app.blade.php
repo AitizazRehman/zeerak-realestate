@@ -14,6 +14,11 @@
         {{ config('app.name', 'Zeerak Real Estate & Builders') }}
     </title>
 
+    <link rel="icon" type="image/jpeg" href="{{ asset('images/zeerak-logo.jpeg') }}">
+    <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/zeerak-logo.jpeg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/zeerak-logo.jpeg') }}">
+    <meta name="theme-color" content="#165134">
+
     <link
         href="{{ mix('css/app.css') }}"
         rel="stylesheet"
