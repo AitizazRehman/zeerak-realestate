@@ -117,9 +117,6 @@ class ExpenseController extends Controller
         ]);
         $expense = DB::transaction(function () use ($expense, $data) {
             $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
-            if (FinancialDocument::where('entity_type', 'expense')->where('entity_id', $expense->id)->exists()) {
-                abort(422, 'Expense has supporting documents. Remove the documents before deleting the expense.');
-            }
             $before = $expense->toArray();
             $validated = $this->validateBranchRefs($data);
             $expense->update($validated);
@@ -136,6 +133,9 @@ class ExpenseController extends Controller
     {
         DB::transaction(function () use ($expense) {
             $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
+            if (FinancialDocument::where('entity_type', 'expense')->where('entity_id', $expense->id)->exists()) {
+                abort(422, 'Expense has supporting documents. Remove the documents before deleting the expense.');
+            }
             $before = $expense->toArray();
             FinancialAudit::create([
                 'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id, 'action'=>'deleted',
