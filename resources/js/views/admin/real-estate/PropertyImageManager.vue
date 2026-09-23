@@ -37,13 +37,6 @@
         @change="uploadImages"
       />
 
-      <v-progress-linear
-        v-if="uploading"
-        indeterminate
-        color="#165134"
-        class="mb-4"
-      />
-
       <v-row v-if="images.length">
 
         <v-col
