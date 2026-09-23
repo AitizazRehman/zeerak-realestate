@@ -97,7 +97,7 @@ class SalesDashboardController extends Controller
                         });
                     });
                 })->orWhere(function ($viaVisitAgent) use ($branchId) {
-                    $viaVisitAgent->whereNull('property_id')->whereNull('lead_id')->whereHas('assignedAgent', function ($agent) use ($branchId) {
+                    $viaVisitAgent->whereNull('property_id')->whereNull('lead_id')->whereHas('assignee', function ($agent) use ($branchId) {
                         $agent->where('branch_id', $branchId);
                     });
                 });
@@ -106,30 +106,236 @@ class SalesDashboardController extends Controller
         return $q;
     }
 
+    private function percentChange($current, $previous)
+    {
+        $current = (float) $current;
+        $previous = (float) $previous;
+
+        if (abs($previous) < 0.01) {
+            return abs($current) < 0.01 ? 0 : 100;
+        }
+
+        return round((($current - $previous) / abs($previous)) * 100, 1);
+    }
+
     public function index(Request $request)
     {
-        $from = $request->filled('from') ? Carbon::parse($request->from)->startOfDay() : now()->startOfMonth()->subMonths(5)->startOfMonth();
-        $to = $request->filled('to') ? Carbon::parse($request->to)->endOfDay() : now()->endOfDay();
-        $sales = $this->branch(Booking::query())->whereIn('status', ['confirmed', 'completed']);
-        $payments = $this->branch(Payment::query(),'booking.property.project')->where('status', 'verified')->whereBetween('payment_date', [$from, $to]);
-        $monthlyCollections = $this->branch(Payment::selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as amount"),'booking.property.project')->where('status', 'verified')->whereBetween('payment_date', [$from, $to])->groupBy(DB::raw("DATE_FORMAT(payment_date, '%Y-%m')"))->orderBy('month')->get();
-        $agentPerformance = $this->branch(Booking::query())->select('sales_agent_id', DB::raw('COUNT(*) as bookings'), DB::raw('SUM(final_price) as sales_value'), DB::raw('SUM(paid_amount) as collected'))->with('salesAgent:id,name')->whereIn('status', ['confirmed', 'completed'])->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->whereNotNull('sales_agent_id')->groupBy('sales_agent_id')->orderByDesc('sales_value')->limit(10)->get();
-        $projectPerformance = $this->branch(Property::query(),'project')->select('properties.project_id', 'projects.name as project_name', DB::raw('COUNT(bookings.id) as bookings'), DB::raw('COALESCE(SUM(bookings.final_price),0) as sales_value'), DB::raw('COALESCE(SUM(bookings.paid_amount),0) as collected'))->join('projects', 'projects.id', '=', 'properties.project_id')->leftJoin('bookings', function ($join) use ($from, $to) { $join->on('bookings.property_id', '=', 'properties.id')->whereIn('bookings.status', ['confirmed', 'completed'])->whereBetween('bookings.booking_date', [$from->toDateString(), $to->toDateString()]); })->groupBy('properties.project_id', 'projects.name')->orderByDesc('sales_value')->limit(10)->get();
-        $overdue = $this->branch(Installment::query(),'booking.property.project')->whereIn('status', ['pending', 'partial', 'overdue'])->where('due_date', '<', now()->toDateString())->where('remaining_amount', '>', 0);
-        $receivables = $this->branch(Booking::query())->whereNotIn('status', ['cancelled']);
-        $expenses = $this->branchExpenses(Expense::query())->whereBetween('expense_date', [$from->toDateString(), $to->toDateString()]);
-        $recentBookings = $this->branch(Booking::with(['customer:id,name','property:id,property_number']))->whereIn('status',['confirmed','completed'])->orderByDesc('booking_date')->limit(5)->get();
-        $recentPayments = $this->branch(Payment::with(['customer:id,name','booking:id,booking_number']),'booking.property.project')->where('status','verified')->orderByDesc('payment_date')->limit(5)->get();
+        $from = $request->filled('from')
+            ? Carbon::parse($request->from)->startOfDay()
+            : now()->startOfMonth()->subMonths(5)->startOfMonth();
+
+        $to = $request->filled('to')
+            ? Carbon::parse($request->to)->endOfDay()
+            : now()->endOfDay();
+
+        if ($from->gt($to)) {
+            abort(422, 'The From date cannot be later than the To date.');
+        }
+
+        $periodDays = $from->copy()->startOfDay()->diffInDays($to->copy()->startOfDay()) + 1;
+        $previousTo = $from->copy()->subDay()->endOfDay();
+        $previousFrom = $previousTo->copy()->subDays($periodDays - 1)->startOfDay();
+
+        $sales = $this->branch(Booking::query())
+            ->whereIn('status', ['confirmed', 'completed']);
+
+        $payments = $this->branch(Payment::query(), 'booking.property.project')
+            ->where('status', 'verified')
+            ->whereBetween('payment_date', [$from, $to]);
+
+        $expenses = $this->branchExpenses(Expense::query())
+            ->whereBetween('expense_date', [$from->toDateString(), $to->toDateString()]);
+
+        $currentSalesValue = (float) (clone $sales)
+            ->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])
+            ->sum('final_price');
+
+        $currentCollections = (float) (clone $payments)->sum('amount');
+        $currentExpenses = (float) (clone $expenses)->sum('amount');
+        $currentNetCashFlow = $currentCollections - $currentExpenses;
+
+        $previousSalesValue = (float) $this->branch(Booking::query())
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereBetween('booking_date', [$previousFrom->toDateString(), $previousTo->toDateString()])
+            ->sum('final_price');
+
+        $previousCollections = (float) $this->branch(Payment::query(), 'booking.property.project')
+            ->where('status', 'verified')
+            ->whereBetween('payment_date', [$previousFrom, $previousTo])
+            ->sum('amount');
+
+        $previousExpenses = (float) $this->branchExpenses(Expense::query())
+            ->whereBetween('expense_date', [$previousFrom->toDateString(), $previousTo->toDateString()])
+            ->sum('amount');
+
+        $previousNetCashFlow = $previousCollections - $previousExpenses;
+
+        $monthlySales = $this->branch(
+            Booking::selectRaw("DATE_FORMAT(booking_date, '%Y-%m') as month, SUM(final_price) as amount")
+        )
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])
+            ->groupBy(DB::raw("DATE_FORMAT(booking_date, '%Y-%m')"))
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $monthlyCollections = $this->branch(
+            Payment::selectRaw("DATE_FORMAT(payment_date, '%Y-%m') as month, SUM(amount) as amount"),
+            'booking.property.project'
+        )
+            ->where('status', 'verified')
+            ->whereBetween('payment_date', [$from, $to])
+            ->groupBy(DB::raw("DATE_FORMAT(payment_date, '%Y-%m')"))
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $monthlyExpenses = $this->branchExpenses(
+            Expense::selectRaw("DATE_FORMAT(expense_date, '%Y-%m') as month, SUM(amount) as amount")
+        )
+            ->whereBetween('expense_date', [$from->toDateString(), $to->toDateString()])
+            ->groupBy(DB::raw("DATE_FORMAT(expense_date, '%Y-%m')"))
+            ->orderBy('month')
+            ->get()
+            ->keyBy('month');
+
+        $monthlyFinancials = [];
+        $cursor = $from->copy()->startOfMonth();
+        $lastMonth = $to->copy()->startOfMonth();
+
+        while ($cursor->lte($lastMonth)) {
+            $month = $cursor->format('Y-m');
+            $salesAmount = isset($monthlySales[$month]) ? (float) $monthlySales[$month]->amount : 0;
+            $collectionAmount = isset($monthlyCollections[$month]) ? (float) $monthlyCollections[$month]->amount : 0;
+            $expenseAmount = isset($monthlyExpenses[$month]) ? (float) $monthlyExpenses[$month]->amount : 0;
+
+            $monthlyFinancials[] = [
+                'month' => $month,
+                'sales' => $salesAmount,
+                'collections' => $collectionAmount,
+                'expenses' => $expenseAmount,
+                'net_cash_flow' => $collectionAmount - $expenseAmount,
+            ];
+
+            $cursor->addMonth();
+        }
+
+        $agentPerformance = $this->branch(Booking::query())
+            ->select(
+                'sales_agent_id',
+                DB::raw('COUNT(*) as bookings'),
+                DB::raw('SUM(final_price) as sales_value'),
+                DB::raw('SUM(paid_amount) as collected')
+            )
+            ->with('salesAgent:id,name')
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])
+            ->whereNotNull('sales_agent_id')
+            ->groupBy('sales_agent_id')
+            ->orderByDesc('sales_value')
+            ->limit(10)
+            ->get();
+
+        $projectPerformance = $this->branch(Property::query(), 'project')
+            ->select(
+                'properties.project_id',
+                'projects.name as project_name',
+                DB::raw('COUNT(bookings.id) as bookings'),
+                DB::raw('COALESCE(SUM(bookings.final_price),0) as sales_value'),
+                DB::raw('COALESCE(SUM(bookings.paid_amount),0) as collected')
+            )
+            ->join('projects', 'projects.id', '=', 'properties.project_id')
+            ->leftJoin('bookings', function ($join) use ($from, $to) {
+                $join->on('bookings.property_id', '=', 'properties.id')
+                    ->whereIn('bookings.status', ['confirmed', 'completed'])
+                    ->whereBetween('bookings.booking_date', [$from->toDateString(), $to->toDateString()]);
+            })
+            ->groupBy('properties.project_id', 'projects.name')
+            ->orderByDesc('sales_value')
+            ->limit(10)
+            ->get();
+
+        $leadPipeline = $this->branchLeads(
+            Lead::select('status', DB::raw('COUNT(*) as total'))
+        )
+            ->groupBy('status')
+            ->get();
+
+        $overdue = $this->branch(Installment::query(), 'booking.property.project')
+            ->whereIn('status', ['pending', 'partial', 'overdue'])
+            ->where('due_date', '<', now()->toDateString())
+            ->where('remaining_amount', '>', 0);
+
+        $receivables = $this->branch(Booking::query())
+            ->whereNotIn('status', ['cancelled']);
+
+        $recentBookings = $this->branch(
+            Booking::with(['customer:id,name', 'property:id,property_number'])
+        )
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->orderByDesc('booking_date')
+            ->limit(5)
+            ->get();
+
+        $recentPayments = $this->branch(
+            Payment::with(['customer:id,name', 'booking:id,booking_number']),
+            'booking.property.project'
+        )
+            ->where('status', 'verified')
+            ->orderByDesc('payment_date')
+            ->limit(5)
+            ->get();
+
         return response()->json([
-            'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'period' => [
+                'from' => $from->toDateString(),
+                'to' => $to->toDateString(),
+                'previous_from' => $previousFrom->toDateString(),
+                'previous_to' => $previousTo->toDateString(),
+            ],
             'metrics' => [
-                'customers' => $this->branchCustomers(Customer::where('is_active', true))->count(), 'active_leads' => $this->branchLeads(Lead::query())->whereNotIn('status', ['converted', 'lost'])->count(),
-                'scheduled_visits' => $this->branchSiteVisits(SiteVisit::query())->where('status', 'scheduled')->where('visit_at', '>=', now())->count(),
-                'available_properties' => $this->branch(Property::query(),'project')->where('status', 'available')->count(), 'reserved_properties' => $this->branch(Property::query(),'project')->where('status', 'reserved')->count(), 'booked_properties' => $this->branch(Property::query(),'project')->where('status', 'booked')->count(), 'sold_properties' => $this->branch(Property::query(),'project')->where('status', 'sold')->count(),
-                'sales_value' => (float) (clone $sales)->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->sum('final_price'), 'collections' => (float) (clone $payments)->sum('amount'), 'receivables' => (float) (clone $receivables)->sum('remaining_amount'), 'overdue_count' => (int) (clone $overdue)->count(), 'overdue_amount' => (float) (clone $overdue)->sum('remaining_amount'),
-                'expenses' => (float) (clone $expenses)->sum('amount'), 'net_cash_flow' => (float) (clone $payments)->sum('amount') - (float) (clone $expenses)->sum('amount'),
-            ], 'monthly_collections' => $monthlyCollections, 'agent_performance' => $agentPerformance, 'project_performance' => $projectPerformance,
-            'recent_bookings' => $recentBookings, 'recent_payments' => $recentPayments,
+                'customers' => $this->branchCustomers(Customer::where('is_active', true))->count(),
+                'active_leads' => $this->branchLeads(Lead::query())
+                    ->whereNotIn('status', ['converted', 'lost'])
+                    ->count(),
+                'scheduled_visits' => $this->branchSiteVisits(SiteVisit::query())
+                    ->where('status', 'scheduled')
+                    ->where('visit_at', '>=', now())
+                    ->count(),
+                'available_properties' => $this->branch(Property::query(), 'project')
+                    ->where('status', 'available')
+                    ->count(),
+                'reserved_properties' => $this->branch(Property::query(), 'project')
+                    ->where('status', 'reserved')
+                    ->count(),
+                'booked_properties' => $this->branch(Property::query(), 'project')
+                    ->where('status', 'booked')
+                    ->count(),
+                'sold_properties' => $this->branch(Property::query(), 'project')
+                    ->where('status', 'sold')
+                    ->count(),
+                'sales_value' => $currentSalesValue,
+                'collections' => $currentCollections,
+                'receivables' => (float) (clone $receivables)->sum('remaining_amount'),
+                'overdue_count' => (int) (clone $overdue)->count(),
+                'overdue_amount' => (float) (clone $overdue)->sum('remaining_amount'),
+                'expenses' => $currentExpenses,
+                'net_cash_flow' => $currentNetCashFlow,
+            ],
+            'trends' => [
+                'sales_value' => $this->percentChange($currentSalesValue, $previousSalesValue),
+                'collections' => $this->percentChange($currentCollections, $previousCollections),
+                'expenses' => $this->percentChange($currentExpenses, $previousExpenses),
+                'net_cash_flow' => $this->percentChange($currentNetCashFlow, $previousNetCashFlow),
+            ],
+            'monthly_collections' => $monthlyCollections->values(),
+            'monthly_financials' => $monthlyFinancials,
+            'lead_pipeline' => $leadPipeline,
+            'agent_performance' => $agentPerformance,
+            'project_performance' => $projectPerformance,
+            'recent_bookings' => $recentBookings,
+            'recent_payments' => $recentPayments,
         ]);
     }
 
