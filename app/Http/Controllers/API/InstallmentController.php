@@ -24,7 +24,7 @@ class InstallmentController extends Controller
     public function index(Request $request)
     {
         $query = $this->scopeBranch(
-            Installment::with(['plan','booking.customer','booking.property'])
+            Installment::with(['plan','booking.customer','booking.property'])->withCount('financialDocuments')
         );
 
         if ($request->filled('booking_id')) {
