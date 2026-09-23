@@ -32,7 +32,7 @@
       <v-col cols="12" sm="6" md="3"><v-text-field v-model="filters.to" type="date" outlined dense hide-details label="To"/></v-col>
       <v-col cols="12" md="2" class="text-md-right">
         <v-btn text color="grey darken-1" @click="resetFilters"><v-icon left>mdi-filter-remove</v-icon>Reset</v-btn>
-        <v-btn color="#165134" dark depressed :loading="loading" @click="applyFilters"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
+        <v-btn color="#165134" dark depressed @click="applyFilters"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
       </v-col>
     </v-row>
   </v-card>
@@ -102,14 +102,14 @@
         <div class="caption grey--text">{{currentRows.length}} records loaded</div>
       </div>
       <v-spacer/>
-      <v-btn small outlined color="#165134" class="mr-2" :loading="exporting==='xls'" @click="exportReport('xls')"><v-icon left small>mdi-microsoft-excel</v-icon>Excel</v-btn>
-      <v-btn small outlined color="error" :loading="exporting==='pdf'" @click="exportReport('pdf')"><v-icon left small>mdi-file-pdf-box</v-icon>PDF</v-btn>
+      <v-btn small outlined color="#165134" class="mr-2" @click="exportReport('xls')"><v-icon left small>mdi-microsoft-excel</v-icon>Excel</v-btn>
+      <v-btn small outlined color="error" @click="exportReport('pdf')"><v-icon left small>mdi-file-pdf-box</v-icon>PDF</v-btn>
     </div>
     <v-divider/>
 
     <v-tabs-items v-model="tab">
       <v-tab-item>
-        <v-data-table :headers="salesHeaders" :items="sales" :loading="loading">
+        <v-data-table :headers="salesHeaders" :items="sales">
           <template v-slot:item.booking_date="{item}">{{date(item.booking_date)}}</template>
           <template v-slot:item.final_price="{item}">PKR {{number(item.final_price)}}</template>
           <template v-slot:item.paid_amount="{item}">PKR {{number(item.paid_amount)}}</template>
@@ -119,7 +119,7 @@
       </v-tab-item>
 
       <v-tab-item>
-        <v-data-table :headers="collectionHeaders" :items="collections" :loading="loading">
+        <v-data-table :headers="collectionHeaders" :items="collections">
           <template v-slot:item.payment_date="{item}">{{date(item.payment_date)}}</template>
           <template v-slot:item.payment_method="{item}">{{text(item.payment_method)}}</template>
           <template v-slot:item.amount="{item}"><strong class="success--text">PKR {{number(item.amount)}}</strong></template>
@@ -133,7 +133,7 @@
           <v-spacer/><span class="caption grey--text">Overdue is determined from due date and outstanding balance.</span>
         </div>
         <v-divider/>
-        <v-data-table :headers="installmentHeaders" :items="installments" :loading="loading">
+        <v-data-table :headers="installmentHeaders" :items="installments">
           <template v-slot:item.due_date="{item}"><span :class="isOverdue(item)?'error--text font-weight-bold':''">{{date(item.due_date)}}</span></template>
           <template v-slot:item.amount="{item}">PKR {{number(item.amount)}}</template>
           <template v-slot:item.remaining_amount="{item}"><strong :class="isOverdue(item)?'error--text':''">PKR {{number(item.remaining_amount)}}</strong></template>
@@ -143,7 +143,7 @@
       </v-tab-item>
 
       <v-tab-item>
-        <v-data-table :headers="expenseHeaders" :items="expenses" :loading="loading">
+        <v-data-table :headers="expenseHeaders" :items="expenses">
           <template v-slot:item.expense_date="{item}">{{date(item.expense_date)}}</template>
           <template v-slot:item.amount="{item}"><strong class="error--text">PKR {{number(item.amount)}}</strong></template>
           <template v-slot:no-data><div class="empty-table">No expenses found.</div></template>
@@ -151,7 +151,7 @@
       </v-tab-item>
 
       <v-tab-item>
-        <v-data-table :headers="commissionHeaders" :items="commissions" :loading="loading">
+        <v-data-table :headers="commissionHeaders" :items="commissions">
           <template v-slot:item.percentage="{item}">{{item.percentage}}%</template>
           <template v-slot:item.commission_amount="{item}"><strong>PKR {{number(item.commission_amount)}}</strong></template>
           <template v-slot:item.status="{item}"><v-chip x-small dark :color="commissionColor(item.status)">{{item.status}}</v-chip></template>
