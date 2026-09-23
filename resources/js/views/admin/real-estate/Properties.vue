@@ -39,7 +39,7 @@
       <v-col cols="12" sm="6" md="2"><v-text-field v-model="filters.max_price" label="Max price" type="number" outlined dense hide-details min="0"/></v-col>
       <v-col cols="12" md="8" class="d-flex align-center justify-end flex-wrap filter-actions">
         <v-btn text color="grey darken-1" @click="resetFilters"><v-icon left>mdi-filter-remove</v-icon>Clear</v-btn>
-        <v-btn color="#165134" dark depressed :loading="loading" @click="loadData"><v-icon left>mdi-filter</v-icon>Apply Filters</v-btn>
+        <v-btn color="#165134" dark depressed @click="loadData"><v-icon left>mdi-filter</v-icon>Apply Filters</v-btn>
       </v-col>
     </v-row>
   </v-card>
@@ -131,7 +131,7 @@
     <v-card>
       <v-card-title>Delete Property</v-card-title>
       <v-card-text><v-alert type="warning" outlined dense>Delete <strong>{{deleteItem && deleteItem.property_number}}</strong>? Properties with booking or meaningful status history cannot be deleted.</v-alert></v-card-text>
-      <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" :loading="deleting" @click="confirmDelete">Delete Property</v-btn></v-card-actions>
+      <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDelete">Delete Property</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
 </div>
