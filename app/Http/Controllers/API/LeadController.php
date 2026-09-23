@@ -66,6 +66,7 @@ class LeadController extends Controller
             $s=$request->search;
             $query->where(function($q) use($s){$q->where('name','like',"%{$s}%")->orWhere('phone','like',"%{$s}%")->orWhere('lead_number','like',"%{$s}%");});
         }
+        if ($request->filled('lead_id')) $query->where('id', (int) $request->get('lead_id'));
         foreach(['status','priority','assigned_to','project_id'] as $field) if($request->filled($field)) $query->where($field,$request->$field);
         $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
         return response()->json($query->latest()->paginate($perPage));
