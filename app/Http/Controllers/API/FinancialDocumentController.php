@@ -63,7 +63,7 @@ class FinancialDocumentController extends Controller
             $branchId = optional(optional(optional($entity->booking)->property)->project)->branch_id;
         } else {
             $entity = $model::with(['project', 'property.project'])->findOrFail($id);
-            $branchId = $entity->project ? $entity->project->branch_id : optional(optional($entity->property)->project)->branch_id;
+            $branchId = $entity->branch_id ?: ($entity->project ? $entity->project->branch_id : optional(optional($entity->property)->project)->branch_id);
         }
 
         if (!$this->canAccessAllBranches()) {
