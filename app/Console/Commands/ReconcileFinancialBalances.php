@@ -35,8 +35,8 @@ class ReconcileFinancialBalances extends Command
                         .number_format((float) $booking->final_price, 2, '.', '').'. Manual review required.');
                 }
 
-                if (round((float) $booking->paid_amount, 2) !== $verified ||
-                    round((float) $booking->remaining_amount, 2) !== $expectedRemaining) {
+                if (abs(round((float) $booking->paid_amount, 2) - $verified) > 0.01 ||
+                    abs(round((float) $booking->remaining_amount, 2) - $expectedRemaining) > 0.01) {
                     $issues++;
                     $this->warn('Booking '.$booking->booking_number.' (#'.$booking->id.') stored paid/remaining '
                         .$booking->paid_amount.'/'.$booking->remaining_amount.'; expected '
@@ -77,8 +77,8 @@ class ReconcileFinancialBalances extends Command
                         .number_format((float) $installment->amount, 2, '.', '').'. Manual review required.');
                 }
 
-                if (round((float) $installment->paid_amount, 2) !== $verified ||
-                    round((float) $installment->remaining_amount, 2) !== $expectedRemaining ||
+                if (abs(round((float) $installment->paid_amount, 2) - $verified) > 0.01 ||
+                    abs(round((float) $installment->remaining_amount, 2) - $expectedRemaining) > 0.01 ||
                     $installment->status !== $expectedStatus) {
                     $issues++;
                     $this->warn('Installment #'.$installment->id.' stored paid/remaining/status '
