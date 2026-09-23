@@ -72,9 +72,11 @@ class InstallmentPlanController extends Controller
             if ($downPayment > 0) {
                 abort(422, 'Down payment must be recorded as a booking payment before creating the installment plan. Create the plan for the remaining financed amount only.');
             }
-            if (round($installmentAmount * $count, 2) != round($total, 2)) {
-                abort(422, 'All installments must equal the plan total amount.');
+            $expectedInstallment = round($total / $count, 2);
+            if (abs($installmentAmount - $expectedInstallment) > 0.01) {
+                abort(422, 'Installment amount should be approximately '.number_format($expectedInstallment, 2).' for this plan total and installment count.');
             }
+
             $startDate = \Carbon\Carbon::parse($data['start_date'])->startOfDay();
             if ($startDate->lt(\Carbon\Carbon::parse($booking->booking_date)->startOfDay())) {
                 abort(422, 'Installment plan start date cannot be before the booking date.');
@@ -83,26 +85,49 @@ class InstallmentPlanController extends Controller
                 abort(422, 'New installment plans must start with active status.');
             }
 
+            $duplicate = InstallmentPlan::where('booking_id', $booking->id)
+                ->where('status', 'active')
+                ->where('frequency', $data['frequency'])
+                ->where('number_of_installments', $count)
+                ->where('total_amount', round($total, 2))
+                ->whereDate('start_date', $startDate->toDateString())
+                ->exists();
+
+            if ($duplicate) {
+                abort(422, 'An identical active installment plan already exists for this booking.');
+            }
+
             $plan = InstallmentPlan::create(array_merge($data, [
                 'down_payment' => 0,
-                'installment_amount' => $installmentAmount,
+                'installment_amount' => $expectedInstallment,
             ]));
 
             $date = $startDate;
             $months = ['monthly' => 1, 'quarterly' => 3, 'half_yearly' => 6, 'yearly' => 12][$data['frequency']];
 
+            $scheduledTotal = 0.0;
             for ($i = 1; $i <= $count; $i++) {
                 $due = $date->copy()->addMonthsNoOverflow($months * ($i - 1));
+                $amount = $i === $count
+                    ? round($total - $scheduledTotal, 2)
+                    : $expectedInstallment;
+
+                if ($amount <= 0) {
+                    abort(422, 'Unable to build a valid installment schedule. Check the plan total and installment count.');
+                }
+
                 Installment::create([
                     'installment_plan_id' => $plan->id,
                     'booking_id' => $booking->id,
                     'installment_number' => $i,
                     'due_date' => $due,
-                    'amount' => $installmentAmount,
+                    'amount' => $amount,
                     'paid_amount' => 0,
-                    'remaining_amount' => $installmentAmount,
+                    'remaining_amount' => $amount,
                     'status' => 'pending',
                 ]);
+
+                $scheduledTotal = round($scheduledTotal + $amount, 2);
             }
 
             FinancialAudit::create([
