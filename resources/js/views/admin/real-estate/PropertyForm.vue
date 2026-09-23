@@ -52,7 +52,7 @@
       </v-row>
       <div class="d-flex justify-end mt-6">
         <v-btn text class="mr-3" @click="$router.push('/admin/properties')">Cancel</v-btn>
-        <v-btn v-if="canSave" color="#165134" dark large type="submit" :loading="saving"><v-icon left>mdi-content-save</v-icon>{{ isEdit ? 'Update Property' : 'Save Property' }}</v-btn>
+        <v-btn v-if="canSave" color="#165134" dark large type="submit"><v-icon left>mdi-content-save</v-icon>{{ isEdit ? 'Update Property' : 'Save Property' }}</v-btn>
       </div>
     </v-form>
   </v-container>
