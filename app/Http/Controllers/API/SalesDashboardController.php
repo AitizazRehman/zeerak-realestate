@@ -25,7 +25,8 @@ class SalesDashboardController extends Controller
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
             $q->where(function ($x) use ($branchId) {
-                $x->whereHas('project', function ($project) use ($branchId) {
+                $x->where('branch_id', $branchId)
+                  ->orWhereHas('project', function ($project) use ($branchId) {
                     $project->where('branch_id', $branchId);
                 })->orWhere(function ($legacy) use ($branchId) {
                     $legacy->whereNull('project_id')->whereHas('property.project', function ($project) use ($branchId) {
@@ -36,6 +37,31 @@ class SalesDashboardController extends Controller
         }
         return $q;
     }
+    private function branchCustomers($q)
+    {
+        if (!$this->canAccessAllBranches()) {
+            $branchId = auth()->user()->branch_id;
+            $q->where(function ($customer) use ($branchId) {
+                $customer->where('branch_id', $branchId)
+                    ->orWhereHas('bookings.property.project', function ($project) use ($branchId) {
+                        $project->where('branch_id', $branchId);
+                    })
+                    ->orWhereHas('leads', function ($lead) use ($branchId) {
+                        $lead->whereHas('project', function ($project) use ($branchId) {
+                            $project->where('branch_id', $branchId);
+                        })->orWhere(function ($fallback) use ($branchId) {
+                            $fallback->whereNull('project_id')
+                                ->whereHas('assignee', function ($agent) use ($branchId) {
+                                    $agent->where('branch_id', $branchId);
+                                });
+                        });
+                    });
+            });
+        }
+
+        return $q;
+    }
+
     private function branchLeads($q)
     {
         if (!$this->canAccessAllBranches()) {
@@ -97,7 +123,7 @@ class SalesDashboardController extends Controller
         return response()->json([
             'period' => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
             'metrics' => [
-                'customers' => $this->canAccessAllBranches() ? Customer::where('is_active', true)->count() : Customer::where('is_active',true)->whereHas('bookings.property.project',function($q){$q->where('branch_id',auth()->user()->branch_id);})->count(), 'active_leads' => $this->branchLeads(Lead::query())->whereNotIn('status', ['converted', 'lost'])->count(),
+                'customers' => $this->branchCustomers(Customer::where('is_active', true))->count(), 'active_leads' => $this->branchLeads(Lead::query())->whereNotIn('status', ['converted', 'lost'])->count(),
                 'scheduled_visits' => $this->branchSiteVisits(SiteVisit::query())->where('status', 'scheduled')->where('visit_at', '>=', now())->count(),
                 'available_properties' => $this->branch(Property::query(),'project')->where('status', 'available')->count(), 'reserved_properties' => $this->branch(Property::query(),'project')->where('status', 'reserved')->count(), 'booked_properties' => $this->branch(Property::query(),'project')->where('status', 'booked')->count(), 'sold_properties' => $this->branch(Property::query(),'project')->where('status', 'sold')->count(),
                 'sales_value' => (float) (clone $sales)->whereBetween('booking_date', [$from->toDateString(), $to->toDateString()])->sum('final_price'), 'collections' => (float) (clone $payments)->sum('amount'), 'receivables' => (float) (clone $receivables)->sum('remaining_amount'), 'overdue_count' => (int) (clone $overdue)->count(), 'overdue_amount' => (float) (clone $overdue)->sum('remaining_amount'),
