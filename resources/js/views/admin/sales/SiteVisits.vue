@@ -29,12 +29,12 @@
     <v-row dense align="center">
       <v-col cols="12" md="6"><v-text-field v-model="search" outlined dense hide-details clearable prepend-inner-icon="mdi-magnify" label="Search customer, property or notes"/></v-col>
       <v-col cols="12" md="3"><v-select v-model="statusFilter" :items="statusOptions" outlined dense hide-details clearable label="Status"/></v-col>
-      <v-col cols="12" md="3" class="text-md-right"><v-btn text color="#165134" :loading="loading" @click="load"><v-icon left>mdi-refresh</v-icon>Refresh</v-btn></v-col>
+      <v-col cols="12" md="3" class="text-md-right"><v-btn text color="#165134" @click="load"><v-icon left>mdi-refresh</v-icon>Refresh</v-btn></v-col>
     </v-row>
   </v-card>
 
   <v-card flat class="table-card">
-    <v-data-table :headers="headers" :items="filteredItems" :loading="loading" :items-per-page="15">
+    <v-data-table :headers="headers" :items="filteredItems" :items-per-page="15">
       <template v-slot:item.customer.name="{item}">
         <div class="py-2"><div class="font-weight-medium">{{item.customer ? item.customer.name : '—'}}</div><div v-if="item.lead" class="caption grey--text">Lead: {{item.lead.name}}</div></div>
       </template>
@@ -58,9 +58,9 @@
       <v-divider/>
       <v-card-text class="pt-5">
         <v-row>
-          <v-col cols="12" md="6"><v-autocomplete v-model="form.lead_id" :items="leads" item-text="name" item-value="id" outlined dense clearable label="Lead" :loading="loadingLeads" prepend-inner-icon="mdi-account-search" @change="leadChanged"><template v-slot:item="{item}"><v-list-item-content><v-list-item-title>{{item.name}} — {{item.phone}}</v-list-item-title><v-list-item-subtitle>{{item.lead_number}} · {{statusLabel(item.status)}}</v-list-item-subtitle></v-list-item-content></template></v-autocomplete></v-col>
-          <v-col cols="12" md="6"><v-autocomplete v-model="form.customer_id" :items="customers" item-text="name" item-value="id" outlined dense clearable label="Customer" :loading="loadingCustomers" prepend-inner-icon="mdi-account"/></v-col>
-          <v-col cols="12" md="6"><v-autocomplete v-model="form.property_id" :items="properties" item-text="property_number" item-value="id" outlined dense clearable label="Property" :loading="loadingProperties" prepend-inner-icon="mdi-home-city"><template v-slot:item="{item}"><v-list-item-content><v-list-item-title>{{item.property_number}} — {{item.project ? item.project.name : 'Property'}}</v-list-item-title><v-list-item-subtitle>{{item.status}}</v-list-item-subtitle></v-list-item-content></template></v-autocomplete></v-col>
+          <v-col cols="12" md="6"><v-autocomplete v-model="form.lead_id" :items="leads" item-text="name" item-value="id" outlined dense clearable label="Lead" prepend-inner-icon="mdi-account-search" @change="leadChanged"><template v-slot:item="{item}"><v-list-item-content><v-list-item-title>{{item.name}} — {{item.phone}}</v-list-item-title><v-list-item-subtitle>{{item.lead_number}} · {{statusLabel(item.status)}}</v-list-item-subtitle></v-list-item-content></template></v-autocomplete></v-col>
+          <v-col cols="12" md="6"><v-autocomplete v-model="form.customer_id" :items="customers" item-text="name" item-value="id" outlined dense clearable label="Customer" prepend-inner-icon="mdi-account"/></v-col>
+          <v-col cols="12" md="6"><v-autocomplete v-model="form.property_id" :items="properties" item-text="property_number" item-value="id" outlined dense clearable label="Property" prepend-inner-icon="mdi-home-city"><template v-slot:item="{item}"><v-list-item-content><v-list-item-title>{{item.property_number}} — {{item.project ? item.project.name : 'Property'}}</v-list-item-title><v-list-item-subtitle>{{item.status}}</v-list-item-subtitle></v-list-item-content></template></v-autocomplete></v-col>
           <v-col cols="12" md="6"><v-text-field v-model="form.visit_date" outlined dense type="date" label="Visit Date *"/></v-col>
           <v-col cols="12" md="6"><v-text-field v-model="form.visit_time" outlined dense type="time" label="Time"/></v-col>
           <v-col v-if="editing" cols="12" md="6"><v-select v-model="form.status" :items="statusOptions" outlined dense label="Visit Status"/></v-col>
@@ -68,11 +68,11 @@
           <v-col cols="12"><v-textarea v-model="form.notes" outlined dense rows="3" label="Notes"/></v-col>
         </v-row>
       </v-card-text>
-      <v-card-actions class="px-6 pb-5"><v-spacer/><v-btn text @click="dialog=false">Cancel</v-btn><v-btn v-if="editing ? $can('site_visits.edit') : $can('site_visits.create')" color="#165134" dark depressed :loading="saving" :disabled="(!form.customer_id && !form.lead_id) || !form.visit_date" @click="save">{{editing?'Update Visit':'Schedule Visit'}}</v-btn></v-card-actions>
+      <v-card-actions class="px-6 pb-5"><v-spacer/><v-btn text @click="dialog=false">Cancel</v-btn><v-btn v-if="editing ? $can('site_visits.edit') : $can('site_visits.create')" color="#165134" dark depressed :disabled="(!form.customer_id && !form.lead_id) || !form.visit_date" @click="save">{{editing?'Update Visit':'Schedule Visit'}}</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
 
-  <v-dialog v-model="deleteDialog" max-width="500" persistent><v-card><v-card-title>Delete Site Visit</v-card-title><v-card-text><v-alert type="warning" outlined dense>Delete this scheduled site visit? Completed/no-show visits and visits with feedback are retained as CRM history.</v-alert></v-card-text><v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" :loading="deleting" @click="confirmDelete">Delete Visit</v-btn></v-card-actions></v-card></v-dialog>
+  <v-dialog v-model="deleteDialog" max-width="500" persistent><v-card><v-card-title>Delete Site Visit</v-card-title><v-card-text><v-alert type="warning" outlined dense>Delete this scheduled site visit? Completed/no-show visits and visits with feedback are retained as CRM history.</v-alert></v-card-text><v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDelete">Delete Visit</v-btn></v-card-actions></v-card></v-dialog>
 </div>
 </template>
 <script>
