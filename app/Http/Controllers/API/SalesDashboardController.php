@@ -70,7 +70,7 @@ class SalesDashboardController extends Controller
                 $x->whereHas('project', function ($project) use ($branchId) {
                     $project->where('branch_id', $branchId);
                 })->orWhere(function ($fallback) use ($branchId) {
-                    $fallback->whereNull('project_id')->whereHas('assignedAgent', function ($agent) use ($branchId) {
+                    $fallback->whereNull('project_id')->whereHas('assignee', function ($agent) use ($branchId) {
                         $agent->where('branch_id', $branchId);
                     });
                 });
