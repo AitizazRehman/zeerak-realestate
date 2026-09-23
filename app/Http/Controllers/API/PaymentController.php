@@ -30,7 +30,7 @@ class PaymentController extends Controller
     {
         $q = $this->applyBranchScope(Payment::with([
             'customer', 'booking.property', 'installment', 'receivedBy:id,name', 'reversedBy:id,name'
-        ]));
+        ])->withCount('financialDocuments'));
 
         foreach (['booking_id','customer_id','installment_id','payment_method','status'] as $f) {
             if ($r->filled($f)) $q->where($f, $r->$f);
