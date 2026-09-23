@@ -79,7 +79,8 @@ api.interceptors.response.use(
         ) {
             uiBus.$emit('message', {
                 type: 'success',
-                text: message
+                text: message,
+                source: 'api'
             });
         }
 
@@ -105,7 +106,8 @@ api.interceptors.response.use(
         } else if (!(error.config && error.config.skipGlobalError)) {
             uiBus.$emit('message', {
                 type: 'error',
-                text: errorMessage(error)
+                text: errorMessage(error),
+                source: 'api'
             });
         }
 
