@@ -61,6 +61,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::delete('financial-documents/{document}', [FinancialDocumentController::class, 'destroy']);
 
     Route::prefix('reports')->middleware('permission:reports.view')->group(function () {
+        Route::get('projects', [SalesReportController::class, 'projects']);
         Route::get('summary', [SalesReportController::class, 'summary']);
         Route::get('sales', [SalesReportController::class, 'sales']);
         Route::get('collections', [SalesReportController::class, 'collections']);
