@@ -4,11 +4,18 @@
       <div class="d-flex flex-wrap align-center">
         <div><div class="text-overline">FINANCE</div><h1 class="text-h5 font-weight-bold">Payments</h1><div class="grey--text">Record and review customer collections.</div></div>
         <v-spacer />
-        <v-btn v-if="$can('payments.create')" color="#165134" dark @click="openCreate"><v-icon left>mdi-cash-plus</v-icon>Record Payment</v-btn>
+        <v-btn v-if="$can('payments.create')" color="#165134" dark depressed class="rounded-lg" @click="openCreate"><v-icon left>mdi-cash-plus</v-icon>Record Payment</v-btn>
       </div>
     </v-card>
 
-    <v-card flat outlined>
+    <v-row class="mb-1">
+      <v-col cols="6" md="3"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Payments Shown</div><div class="text-h6 font-weight-bold">{{items.length}}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Verified</div><div class="text-h6 font-weight-bold success--text">{{verifiedCount}}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Reversed</div><div class="text-h6 font-weight-bold error--text">{{reversedCount}}</div></v-card></v-col>
+      <v-col cols="6" md="3"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Collections Shown</div><div class="text-h6 font-weight-bold">PKR {{money(collectionsShown)}}</div></v-card></v-col>
+    </v-row>
+
+    <v-card flat class="table-card">
       <v-card-text><v-row dense><v-col cols="12" md="6"><v-text-field v-model="from" outlined dense type="date" label="Payment from" @change="load" /></v-col><v-col cols="12" md="6"><v-text-field v-model="to" outlined dense type="date" label="Payment to" @change="load" /></v-col></v-row></v-card-text>
       <v-data-table :headers="headers" :items="items" :loading="loading" :options.sync="options" :server-items-length="total">
         <template v-slot:item.amount="{ item }"><strong>{{ money(item.amount) }}</strong></template>
@@ -23,15 +30,15 @@
       </v-data-table>
     </v-card>
 
-    <v-dialog v-model="dialog" max-width="680">
+    <v-dialog v-model="dialog" max-width="720" persistent>
       <v-card>
-        <v-card-title>Record Payment</v-card-title>
+        <v-card-title><div><div class="text-h6 font-weight-bold">Record Payment</div><div class="caption grey--text">Record a verified customer collection against a booking or installment.</div></div><v-spacer/><v-btn icon :disabled="saving" @click="dialog=false"><v-icon>mdi-close</v-icon></v-btn></v-card-title>
         <v-card-text>
           <v-alert v-if="selectedBooking" type="info" text dense class="mb-4">Booking {{ selectedBooking.booking_number }} — Outstanding: <strong>{{ money(selectedBooking.remaining_amount) }}</strong></v-alert>
           <v-row>
             <v-col cols="12" md="6"><v-autocomplete v-model="form.customer_id" :items="customers" item-text="name" item-value="id" outlined dense label="Customer *" @change="loadBookings" /></v-col>
-            <v-col cols="12" md="6"><v-autocomplete v-model="form.booking_id" :items="bookings" item-text="booking_number" item-value="id" outlined dense label="Booking *" @change="loadInstallments" /></v-col>
-            <v-col cols="12" md="6"><v-autocomplete v-model="form.installment_id" :items="installments" item-text="installmentLabel" item-value="id" outlined dense clearable label="Installment (optional)" /></v-col>
+            <v-col cols="12" md="6"><v-autocomplete v-model="form.booking_id" :items="bookings" :item-text="bookingLabel" item-value="id" outlined dense label="Booking *" @change="loadInstallments" /></v-col>
+            <v-col cols="12" md="6"><v-autocomplete v-model="form.installment_id" :items="installments" item-text="installmentLabel" item-value="id" outlined dense clearable label="Installment (optional)" @change="installmentChanged" /></v-col>
             <v-col cols="12" md="6"><v-text-field v-model="form.amount" type="number" min="0.01" step="0.01" outlined dense label="Amount *" /></v-col>
             <v-col cols="12" md="6"><v-select v-model="form.payment_method" :items="methods" outlined dense label="Payment Method *" /></v-col>
             <v-col cols="12" md="6"><v-text-field v-model="form.payment_date" type="date" outlined dense label="Payment Date *" /></v-col>
@@ -73,15 +80,19 @@ export default {
     headers:[{text:'Receipt',value:'receipt_number'},{text:'Customer',value:'customer.name'},{text:'Booking',value:'booking.booking_number'},{text:'Amount',value:'amount',align:'right'},{text:'Method',value:'payment_method'},{text:'Date',value:'payment_date'},{text:'Status',value:'status'},{text:'',value:'actions',sortable:false}],
     form:{customer_id:null,booking_id:null,installment_id:null,amount:null,payment_method:'cash',payment_date:new Date().toISOString().slice(0,10),reference_number:'',bank_name:'',cheque_number:'',notes:''}
   }),
+  computed:{verifiedCount(){return this.items.filter(function(x){return x.status==='verified'}).length},reversedCount(){return this.items.filter(function(x){return x.status==='reversed'}).length},collectionsShown(){return this.items.filter(function(x){return x.status==='verified'}).reduce(function(n,x){return n+Number(x.amount||0)},0)}},
   watch:{options:{deep:true,handler(){this.load()}}},
   filters:{dateOnly(v){return v?String(v).slice(0,10):''}},
-  mounted(){this.load();this.loadCustomers()},
+  async mounted(){this.load();await this.loadCustomers();if(this.$route.query.booking_id)this.openCreateFromQuery()},
   methods:{
     async load(){this.loading=true;try{const r=await api.get('/payments',{params:{page:this.options.page,per_page:this.options.itemsPerPage,from:this.from,to:this.to}});this.items=r.data.data||[];this.total=r.data.total||0}catch(e){this.$root.$emit('show-error',(e.response&&e.response.data&&e.response.data.message)||'Unable to load payments.')}finally{this.loading=false}},
-    async loadCustomers(){try{const r=await api.get('/customers',{params:{per_page:100}});this.customers=r.data.data||r.data||[]}catch(e){}},
+    async loadCustomers(){try{const r=await api.get('/customers',{params:{per_page:100}});this.customers=r.data.data||r.data||[]}catch(e){this.customers=[]}},
     async loadBookings(){this.form.booking_id=null;this.form.installment_id=null;this.bookings=[];this.installments=[];if(!this.form.customer_id)return;try{const r=await api.get('/bookings',{params:{customer_id:this.form.customer_id,per_page:100}});this.bookings=r.data.data||r.data||[]}catch(e){}},
     async loadInstallments(){this.form.installment_id=null;this.installments=[];this.selectedBooking=this.bookings.find(b=>b.id===this.form.booking_id)||null;if(!this.form.booking_id)return;try{const r=await api.get('/installments',{params:{booking_id:this.form.booking_id,per_page:100}});this.installments=(r.data.data||[]).filter(i=>Number(i.remaining_amount)>0).map(i=>Object.assign({},i,{installmentLabel:'#'+i.installment_number+' — '+this.money(i.remaining_amount)+' remaining — '+String(i.due_date).slice(0,10)}))}catch(e){}},
     openCreate(){if(!this.$can('payments.create'))return;this.form={customer_id:null,booking_id:null,installment_id:null,amount:null,payment_method:'cash',payment_date:new Date().toISOString().slice(0,10),reference_number:'',bank_name:'',cheque_number:'',notes:''};this.bookings=[];this.installments=[];this.selectedBooking=null;this.dialog=true},
+    async openCreateFromQuery(){this.openCreate();this.form.customer_id=Number(this.$route.query.customer_id||0)||null;if(!this.form.customer_id)return;await this.loadBookings();this.form.booking_id=Number(this.$route.query.booking_id||0)||null;if(this.form.booking_id){await this.loadInstallments();const installmentId=Number(this.$route.query.installment_id||0);if(installmentId&&this.installments.some(function(i){return Number(i.id)===installmentId})){this.form.installment_id=installmentId;this.installmentChanged(installmentId)}}},
+    bookingLabel(b){return (b.booking_number||('Booking #'+b.id))+' — '+(b.property?b.property.property_number:'Property')+' — Balance PKR '+this.money(b.remaining_amount)},
+    installmentChanged(id){const i=this.installments.find(function(x){return Number(x.id)===Number(id)});if(i)this.form.amount=Number(i.remaining_amount||0)},
     async save(){if(!this.$can('payments.create'))return;if(!this.form.customer_id||!this.form.booking_id||!this.form.amount){this.$root.$emit('show-error','Customer, booking and amount are required.');return}this.saving=true;try{await api.post('/payments',this.form);this.dialog=false;await this.load();this.$root.$emit('show-success','Payment recorded successfully.')}catch(e){this.$root.$emit('show-error',(e.response&&e.response.data&&e.response.data.message)||'Unable to record payment.')}finally{this.saving=false}},
     async view(item){if(!this.$can('payments.view'))return;try{const r=await api.get('/payments/'+item.id);this.selectedPayment=r.data;this.detailsDialog=true}catch(e){this.$root.$emit('show-error','Unable to load payment details.')}},
     async receipt(item){if(!this.$can('payments.view'))return;this.receiptLoading=item.id;try{const r=await api.get('/payments/'+item.id+'/receipt',{responseType:'blob'});const url=URL.createObjectURL(new Blob([r.data],{type:'application/pdf'}));const w=window.open(url,'_blank');if(!w)this.$root.$emit('show-error','Please allow pop-ups to view the receipt.');setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(e){this.$root.$emit('show-error','Unable to generate receipt PDF.')}finally{this.receiptLoading=null}},
@@ -91,4 +102,4 @@ export default {
   }
 }
 </script>
-<style scoped>.page{width:100%}.hero{border-left:4px solid #165134}.receipt{line-height:2}.page ::v-deep .v-data-table__wrapper{overflow-x:auto}</style>
+<style scoped>.page{width:100%}.hero{border-left:4px solid #165134}.summary-card,.table-card{border:1px solid rgba(22,81,52,.08);border-radius:15px!important}.receipt{line-height:2}.page ::v-deep .v-data-table__wrapper{overflow-x:auto}</style>
