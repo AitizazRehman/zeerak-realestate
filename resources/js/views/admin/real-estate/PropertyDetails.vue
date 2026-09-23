@@ -104,8 +104,6 @@
     </v-row>
   </template>
 
-  <v-snackbar v-model="snackbar" :color="snackbarColor" bottom right>{{snackbarText}}</v-snackbar>
-
   <v-dialog v-model="deleteDocumentDialog" max-width="480" persistent>
     <v-card>
       <v-card-title>Delete Document</v-card-title>
@@ -120,7 +118,7 @@ import api from '../../../services/api'
 import PropertyImageManager from './PropertyImageManager.vue'
 export default{
  name:'PropertyDetails',components:{PropertyImageManager},
- data(){return{loading:false,statusSaving:false,property:null,deleteDocumentDialog:false,documentDeleting:false,documentToDelete:null,documentHeaders:[{text:'Type',value:'document_type'},{text:'File',value:'name'},{text:'Size',value:'file_size'},{text:'Actions',value:'actions',sortable:false}],newStatus:null,statusNotes:'',statuses:[{text:'Available',value:'available'},{text:'Reserved',value:'reserved'},{text:'Booked',value:'booked'},{text:'Sold',value:'sold'},{text:'Under Construction',value:'under_construction'},{text:'Rented',value:'rented'},{text:'Unavailable',value:'unavailable'},{text:'Cancelled',value:'cancelled'}],snackbar:false,snackbarText:'',snackbarColor:'success'}},
+ data(){return{loading:false,statusSaving:false,property:null,deleteDocumentDialog:false,documentDeleting:false,documentToDelete:null,documentHeaders:[{text:'Type',value:'document_type'},{text:'File',value:'name'},{text:'Size',value:'file_size'},{text:'Actions',value:'actions',sortable:false}],newStatus:null,statusNotes:'',statuses:[{text:'Available',value:'available'},{text:'Reserved',value:'reserved'},{text:'Booked',value:'booked'},{text:'Sold',value:'sold'},{text:'Under Construction',value:'under_construction'},{text:'Rented',value:'rented'},{text:'Unavailable',value:'unavailable'},{text:'Cancelled',value:'cancelled'}]}},
  created(){this.loadProperty()},
  methods:{
   async downloadDocument(item){try{const r=await api.get('/property-documents/'+item.id+'/download',{responseType:'blob'});const url=window.URL.createObjectURL(new Blob([r.data]));const a=document.createElement('a');a.href=url;a.download=item.name||'property-document';document.body.appendChild(a);a.click();a.remove();window.URL.revokeObjectURL(url)}catch(error){this.showMessage('Unable to download document.','error')}},
@@ -133,7 +131,7 @@ export default{
   statusColor(status){return({available:'green',reserved:'orange',booked:'blue',sold:'red',under_construction:'purple',rented:'teal',unavailable:'grey',cancelled:'black'})[status]||'grey'},
   formatText(v){return v?String(v).replace(/_/g,' ').replace(/\b\w/g,function(x){return x.toUpperCase()}):'—'},
   formatNumber(value){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(value||0))},
-  showMessage(message,color){this.snackbarText=message;this.snackbarColor=color;this.snackbar=true}
+  showMessage(message,color){this.$root.$emit(color==='error'?'show-error':color==='warning'?'show-warning':color==='info'?'show-info':'show-success',message)}
  }}
 </script>
 <style scoped>
