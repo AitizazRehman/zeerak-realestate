@@ -35,7 +35,7 @@ class ExpenseController extends Controller
         return $query;
     }
 
-    private function validateBranchRefs(array $data)
+    private function validateBranchRefs(array $data, $fallbackBranchId = null)
     {
         $branchId = null;
 
@@ -57,6 +57,10 @@ class ExpenseController extends Controller
 
         if (empty($data['project_id']) && !empty($data['property_id'])) {
             $data['project_id'] = Property::findOrFail($data['property_id'])->project_id;
+        }
+
+        if (!$branchId && $fallbackBranchId) {
+            $branchId = $fallbackBranchId;
         }
 
         if (!$branchId && !$this->canAccessAllBranches()) {
@@ -132,7 +136,7 @@ class ExpenseController extends Controller
         $expense = DB::transaction(function () use ($expense, $data) {
             $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
             $before = $expense->toArray();
-            $validated = $this->validateBranchRefs($data);
+            $validated = $this->validateBranchRefs($data, $expense->branch_id);
             $expense->update($validated);
             FinancialAudit::create([
                 'entity_type'=>'expense', 'entity_id'=>$expense->id, 'branch_id'=>$expense->branch_id ?: ($expense->project ? $expense->project->branch_id : optional(optional($expense->property)->project)->branch_id), 'action'=>'updated',
