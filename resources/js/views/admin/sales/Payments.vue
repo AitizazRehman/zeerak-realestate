@@ -17,14 +17,14 @@
 
     <v-card flat class="table-card">
       <v-card-text><v-row dense><v-col cols="12" md="6"><v-text-field v-model="from" outlined dense type="date" label="Payment from" @change="load" /></v-col><v-col cols="12" md="6"><v-text-field v-model="to" outlined dense type="date" label="Payment to" @change="load" /></v-col></v-row></v-card-text>
-      <v-data-table :headers="headers" :items="items" :loading="loading" :options.sync="options" :server-items-length="total">
+      <v-data-table :headers="headers" :items="items" :options.sync="options" :server-items-length="total">
         <template v-slot:item.amount="{ item }"><strong>{{ money(item.amount) }}</strong></template>
         <template v-slot:item.payment_date="{ item }">{{ item.payment_date | dateOnly }}</template>
         <template v-slot:item.status="{ item }"><v-chip x-small :color="item.status === 'reversed' ? 'error' : 'success'" outlined>{{ item.status }}</v-chip></template>
         <template v-slot:item.actions="{ item }">
           <v-btn v-if="$can('payments.view')" icon small title="View payment" @click="view(item)"><v-icon small>mdi-eye</v-icon></v-btn>
           <v-badge v-if="$can('payments.view')" :content="item.financial_documents_count" :value="item.financial_documents_count" color="#165134" overlap><v-btn icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn></v-badge>
-          <v-btn v-if="$can('payments.view')" icon small color="#165134" @click="receipt(item)" :loading="receiptLoading===item.id"><v-icon small>mdi-file-pdf-box</v-icon></v-btn>
+          <v-btn v-if="$can('payments.view')" icon small color="#165134" @click="receipt(item)"><v-icon small>mdi-file-pdf-box</v-icon></v-btn>
           <v-btn v-if="$can('payments.edit') && item.status === 'verified'" icon small color="error" @click="openReverse(item)"><v-icon small>mdi-undo</v-icon></v-btn>
         </template>
         <template v-slot:no-data><div class="pa-8 grey--text">No payments found.</div></template>
@@ -49,7 +49,7 @@
             <v-col cols="12"><v-textarea v-model="form.notes" outlined dense rows="2" label="Notes" /></v-col>
           </v-row>
         </v-card-text>
-        <v-card-actions><v-spacer/><v-btn text :disabled="saving" @click="dialog=false">Cancel</v-btn><v-btn v-if="$can('payments.create')" outlined color="#165134" :loading="saving" @click="save(false)">Save Payment</v-btn><v-btn v-if="$can('payments.create')" color="#165134" dark depressed :loading="saving" @click="save(true)"><v-icon left>mdi-paperclip</v-icon>Save & Add Document</v-btn></v-card-actions>
+        <v-card-actions><v-spacer/><v-btn text :disabled="saving" @click="dialog=false">Cancel</v-btn><v-btn v-if="$can('payments.create')" outlined color="#165134" @click="save(false)">Save Payment</v-btn><v-btn v-if="$can('payments.create')" color="#165134" dark depressed @click="save(true)"><v-icon left>mdi-paperclip</v-icon>Save & Add Document</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 
@@ -65,7 +65,7 @@
           <div v-if="reversePayment" class="mb-4"><strong>{{ reversePayment.receipt_number }}</strong> — {{ money(reversePayment.amount) }}</div>
           <v-textarea v-model="reverseReason" outlined rows="4" label="Reason for reversal *" :disabled="reversing" />
         </v-card-text>
-        <v-card-actions><v-spacer/><v-btn text :disabled="reversing" @click="reverseDialog=false">Cancel</v-btn><v-btn v-if="$can('payments.edit')" color="error" depressed :loading="reversing" :disabled="!reverseReason || !reverseReason.trim()" @click="reversePaymentRecord">Reverse Payment</v-btn></v-card-actions>
+        <v-card-actions><v-spacer/><v-btn text :disabled="reversing" @click="reverseDialog=false">Cancel</v-btn><v-btn v-if="$can('payments.edit')" color="error" depressed :disabled="!reverseReason || !reverseReason.trim()" @click="reversePaymentRecord">Reverse Payment</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </div>
