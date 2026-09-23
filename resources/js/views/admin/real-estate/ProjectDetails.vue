@@ -14,8 +14,6 @@
     </div>
   </v-card>
 
-  <v-progress-linear v-if="loading" indeterminate color="#165134" class="mb-4"/>
-
   <template v-if="project">
     <v-row class="mb-1">
       <v-col cols="6" md="3"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Properties</div><div class="text-h5 font-weight-bold">{{properties.length}}</div></v-card></v-col>
