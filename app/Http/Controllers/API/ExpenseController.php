@@ -59,7 +59,7 @@ class ExpenseController extends Controller
 
     public function index(Request $request)
     {
-        $q = $this->applyBranchScope(Expense::with(['project:id,name','property:id,property_number','createdBy:id,name']));
+        $q = $this->applyBranchScope(Expense::with(['project:id,name','property:id,property_number','createdBy:id,name'])->withCount('financialDocuments'));
         foreach (['project_id','property_id','category','payment_method'] as $field) {
             if ($request->filled($field)) $q->where($field, $request->input($field));
         }
