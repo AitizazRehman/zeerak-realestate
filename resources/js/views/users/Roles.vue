@@ -66,7 +66,7 @@
             </v-expansion-panels>
           </v-card-text>
           <v-card-actions v-if="canEditSelected">
-            <v-spacer /><v-btn color="#165134" dark :loading="saving" @click="savePermissions"><v-icon left>mdi-content-save</v-icon>Save Permissions</v-btn>
+            <v-spacer /><v-btn color="#165134" dark @click="savePermissions"><v-icon left>mdi-content-save</v-icon>Save Permissions</v-btn>
           </v-card-actions>
         </v-card>
         <v-card v-else flat outlined class="empty-card"><v-card-text class="text-center py-12 grey--text"><v-icon size="54">mdi-shield-key-outline</v-icon><div class="mt-3">Select a role to manage its permissions.</div></v-card-text></v-card>
@@ -81,7 +81,7 @@
           <v-text-field v-model="form.name" label="Role name *" outlined dense autofocus :disabled="!canSaveRole" :rules="[required]" />
           <div class="text-caption grey--text">After saving the role, you can fine-tune its permissions on the right.</div>
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn text @click="dialog=false">Cancel</v-btn><v-btn v-if="canSaveRole" color="#165134" dark :loading="saving" @click="saveRole">{{ editing ? 'Update' : 'Create' }}</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn text @click="dialog=false">Cancel</v-btn><v-btn v-if="canSaveRole" color="#165134" dark @click="saveRole">{{ editing ? 'Update' : 'Create' }}</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </div>
