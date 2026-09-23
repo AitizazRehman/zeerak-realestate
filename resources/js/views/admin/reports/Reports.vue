@@ -197,7 +197,7 @@ export default {
         {text:'Due Date',value:'due_date'},{text:'Amount',value:'amount',align:'right'},{text:'Remaining',value:'remaining_amount',align:'right'},{text:'Status',value:'status'}
       ],
       expenseHeaders:[
-        {text:'Expense #',value:'expense_number'},{text:'Project',value:'project.name'},{text:'Category',value:'category'},
+        {text:'Expense #',value:'expense_number'},{text:'Branch',value:'branch.name'},{text:'Project',value:'project.name'},{text:'Category',value:'category'},
         {text:'Vendor',value:'vendor_name'},{text:'Date',value:'expense_date'},{text:'Amount',value:'amount',align:'right'}
       ],
       commissionHeaders:[
