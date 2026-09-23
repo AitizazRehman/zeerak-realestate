@@ -56,7 +56,7 @@
       <v-card
         flat
         class="stat-card fill-height pa-4 pa-md-5"
-        :class="{'clickable':card.route}"
+        :class="{'clickable':card.route && canOpen(card)}"
         @click="go(card)"
       >
         <div class="d-flex align-start">
@@ -90,7 +90,7 @@
             v-for="item in attention"
             :key="item.label"
             class="attention-row"
-            :class="{'clickable-row':item.route}"
+            :class="{'clickable-row':item.route && canOpen(item)}"
             @click="go(item)"
           >
             <v-avatar size="40" :class="item.softClass" class="mr-3">
@@ -174,7 +174,7 @@
         <v-card-text class="pt-5">
           <v-row>
             <v-col v-for="item in crmCards" :key="item.key" cols="6">
-              <v-card flat class="mini-card pa-4" :class="{'clickable':item.route}" @click="go(item)">
+              <v-card flat class="mini-card pa-4" :class="{'clickable':item.route && canOpen(item)}" @click="go(item)">
                 <div class="d-flex align-center">
                   <v-avatar size="42" :class="item.softClass" class="mr-3"><v-icon :color="item.color">{{item.icon}}</v-icon></v-avatar>
                   <div>
@@ -272,14 +272,14 @@ export default {
       recentPayments:[],
 
       cards:[
-        {key:'sales_value',label:'Sales Value',helper:'Confirmed & completed sales',money:true,icon:'mdi-cash-multiple',color:'green darken-2',tone:'green',route:'bookings'},
-        {key:'collections',label:'Collections',helper:'Verified customer receipts',money:true,icon:'mdi-bank-check',color:'teal darken-2',tone:'green',route:'payments'},
-        {key:'receivables',label:'Receivables',helper:'Outstanding booking balance',money:true,icon:'mdi-cash-clock',color:'orange darken-2',tone:'amber',route:'installments'},
-        {key:'overdue_amount',label:'Overdue Amount',helper:'Past-due installment balance',money:true,icon:'mdi-alert-circle-outline',color:'red darken-2',tone:'red',route:'installments',query:{status:'overdue'}},
-        {key:'expenses',label:'Expenses',helper:'Operating & project expenses',money:true,icon:'mdi-cash-minus',color:'deep-orange darken-2',tone:'amber',route:'expenses'},
-        {key:'net_cash_flow',label:'Net Cash Flow',helper:'Collections less expenses',money:true,icon:'mdi-chart-areaspline',color:'purple darken-1',tone:'purple',route:'reports'},
-        {key:'available_properties',label:'Available Properties',helper:'Inventory ready for sale',icon:'mdi-home-check-outline',color:'green darken-2',tone:'green',route:'properties',query:{status:'available'}},
-        {key:'sold_properties',label:'Sold Properties',helper:'Completed property sales',icon:'mdi-home-lock-outline',color:'blue darken-2',tone:'blue',route:'properties',query:{status:'sold'}}
+        {key:'sales_value',label:'Sales Value',helper:'Confirmed & completed sales',money:true,icon:'mdi-cash-multiple',color:'green darken-2',tone:'green',route:'bookings',permission:'sales.view'},
+        {key:'collections',label:'Collections',helper:'Verified customer receipts',money:true,icon:'mdi-bank-check',color:'teal darken-2',tone:'green',route:'payments',permission:'payments.view'},
+        {key:'receivables',label:'Receivables',helper:'Outstanding booking balance',money:true,icon:'mdi-cash-clock',color:'orange darken-2',tone:'amber',route:'installments',permission:'installments.view'},
+        {key:'overdue_amount',label:'Overdue Amount',helper:'Past-due installment balance',money:true,icon:'mdi-alert-circle-outline',color:'red darken-2',tone:'red',route:'installments',permission:'installments.view',query:{status:'overdue'}},
+        {key:'expenses',label:'Expenses',helper:'Operating & project expenses',money:true,icon:'mdi-cash-minus',color:'deep-orange darken-2',tone:'amber',route:'expenses',permission:'expenses.view'},
+        {key:'net_cash_flow',label:'Net Cash Flow',helper:'Collections less expenses',money:true,icon:'mdi-chart-areaspline',color:'purple darken-1',tone:'purple',route:'reports',permission:'reports.view'},
+        {key:'available_properties',label:'Available Properties',helper:'Inventory ready for sale',icon:'mdi-home-check-outline',color:'green darken-2',tone:'green',route:'properties',permission:'properties.view',query:{status:'available'}},
+        {key:'sold_properties',label:'Sold Properties',helper:'Completed property sales',icon:'mdi-home-lock-outline',color:'blue darken-2',tone:'blue',route:'properties',permission:'properties.view',query:{status:'sold'}}
       ],
 
       bookingHeaders:[
@@ -363,19 +363,19 @@ export default {
 
     attention(){
       return[
-        {label:'Overdue installments',helper:'Require collection follow-up',value:this.metrics.overdue_count||0,icon:'mdi-alert-decagram-outline',color:'red darken-2',softClass:'soft-red',valueClass:'error--text',route:'installments',query:{status:'overdue'}},
-        {label:'Receivables',helper:'Outstanding customer balance',value:this.metrics.receivables||0,money:true,icon:'mdi-cash-clock',color:'orange darken-2',softClass:'soft-amber',valueClass:'orange--text text--darken-2',route:'installments'},
-        {label:'Active leads',helper:'Prospects still in the pipeline',value:this.metrics.active_leads||0,icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads'},
-        {label:'Scheduled visits',helper:'Upcoming customer visits',value:this.metrics.scheduled_visits||0,icon:'mdi-map-marker-clock-outline',color:'purple darken-1',softClass:'soft-purple',route:'site-visits',query:{status:'scheduled'}}
+        {label:'Overdue installments',helper:'Require collection follow-up',value:this.metrics.overdue_count||0,icon:'mdi-alert-decagram-outline',color:'red darken-2',softClass:'soft-red',valueClass:'error--text',route:'installments',permission:'installments.view',query:{status:'overdue'}},
+        {label:'Receivables',helper:'Outstanding customer balance',value:this.metrics.receivables||0,money:true,icon:'mdi-cash-clock',color:'orange darken-2',softClass:'soft-amber',valueClass:'orange--text text--darken-2',route:'installments',permission:'installments.view'},
+        {label:'Active leads',helper:'Prospects still in the pipeline',value:this.metrics.active_leads||0,icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads',permission:'leads.view',permission:'leads.view'},
+        {label:'Scheduled visits',helper:'Upcoming customer visits',value:this.metrics.scheduled_visits||0,icon:'mdi-map-marker-clock-outline',color:'purple darken-1',softClass:'soft-purple',route:'site-visits',permission:'site_visits.view',query:{status:'scheduled'}}
       ]
     },
 
     crmCards(){
       return[
-        {key:'customers',label:'Active Customers',icon:'mdi-account-group-outline',color:'#165134',softClass:'soft-green',route:'customers'},
+        {key:'customers',label:'Active Customers',icon:'mdi-account-group-outline',color:'#165134',softClass:'soft-green',route:'customers',permission:'customers.view'},
         {key:'active_leads',label:'Active Leads',icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads'},
-        {key:'scheduled_visits',label:'Scheduled Visits',icon:'mdi-map-marker-clock-outline',color:'purple darken-1',softClass:'soft-purple',route:'site-visits',query:{status:'scheduled'}},
-        {key:'reserved_properties',label:'Reserved Properties',icon:'mdi-home-clock-outline',color:'orange darken-2',softClass:'soft-amber',route:'properties',query:{status:'reserved'}}
+        {key:'scheduled_visits',label:'Scheduled Visits',icon:'mdi-map-marker-clock-outline',color:'purple darken-1',softClass:'soft-purple',route:'site-visits',permission:'site_visits.view',query:{status:'scheduled'}},
+        {key:'reserved_properties',label:'Reserved Properties',icon:'mdi-home-clock-outline',color:'orange darken-2',softClass:'soft-amber',route:'properties',permission:'properties.view',query:{status:'reserved'}}
       ]
     }
   },
@@ -407,8 +407,12 @@ export default {
       }
     },
 
+    canOpen(item){
+      return !item || !item.permission || this.$can(item.permission)
+    },
+
     go(item){
-      if(!item||!item.route)return
+      if(!item||!item.route||!this.canOpen(item))return
 
       this.$router.push({
         name:item.route,
