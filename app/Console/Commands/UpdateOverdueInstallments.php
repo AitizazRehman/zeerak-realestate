@@ -15,9 +15,22 @@ class UpdateOverdueInstallments extends Command
         $count = Installment::whereIn('status', ['pending', 'partial'])
             ->whereDate('due_date', '<', now()->toDateString())
             ->where('remaining_amount', '>', 0)
-            ->update(['status' => 'overdue', 'updated_at' => now()]);
+            ->whereHas('booking', function ($booking) {
+                $booking->whereNotIn('status', ['cancelled', 'completed']);
+            })
+            ->where(function ($query) {
+                $query->whereDoesntHave('plan')
+                    ->orWhereHas('plan', function ($plan) {
+                        $plan->where('status', 'active');
+                    });
+            })
+            ->update([
+                'status' => 'overdue',
+                'updated_at' => now()
+            ]);
 
-        $this->info("{$count} installment(s) marked overdue.");
+        $this->info("{$count} active installment(s) marked overdue.");
+
         return self::SUCCESS;
     }
 }
