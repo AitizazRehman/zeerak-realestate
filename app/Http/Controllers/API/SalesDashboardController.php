@@ -92,7 +92,7 @@ class SalesDashboardController extends Controller
                     });
                 })->orWhere(function ($viaLeadAgent) use ($branchId) {
                     $viaLeadAgent->whereNull('property_id')->whereHas('lead', function ($lead) use ($branchId) {
-                        $lead->whereNull('project_id')->whereHas('assignedAgent', function ($agent) use ($branchId) {
+                        $lead->whereNull('project_id')->whereHas('assignee', function ($agent) use ($branchId) {
                             $agent->where('branch_id', $branchId);
                         });
                     });
