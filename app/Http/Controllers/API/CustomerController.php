@@ -23,7 +23,8 @@ class CustomerController extends Controller
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
             $query->where(function ($customerQuery) use ($branchId) {
-                $customerQuery->whereHas('bookings.property.project', function ($q) use ($branchId) {
+                $customerQuery->where('branch_id', $branchId)
+                    ->orWhereHas('bookings.property.project', function ($q) use ($branchId) {
                     $q->where('branch_id', $branchId);
                 })->orWhereHas('leads', function ($lead) use ($branchId) {
                     $lead->whereHas('project', function ($project) use ($branchId) {
@@ -50,6 +51,10 @@ class CustomerController extends Controller
         if ($this->canAccessAllBranches()) return;
 
         $branchId = auth()->user()->branch_id;
+        if ($customer->branch_id && (int) $customer->branch_id !== (int) $branchId) {
+            abort(403, 'This customer belongs to another branch and can only be modified by an administrator.');
+        }
+
         $hasOtherBranchBookings = $customer->bookings()
             ->whereHas('property.project', function ($q) use ($branchId) {
                 $q->where('branch_id', '!=', $branchId);
@@ -79,7 +84,15 @@ class CustomerController extends Controller
 
     public function store(StoreCustomerRequest $request)
     {
-        $customer = Customer::create(array_merge($request->validated(), [
+        $data = $request->validated();
+        if (!$this->canAccessAllBranches()) {
+            if (!$request->user()->branch_id) {
+                abort(422, 'Your user account must be assigned to a branch before creating customers.');
+            }
+            $data['branch_id'] = $request->user()->branch_id;
+        }
+
+        $customer = Customer::create(array_merge($data, [
             'customer_number' => $this->generateCustomerNumber(),
         ]));
         return response()->json(['message' => 'Customer created successfully.', 'customer' => $customer], 201);
@@ -97,7 +110,7 @@ class CustomerController extends Controller
     public function show(Customer $customer)
     {
         $this->ensureCustomerAccess($customer);
-        return response()->json($customer->load(['bookings.property.project', 'payments']));
+        return response()->json($customer->load(['branch:id,name', 'bookings.property.project', 'payments']));
     }
 
     public function ledger(Customer $customer)
