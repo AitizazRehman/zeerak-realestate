@@ -22,4 +22,9 @@ class Expense extends Model
     public function project() { return $this->belongsTo(Project::class); }
     public function property() { return $this->belongsTo(Property::class); }
     public function createdBy() { return $this->belongsTo(User::class, 'created_by'); }
+
+    public function financialDocuments()
+    {
+        return $this->hasMany(FinancialDocument::class, 'entity_id')->where('entity_type', 'expense');
+    }
 }
