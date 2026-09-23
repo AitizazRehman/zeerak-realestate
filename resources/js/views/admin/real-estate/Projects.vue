@@ -51,13 +51,13 @@
       </v-col>
       <v-col cols="12" md="3" class="text-md-right">
         <v-btn text color="grey darken-1" @click="resetFilters"><v-icon left>mdi-filter-remove</v-icon>Clear</v-btn>
-        <v-btn color="#165134" dark depressed :loading="loading" @click="loadProjects"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
+        <v-btn color="#165134" dark depressed @click="loadProjects"><v-icon left>mdi-filter</v-icon>Apply</v-btn>
       </v-col>
     </v-row>
   </v-card>
 
   <v-card flat class="table-card">
-    <v-data-table :headers="headers" :items="projects" :loading="loading" :server-items-length="total" :options.sync="options" @update:options="loadProjects">
+    <v-data-table :headers="headers" :items="projects" :server-items-length="total" :options.sync="options" @update:options="loadProjects">
       <template v-slot:item.name="{item}">
         <div class="d-flex align-center py-2 project-link" @click="viewProject(item)">
           <v-avatar size="40" class="soft-green mr-3"><v-icon color="#165134">mdi-office-building-outline</v-icon></v-avatar>
@@ -115,7 +115,7 @@
       <v-card-actions>
         <v-spacer/>
         <v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn>
-        <v-btn v-if="$can('projects.delete')" color="error" depressed :loading="deleting" @click="confirmDelete">Delete Project</v-btn>
+        <v-btn v-if="$can('projects.delete')" color="error" depressed @click="confirmDelete">Delete Project</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
