@@ -1,76 +1,28 @@
 <template>
-  <div class="login-shell">
-    <div class="login-grid">
-      <section class="visual-panel d-none d-md-flex">
-        <div class="visual-overlay"></div>
-        <div class="shape shape-one"></div>
-        <div class="shape shape-two"></div>
-        <div class="shape shape-three"></div>
+  <div class="login-page">
+    <div class="background-grid"></div>
+    <div class="orb orb-one"></div>
+    <div class="orb orb-two"></div>
 
-        <div class="visual-content">
-          <div class="brand-mark">
-            <img src="/images/zeerak-logo.jpeg" alt="ZeeraK">
-          </div>
-
-          <div class="eyebrow">REAL ESTATE MANAGEMENT</div>
-          <h1 class="visual-title">
-            A smarter workspace for property, sales and finance.
-          </h1>
-          <p class="visual-copy">
-            Manage leads, inventory, bookings, installments, payments and reporting from one secure system.
-          </p>
-
-          <div class="feature-grid">
-            <div class="feature-card">
-              <v-icon color="white" size="22">mdi-account-multiple-outline</v-icon>
-              <div>
-                <div class="feature-title">CRM</div>
-                <div class="feature-copy">Lead to customer workflow</div>
-              </div>
-            </div>
-
-            <div class="feature-card">
-              <v-icon color="white" size="22">mdi-home-city-outline</v-icon>
-              <div>
-                <div class="feature-title">Inventory</div>
-                <div class="feature-copy">Live property availability</div>
-              </div>
-            </div>
-
-            <div class="feature-card">
-              <v-icon color="white" size="22">mdi-chart-line</v-icon>
-              <div>
-                <div class="feature-title">Finance</div>
-                <div class="feature-copy">Payments and receivables</div>
-              </div>
-            </div>
-
-            <div class="feature-card">
-              <v-icon color="white" size="22">mdi-shield-check-outline</v-icon>
-              <div>
-                <div class="feature-title">Secure</div>
-                <div class="feature-copy">Role and branch controlled</div>
-              </div>
-            </div>
-          </div>
+    <div class="login-wrap">
+      <div class="top-brand">
+        <div class="logo-box">
+          <img src="/images/zeerak-logo.jpeg" alt="ZeeraK">
         </div>
-
-        <div class="visual-footer">
-          <v-icon small color="white" class="mr-2">mdi-lock-outline</v-icon>
-          Secure access for authorized users
+        <div>
+          <div class="brand-title">ZeeraK Management Portal</div>
+          <div class="brand-subtitle">Secure business workspace</div>
         </div>
-      </section>
+      </div>
 
-      <section class="form-panel">
-        <div class="form-wrap">
-          <div class="mobile-brand d-md-none">
-            <img src="/images/zeerak-logo.jpeg" alt="ZeeraK">
-          </div>
+      <v-card class="auth-card" elevation="0">
+        <div class="auth-accent"></div>
 
-          <div class="form-heading">
-            <div class="welcome-label">WELCOME BACK</div>
-            <h2>Sign in to your account</h2>
-            <p>Enter your credentials to continue to the management portal.</p>
+        <div class="auth-body">
+          <div class="form-intro">
+            <div class="eyebrow">ACCOUNT ACCESS</div>
+            <h1>Welcome back</h1>
+            <p>Sign in with your authorized account to continue.</p>
           </div>
 
           <v-alert
@@ -86,48 +38,56 @@
           </v-alert>
 
           <v-form ref="form" @submit.prevent="login">
-            <div class="field-label">Email address</div>
-            <v-text-field
-              v-model.trim="form.email"
-              outlined
-              hide-details="auto"
-              placeholder="you@example.com"
-              prepend-inner-icon="mdi-email-outline"
-              :error-messages="errors.email"
-              autocomplete="username"
-              class="login-field mb-5"
-            />
-
-            <div class="d-flex align-center justify-space-between">
-              <div class="field-label">Password</div>
-              <span class="secure-label">
-                <v-icon x-small color="#77827c">mdi-lock-outline</v-icon>
-                Secure sign in
-              </span>
+            <div class="field-group">
+              <label>Email address</label>
+              <v-text-field
+                v-model.trim="form.email"
+                outlined
+                hide-details="auto"
+                placeholder="name@example.com"
+                prepend-inner-icon="mdi-email-outline"
+                :error-messages="errors.email"
+                autocomplete="username"
+                class="login-input"
+              />
             </div>
 
-            <v-text-field
-              v-model="form.password"
-              outlined
-              hide-details="auto"
-              placeholder="Enter your password"
-              prepend-inner-icon="mdi-lock-outline"
-              :append-icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
-              @click:append="showPassword=!showPassword"
-              :type="showPassword ? 'text' : 'password'"
-              :error-messages="errors.password"
-              autocomplete="current-password"
-              class="login-field mb-2"
-            />
+            <div class="field-group">
+              <div class="field-heading">
+                <label>Password</label>
+                <span class="security-hint">
+                  <v-icon x-small color="#7a8780">mdi-shield-lock-outline</v-icon>
+                  Encrypted access
+                </span>
+              </div>
 
-            <div class="remember-row">
+              <v-text-field
+                v-model="form.password"
+                outlined
+                hide-details="auto"
+                placeholder="Enter your password"
+                prepend-inner-icon="mdi-lock-outline"
+                :append-icon="showPassword ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+                @click:append="showPassword=!showPassword"
+                :type="showPassword ? 'text' : 'password'"
+                :error-messages="errors.password"
+                autocomplete="current-password"
+                class="login-input"
+              />
+            </div>
+
+            <div class="form-options">
               <v-checkbox
                 v-model="rememberEmail"
                 dense
                 hide-details
                 color="#165134"
-                label="Remember my email"
+                label="Remember email"
               />
+              <span class="session-note">
+                <v-icon x-small color="#7a8780">mdi-clock-outline</v-icon>
+                Session protected
+              </span>
             </div>
 
             <v-btn
@@ -137,26 +97,42 @@
               depressed
               color="#165134"
               dark
-              class="signin-btn"
+              class="login-button"
               :disabled="!canSubmit"
             >
-              <span>Sign in</span>
+              Sign in
               <v-icon right>mdi-arrow-right</v-icon>
             </v-btn>
           </v-form>
 
-          <div class="support-note">
-            <v-icon small color="#165134" class="mr-2">mdi-information-outline</v-icon>
-            If you cannot access your account, contact your system administrator.
+          <div class="access-separator">
+            <span>Authorized access only</span>
           </div>
 
-          <div class="form-footer">
-            <span>Protected management portal</span>
-            <span class="dot"></span>
-            <span>{{currentYear}}</span>
+          <div class="security-row">
+            <div class="security-item">
+              <v-icon small color="#165134">mdi-account-key-outline</v-icon>
+              <span>Role based</span>
+            </div>
+            <div class="security-item">
+              <v-icon small color="#165134">mdi-office-building-marker-outline</v-icon>
+              <span>Branch controlled</span>
+            </div>
+            <div class="security-item">
+              <v-icon small color="#165134">mdi-shield-check-outline</v-icon>
+              <span>Secure</span>
+            </div>
           </div>
         </div>
-      </section>
+      </v-card>
+
+      <div class="page-footer">
+        <span>Management Portal</span>
+        <span class="footer-dot"></span>
+        <span>{{currentYear}}</span>
+        <span class="footer-dot"></span>
+        <span>Protected access</span>
+      </div>
     </div>
   </div>
 </template>
@@ -223,198 +199,128 @@ export default {
 </script>
 
 <style scoped>
-.login-shell{
-  min-height:100vh;
-  background:#f4f7f5;
-}
-
-.login-grid{
-  min-height:100vh;
-  display:grid;
-  grid-template-columns:minmax(0,1.15fr) minmax(430px,.85fr);
-}
-
-.visual-panel{
+.login-page{
   min-height:100vh;
   position:relative;
   overflow:hidden;
-  padding:64px 72px;
-  flex-direction:column;
+  display:flex;
+  align-items:center;
   justify-content:center;
+  padding:42px 20px;
   background:
-    radial-gradient(circle at 85% 15%,rgba(196,159,73,.22),transparent 26%),
-    linear-gradient(145deg,#0b3422 0%,#124a30 48%,#165134 100%);
+    radial-gradient(circle at 15% 15%,rgba(22,81,52,.09),transparent 28%),
+    radial-gradient(circle at 85% 85%,rgba(183,147,67,.08),transparent 30%),
+    #f5f8f6;
 }
 
-.visual-overlay{
+.background-grid{
   position:absolute;
   inset:0;
   background-image:
-    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
-  background-size:42px 42px;
-  mask-image:linear-gradient(to bottom,rgba(0,0,0,.8),transparent);
+    linear-gradient(rgba(22,81,52,.028) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(22,81,52,.028) 1px,transparent 1px);
+  background-size:34px 34px;
+  mask-image:linear-gradient(to bottom,rgba(0,0,0,.45),transparent 85%);
 }
 
-.shape{
+.orb{
   position:absolute;
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:32px;
-  transform:rotate(16deg);
+  border-radius:50%;
+  filter:blur(1px);
 }
 
-.shape-one{
-  width:310px;
-  height:310px;
-  right:-100px;
-  top:70px;
+.orb-one{
+  width:260px;
+  height:260px;
+  left:-100px;
+  bottom:80px;
+  background:rgba(22,81,52,.055);
 }
 
-.shape-two{
-  width:220px;
-  height:220px;
-  right:70px;
-  bottom:70px;
-  border-color:rgba(207,173,91,.20);
+.orb-two{
+  width:190px;
+  height:190px;
+  right:-55px;
+  top:65px;
+  background:rgba(190,151,61,.06);
 }
 
-.shape-three{
-  width:120px;
-  height:120px;
-  left:70px;
-  bottom:-45px;
-}
-
-.visual-content{
+.login-wrap{
   position:relative;
   z-index:2;
-  max-width:720px;
-}
-
-.brand-mark{
-  width:78px;
-  height:78px;
-  padding:7px;
-  border-radius:18px;
-  background:#fff;
-  box-shadow:0 16px 40px rgba(0,0,0,.18);
-  margin-bottom:38px;
-}
-
-.brand-mark img{
   width:100%;
-  height:100%;
-  object-fit:contain;
-  border-radius:12px;
+  max-width:500px;
 }
 
-.eyebrow{
-  color:#d9bd75;
-  font-size:12px;
-  font-weight:800;
-  letter-spacing:.17em;
-  margin-bottom:15px;
-}
-
-.visual-title{
-  color:#fff;
-  font-size:clamp(36px,4vw,58px);
-  line-height:1.08;
-  font-weight:800;
-  letter-spacing:-.035em;
-  max-width:700px;
-  margin:0 0 22px;
-}
-
-.visual-copy{
-  max-width:610px;
-  margin:0;
-  color:rgba(255,255,255,.72);
-  font-size:17px;
-  line-height:1.75;
-}
-
-.feature-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:12px;
-  max-width:620px;
-  margin-top:42px;
-}
-
-.feature-card{
-  display:flex;
-  align-items:center;
-  gap:13px;
-  padding:16px;
-  border:1px solid rgba(255,255,255,.09);
-  background:rgba(255,255,255,.055);
-  border-radius:14px;
-  backdrop-filter:blur(8px);
-}
-
-.feature-title{
-  color:#fff;
-  font-weight:700;
-  line-height:1.3;
-}
-
-.feature-copy{
-  margin-top:2px;
-  color:rgba(255,255,255,.58);
-  font-size:12px;
-}
-
-.visual-footer{
-  position:absolute;
-  left:72px;
-  bottom:35px;
-  z-index:2;
-  color:rgba(255,255,255,.55);
-  font-size:12px;
-  display:flex;
-  align-items:center;
-}
-
-.form-panel{
-  min-height:100vh;
+.top-brand{
   display:flex;
   align-items:center;
   justify-content:center;
+  gap:13px;
+  margin-bottom:24px;
+}
+
+.logo-box{
+  width:56px;
+  height:56px;
+  padding:5px;
+  border-radius:15px;
   background:#fff;
-  padding:48px;
+  border:1px solid rgba(22,81,52,.08);
+  box-shadow:0 9px 24px rgba(18,60,39,.08);
 }
 
-.form-wrap{
-  width:100%;
-  max-width:440px;
-}
-
-.mobile-brand{
-  width:72px;
-  height:72px;
-  margin-bottom:30px;
-}
-
-.mobile-brand img{
+.logo-box img{
   width:100%;
   height:100%;
   object-fit:contain;
+  border-radius:10px;
 }
 
-.form-heading{
-  margin-bottom:32px;
+.brand-title{
+  color:#183126;
+  font-size:15px;
+  line-height:1.25;
+  font-weight:800;
 }
 
-.welcome-label{
-  color:#165134;
+.brand-subtitle{
+  margin-top:2px;
+  color:#8a948f;
   font-size:11px;
+}
+
+.auth-card{
+  position:relative;
+  overflow:hidden;
+  border-radius:22px!important;
+  border:1px solid rgba(22,81,52,.09)!important;
+  background:#fff!important;
+  box-shadow:0 22px 60px rgba(24,58,41,.10)!important;
+}
+
+.auth-accent{
+  height:5px;
+  background:linear-gradient(90deg,#165134 0%,#2d7651 62%,#b6913f 100%);
+}
+
+.auth-body{
+  padding:40px 42px 34px;
+}
+
+.form-intro{
+  margin-bottom:30px;
+}
+
+.eyebrow{
+  margin-bottom:8px;
+  color:#165134;
+  font-size:10px;
   font-weight:800;
   letter-spacing:.16em;
-  margin-bottom:9px;
 }
 
-.form-heading h2{
+.form-intro h1{
   margin:0 0 8px;
   color:#18231e;
   font-size:31px;
@@ -423,68 +329,81 @@ export default {
   letter-spacing:-.025em;
 }
 
-.form-heading p{
+.form-intro p{
   margin:0;
-  color:#7b8580;
+  color:#7d8882;
   font-size:14px;
-  line-height:1.65;
+  line-height:1.6;
 }
 
-.field-label{
-  margin-bottom:7px;
-  color:#36423c;
+.field-group{
+  margin-bottom:20px;
+}
+
+.field-group label{
+  display:block;
+  margin-bottom:8px;
+  color:#334139;
   font-size:13px;
   font-weight:700;
 }
 
-.secure-label{
+.field-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+}
+
+.security-hint,
+.session-note{
   display:flex;
   align-items:center;
   gap:4px;
-  margin-bottom:7px;
-  color:#8a938e;
+  color:#8b9590;
   font-size:11px;
 }
 
-.login-field ::v-deep .v-input__slot{
-  min-height:52px!important;
+.login-input ::v-deep .v-input__slot{
+  min-height:54px!important;
   border-radius:12px!important;
   background:#fbfcfb;
 }
 
-.login-field ::v-deep fieldset{
-  border-color:#dce3df!important;
+.login-input ::v-deep fieldset{
+  border-color:#dbe3df!important;
 }
 
-.login-field.v-input--is-focused ::v-deep fieldset{
+.login-input.v-input--is-focused ::v-deep fieldset{
   border-width:1px!important;
   border-color:#165134!important;
 }
 
-.remember-row{
+.form-options{
+  min-height:48px;
   display:flex;
   align-items:center;
-  min-height:54px;
-  margin-bottom:18px;
+  justify-content:space-between;
+  margin-top:-4px;
+  margin-bottom:17px;
 }
 
-.remember-row ::v-deep .v-label{
+.form-options ::v-deep .v-label{
+  color:#66726b!important;
   font-size:13px;
-  color:#66716b;
 }
 
-.signin-btn{
+.login-button{
   min-height:54px!important;
   border-radius:12px!important;
   text-transform:none!important;
   font-size:15px!important;
   font-weight:700!important;
   letter-spacing:0!important;
-  box-shadow:0 10px 24px rgba(22,81,52,.18)!important;
+  box-shadow:0 11px 26px rgba(22,81,52,.18)!important;
 }
 
-.signin-btn.v-btn--disabled{
-  background:#dce2df!important;
+.login-button.v-btn--disabled{
+  background:#dce3df!important;
   color:#87918c!important;
   box-shadow:none!important;
 }
@@ -493,75 +412,100 @@ export default {
   border-radius:11px!important;
 }
 
-.support-note{
-  display:flex;
-  align-items:flex-start;
-  margin-top:28px;
-  padding:13px 14px;
-  border-radius:11px;
-  background:#f6f8f7;
-  color:#738079;
-  font-size:12px;
-  line-height:1.5;
+.access-separator{
+  position:relative;
+  margin:28px 0 20px;
+  text-align:center;
 }
 
-.form-footer{
+.access-separator:before{
+  content:'';
+  position:absolute;
+  top:50%;
+  left:0;
+  right:0;
+  height:1px;
+  background:#edf0ee;
+}
+
+.access-separator span{
+  position:relative;
+  z-index:2;
+  padding:0 12px;
+  background:#fff;
+  color:#a0a9a4;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.08em;
+}
+
+.security-row{
   display:flex;
   align-items:center;
   justify-content:center;
-  margin-top:34px;
-  color:#a0a8a4;
+  gap:18px;
+  flex-wrap:wrap;
+}
+
+.security-item{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  color:#657169;
   font-size:11px;
 }
 
-.dot{
+.page-footer{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-wrap:wrap;
+  margin-top:22px;
+  color:#9aa49f;
+  font-size:10px;
+}
+
+.footer-dot{
   width:3px;
   height:3px;
   margin:0 8px;
   border-radius:50%;
-  background:#aeb6b2;
-}
-
-@media(max-width:1260px){
-  .visual-panel{
-    padding:56px 48px;
-  }
-
-  .visual-footer{
-    left:48px;
-  }
-}
-
-@media(max-width:959px){
-  .login-grid{
-    display:block;
-  }
-
-  .form-panel{
-    min-height:100vh;
-    padding:40px 28px;
-    background:
-      radial-gradient(circle at top right,rgba(22,81,52,.05),transparent 28%),
-      #fff;
-  }
+  background:#b1b8b4;
 }
 
 @media(max-width:600px){
-  .form-panel{
+  .login-page{
     align-items:flex-start;
-    padding:38px 22px 28px;
+    padding:30px 15px 24px;
   }
 
-  .form-wrap{
-    max-width:100%;
+  .top-brand{
+    justify-content:flex-start;
+    padding:0 5px;
+    margin-bottom:20px;
   }
 
-  .form-heading h2{
+  .auth-card{
+    border-radius:18px!important;
+  }
+
+  .auth-body{
+    padding:30px 24px 27px;
+  }
+
+  .form-intro h1{
     font-size:27px;
   }
 
-  .support-note{
-    margin-top:24px;
+  .form-options{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:8px;
+    margin-bottom:20px;
+  }
+
+  .security-row{
+    gap:12px;
   }
 }
 </style>
