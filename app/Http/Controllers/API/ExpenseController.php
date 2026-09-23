@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Property;
 use App\Models\Expense;
 use App\Models\FinancialAudit;
+use App\Models\FinancialDocument;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -116,6 +117,9 @@ class ExpenseController extends Controller
         ]);
         $expense = DB::transaction(function () use ($expense, $data) {
             $expense = $this->applyBranchScope(Expense::query())->lockForUpdate()->findOrFail($expense->id);
+            if (FinancialDocument::where('entity_type', 'expense')->where('entity_id', $expense->id)->exists()) {
+                abort(422, 'Expense has supporting documents. Remove the documents before deleting the expense.');
+            }
             $before = $expense->toArray();
             $validated = $this->validateBranchRefs($data);
             $expense->update($validated);
