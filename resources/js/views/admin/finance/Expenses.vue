@@ -29,13 +29,13 @@
           <v-col cols="12" md="2"><v-select v-model="filters.category" :items="categories" outlined dense hide-details clearable label="Category" @change="load"/></v-col>
           <v-col cols="6" md="2"><v-text-field v-model="filters.from" type="date" outlined dense hide-details label="From" @change="load"/></v-col>
           <v-col cols="6" md="2"><v-text-field v-model="filters.to" type="date" outlined dense hide-details label="To" @change="load"/></v-col>
-          <v-col cols="12" md="1" class="text-md-right"><v-btn icon :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
+          <v-col cols="12" md="1" class="text-md-right"><v-btn icon @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
         </v-row>
       </v-card-text>
     </v-card>
 
     <v-card flat class="table-card">
-      <v-data-table :headers="headers" :items="items" :loading="loading" :options.sync="options" :server-items-length="total">
+      <v-data-table :headers="headers" :items="items" :options.sync="options" :server-items-length="total">
         <template v-slot:item.expense_number="{item}"><div class="font-weight-bold primary--text">{{item.expense_number}}</div><div class="caption grey--text">{{item.vendor_name || 'No vendor'}}</div></template>
         <template v-slot:item.project.name="{item}"><div>{{item.project ? item.project.name : (item.branch ? item.branch.name+' / General' : 'General / Unassigned')}}</div><div v-if="item.property" class="caption grey--text">{{item.property.property_number}}</div></template>
         <template v-slot:item.amount="{item}"><strong>PKR {{money(item.amount)}}</strong></template>
@@ -60,7 +60,7 @@
         <v-card-text class="pt-5">
           <v-row>
             <v-col cols="12" md="6"><v-select v-model="form.project_id" :items="projects" item-text="name" item-value="id" outlined dense clearable label="Project" @change="formProjectChanged"/></v-col>
-            <v-col cols="12" md="6"><v-autocomplete v-model="form.property_id" :items="properties" item-text="property_number" item-value="id" outlined dense clearable label="Property (optional)" :loading="loadingProperties" :disabled="!form.project_id"/></v-col>
+            <v-col cols="12" md="6"><v-autocomplete v-model="form.property_id" :items="properties" item-text="property_number" item-value="id" outlined dense clearable label="Property (optional)" :disabled="!form.project_id"/></v-col>
             <v-col cols="12" md="6"><v-select v-model="form.category" :items="categories" outlined dense label="Category *"/></v-col>
             <v-col cols="12" md="6"><v-text-field v-model="form.vendor_name" outlined dense label="Vendor / Payee"/></v-col>
             <v-col cols="12"><v-text-field v-model="form.description" outlined dense label="Description *"/></v-col>
@@ -75,8 +75,8 @@
         <v-card-actions class="px-6 pb-5">
           <v-spacer/>
           <v-btn text :disabled="saving" @click="dialog=false">Cancel</v-btn>
-          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" outlined color="#165134" :loading="saving" @click="save(false)">Save</v-btn>
-          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" color="#165134" dark depressed :loading="saving" @click="save(true)"><v-icon left>mdi-paperclip</v-icon>Save & Add Document</v-btn>
+          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" outlined color="#165134" @click="save(false)">Save</v-btn>
+          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" color="#165134" dark depressed @click="save(true)"><v-icon left>mdi-paperclip</v-icon>Save & Add Document</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -95,7 +95,7 @@
       <v-card>
         <v-card-title>Delete Expense</v-card-title>
         <v-card-text><v-alert type="warning" outlined dense>This permanently removes <strong>{{deleteItem && deleteItem.expense_number}}</strong>. Expenses with supporting documents must have those documents removed first. The financial audit history is retained.</v-alert></v-card-text>
-        <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" :loading="deleting" @click="confirmDelete">Delete Expense</v-btn></v-card-actions>
+        <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDelete">Delete Expense</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </div>
