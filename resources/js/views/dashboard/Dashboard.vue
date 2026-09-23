@@ -70,7 +70,7 @@
             <div class="caption grey--text mt-1">{{card.helper}}</div>
           </div>
 
-          <v-icon v-if="card.route" small color="grey lighten-1">mdi-arrow-top-right</v-icon>
+          <v-icon v-if="card.route && canOpen(card)" small color="grey lighten-1">mdi-arrow-top-right</v-icon>
         </div>
       </v-card>
     </v-col>
@@ -365,7 +365,7 @@ export default {
       return[
         {label:'Overdue installments',helper:'Require collection follow-up',value:this.metrics.overdue_count||0,icon:'mdi-alert-decagram-outline',color:'red darken-2',softClass:'soft-red',valueClass:'error--text',route:'installments',permission:'installments.view',query:{status:'overdue'}},
         {label:'Receivables',helper:'Outstanding customer balance',value:this.metrics.receivables||0,money:true,icon:'mdi-cash-clock',color:'orange darken-2',softClass:'soft-amber',valueClass:'orange--text text--darken-2',route:'installments',permission:'installments.view'},
-        {label:'Active leads',helper:'Prospects still in the pipeline',value:this.metrics.active_leads||0,icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads',permission:'leads.view',permission:'leads.view'},
+        {label:'Active leads',helper:'Prospects still in the pipeline',value:this.metrics.active_leads||0,icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads',permission:'leads.view'},
         {label:'Scheduled visits',helper:'Upcoming customer visits',value:this.metrics.scheduled_visits||0,icon:'mdi-map-marker-clock-outline',color:'purple darken-1',softClass:'soft-purple',route:'site-visits',permission:'site_visits.view',query:{status:'scheduled'}}
       ]
     },
@@ -373,7 +373,7 @@ export default {
     crmCards(){
       return[
         {key:'customers',label:'Active Customers',icon:'mdi-account-group-outline',color:'#165134',softClass:'soft-green',route:'customers',permission:'customers.view'},
-        {key:'active_leads',label:'Active Leads',icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads'},
+        {key:'active_leads',label:'Active Leads',icon:'mdi-account-star-outline',color:'blue darken-1',softClass:'soft-blue',route:'leads',permission:'leads.view'},
         {key:'scheduled_visits',label:'Scheduled Visits',icon:'mdi-map-marker-clock-outline',color:'purple darken-1',softClass:'soft-purple',route:'site-visits',permission:'site_visits.view',query:{status:'scheduled'}},
         {key:'reserved_properties',label:'Reserved Properties',icon:'mdi-home-clock-outline',color:'orange darken-2',softClass:'soft-amber',route:'properties',permission:'properties.view',query:{status:'reserved'}}
       ]
