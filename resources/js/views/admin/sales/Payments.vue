@@ -22,7 +22,8 @@
         <template v-slot:item.payment_date="{ item }">{{ item.payment_date | dateOnly }}</template>
         <template v-slot:item.status="{ item }"><v-chip x-small :color="item.status === 'reversed' ? 'error' : 'success'" outlined>{{ item.status }}</v-chip></template>
         <template v-slot:item.actions="{ item }">
-          <v-btn v-if="$can('payments.view')" icon small @click="view(item)"><v-icon small>mdi-eye</v-icon></v-btn>
+          <v-btn v-if="$can('payments.view')" icon small title="View payment" @click="view(item)"><v-icon small>mdi-eye</v-icon></v-btn>
+          <v-btn v-if="$can('payments.view')" icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn>
           <v-btn v-if="$can('payments.view')" icon small color="#165134" @click="receipt(item)" :loading="receiptLoading===item.id"><v-icon small>mdi-file-pdf-box</v-icon></v-btn>
           <v-btn v-if="$can('payments.edit') && item.status === 'verified'" icon small color="error" @click="openReverse(item)"><v-icon small>mdi-undo</v-icon></v-btn>
         </template>
@@ -54,6 +55,8 @@
 
     <v-dialog v-model="detailsDialog" max-width="520"><v-card v-if="selectedPayment"><v-card-title>Payment Receipt</v-card-title><v-card-text><div class="receipt"><div class="text-h6 font-weight-bold">{{ selectedPayment.receipt_number }}</div><div class="mt-3"><strong>Customer:</strong> {{ customerName(selectedPayment) }}</div><div><strong>Booking:</strong> {{ bookingNumber(selectedPayment) }}</div><div><strong>Amount:</strong> {{ money(selectedPayment.amount) }}</div><div><strong>Method:</strong> {{ selectedPayment.payment_method }}</div><div><strong>Date:</strong> {{ selectedPayment.payment_date | dateOnly }}</div><div><strong>Status:</strong> {{ selectedPayment.status }}</div><div v-if="selectedPayment.reference_number"><strong>Reference:</strong> {{ selectedPayment.reference_number }}</div><div v-if="selectedPayment.reversal_reason"><strong>Reversal reason:</strong> {{ selectedPayment.reversal_reason }}</div></div></v-card-text><v-card-actions><v-spacer/><v-btn text @click="detailsDialog=false">Close</v-btn><v-btn v-if="$can('payments.view')" color="#165134" dark @click="receipt(selectedPayment)"><v-icon left>mdi-file-pdf-box</v-icon>Receipt PDF</v-btn></v-card-actions></v-card></v-dialog>
 
+    <financial-documents-dialog v-model="documentsDialog" entity-type="payment" :entity-id="documentEntity ? documentEntity.id : null" :title="documentEntity ? 'Payment Documents — '+documentEntity.receipt_number : 'Payment Documents'" :can-upload="$can('payments.create') || $can('payments.edit')" :can-delete="$can('payments.edit')"/>
+
     <v-dialog v-model="reverseDialog" max-width="500" persistent>
       <v-card>
         <v-card-title>Reverse Payment</v-card-title>
@@ -70,11 +73,13 @@
 
 <script>
 import api from '../../../services/api'
+import FinancialDocumentsDialog from '../../../components/FinancialDocumentsDialog.vue'
 
 export default {
   name: 'Payments',
+  components:{FinancialDocumentsDialog},
   data: () => ({
-    loading:false,saving:false,receiptLoading:null,reversing:false,dialog:false,detailsDialog:false,reverseDialog:false,
+    loading:false,saving:false,receiptLoading:null,reversing:false,dialog:false,detailsDialog:false,reverseDialog:false,documentsDialog:false,documentEntity:null,
     items:[],total:0,from:null,to:null,options:{page:1,itemsPerPage:15},customers:[],bookings:[],installments:[],selectedPayment:null,selectedBooking:null,reversePayment:null,reverseReason:'',
     methods:['cash','bank_transfer','cheque','online','other'],
     headers:[{text:'Receipt',value:'receipt_number'},{text:'Customer',value:'customer.name'},{text:'Booking',value:'booking.booking_number'},{text:'Amount',value:'amount',align:'right'},{text:'Method',value:'payment_method'},{text:'Date',value:'payment_date'},{text:'Status',value:'status'},{text:'',value:'actions',sortable:false}],
@@ -85,6 +90,7 @@ export default {
   filters:{dateOnly(v){return v?String(v).slice(0,10):''}},
   async mounted(){this.load();await this.loadCustomers();if(this.$route.query.booking_id)this.openCreateFromQuery()},
   methods:{
+    openDocuments(item){this.documentEntity=item;this.documentsDialog=true},
     async load(){this.loading=true;try{const r=await api.get('/payments',{params:{page:this.options.page,per_page:this.options.itemsPerPage,from:this.from,to:this.to}});this.items=r.data.data||[];this.total=r.data.total||0}catch(e){this.$root.$emit('show-error',(e.response&&e.response.data&&e.response.data.message)||'Unable to load payments.')}finally{this.loading=false}},
     async loadCustomers(){try{const r=await api.get('/customers',{params:{per_page:100}});this.customers=r.data.data||r.data||[]}catch(e){this.customers=[]}},
     async loadBookings(){this.form.booking_id=null;this.form.installment_id=null;this.bookings=[];this.installments=[];if(!this.form.customer_id)return;try{const r=await api.get('/bookings',{params:{customer_id:this.form.customer_id,per_page:100}});this.bookings=r.data.data||r.data||[]}catch(e){}},
