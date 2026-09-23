@@ -128,25 +128,6 @@
 
     </v-card-text>
 
-    <v-snackbar
-      v-model="snackbar"
-      :color="snackbarColor"
-      bottom
-      right
-    >
-      {{ snackbarText }}
-
-      <template v-slot:action="{ attrs }">
-        <v-btn
-          text
-          v-bind="attrs"
-          @click="snackbar = false"
-        >
-          Close
-        </v-btn>
-      </template>
-    </v-snackbar>
-
   </v-card>
 </template>
 
@@ -166,11 +147,7 @@ export default {
     return {
       images: [],
       files: [],
-      uploading: false,
-
-      snackbar: false,
-      snackbarText: '',
-      snackbarColor: 'success'
+      uploading: false
     }
   },
 
@@ -302,9 +279,7 @@ export default {
     },
 
     showMessage(message, color = 'success') {
-      this.snackbarText = message
-      this.snackbarColor = color
-      this.snackbar = true
+      this.$root.$emit(color === 'error' ? 'show-error' : color === 'warning' ? 'show-warning' : color === 'info' ? 'show-info' : 'show-success', message)
     }
   }
 }
