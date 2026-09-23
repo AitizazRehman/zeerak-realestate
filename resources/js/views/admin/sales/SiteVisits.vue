@@ -88,7 +88,7 @@ export default{
    {status:'no_show',label:'No Show',count:this.items.filter(x=>x.status==='no_show').length,color:'red',icon:'mdi-account-off',softClass:'soft-red'},
    {status:'cancelled',label:'Cancelled',count:this.items.filter(x=>x.status==='cancelled').length,color:'grey darken-1',icon:'mdi-calendar-remove',softClass:'soft-grey'}]}
  },
- mounted(){this.load();if(this.$route.query.lead_id)this.openFromQuery()},
+ mounted(){if(this.$route.query.status)this.statusFilter=this.$route.query.status;this.load();if(this.$route.query.lead_id)this.openFromQuery()},watch:{'$route.query.status':function(v){this.statusFilter=v||null}},
  methods:{
   createBooking(item){this.$router.push({name:'bookings',query:{customer_id:item.customer_id,sales_agent_id:item.assigned_to||'',project_id:item.property&&item.property.project?item.property.project.id:'',property_id:item.property_id||''}})},
   blank(){return{customer_id:null,lead_id:null,property_id:null,assigned_to:null,visit_date:'',visit_time:'',status:'scheduled',feedback:'',notes:''}},
