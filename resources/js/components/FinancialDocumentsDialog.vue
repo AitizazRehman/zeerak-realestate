@@ -27,13 +27,13 @@
             <v-text-field v-model="form.notes" outlined dense label="Notes"/>
           </v-col>
           <v-col cols="12" class="text-right">
-            <v-btn color="#165134" dark depressed :loading="uploading" :disabled="!form.document || !form.document_type" @click="upload">
+            <v-btn color="#165134" dark depressed :disabled="!form.document || !form.document_type" @click="upload">
               <v-icon left>mdi-upload</v-icon>Upload Document
             </v-btn>
           </v-col>
         </v-row>
 
-        <v-data-table :headers="headers" :items="documents" :loading="loading" :items-per-page="10">
+        <v-data-table :headers="headers" :items="documents" :items-per-page="10">
           <template v-slot:item.document_type="{item}"><v-chip x-small outlined>{{typeLabel(item.document_type)}}</v-chip></template>
           <template v-slot:item.file_size="{item}">{{fileSize(item.file_size)}}</template>
           <template v-slot:item.created_at="{item}">{{dateTime(item.created_at)}}</template>
@@ -55,7 +55,7 @@
       <v-card>
         <v-card-title>Delete Document</v-card-title>
         <v-card-text><v-alert type="warning" outlined dense>Delete <strong>{{deleteItem ? deleteItem.name : ''}}</strong>? The action will be recorded in the financial audit trail.</v-alert></v-card-text>
-        <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" :loading="deleting" @click="confirmDelete">Delete</v-btn></v-card-actions>
+        <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDelete">Delete</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </v-dialog>
