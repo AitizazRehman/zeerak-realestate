@@ -37,7 +37,7 @@
     <v-card flat class="table-card">
       <v-data-table :headers="headers" :items="items" :loading="loading" :options.sync="options" :server-items-length="total">
         <template v-slot:item.expense_number="{item}"><div class="font-weight-bold primary--text">{{item.expense_number}}</div><div class="caption grey--text">{{item.vendor_name || 'No vendor'}}</div></template>
-        <template v-slot:item.project.name="{item}"><div>{{item.project ? item.project.name : 'General / Unassigned'}}</div><div v-if="item.property" class="caption grey--text">{{item.property.property_number}}</div></template>
+        <template v-slot:item.project.name="{item}"><div>{{item.project ? item.project.name : (item.branch ? item.branch.name+' / General' : 'General / Unassigned')}}</div><div v-if="item.property" class="caption grey--text">{{item.property.property_number}}</div></template>
         <template v-slot:item.amount="{item}"><strong>PKR {{money(item.amount)}}</strong></template>
         <template v-slot:item.expense_date="{item}">{{dateOnly(item.expense_date)}}</template>
         <template v-slot:item.payment_method="{item}">{{formatText(item.payment_method)}}</template>
