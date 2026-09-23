@@ -21,7 +21,7 @@
           <v-text-field v-model.trim="form.email" label="Email address" prepend-inner-icon="mdi-email-outline" outlined dense :error-messages="errors.email" autocomplete="username"/>
           <v-text-field v-model="form.password" label="Password" prepend-inner-icon="mdi-lock-outline" :append-icon="showPassword?'mdi-eye-off-outline':'mdi-eye-outline'" @click:append="showPassword=!showPassword" :type="showPassword?'text':'password'" outlined dense :error-messages="errors.password" autocomplete="current-password"/>
           <div class="d-flex align-center mb-5"><v-checkbox v-model="rememberEmail" dense hide-details label="Remember email"/><v-spacer/><span class="caption grey--text">Secure account access</span></div>
-          <v-btn type="submit" block x-large color="primary" dark depressed class="login-btn rounded-lg" :loading="loading" :disabled="!form.email||!form.password">Sign in <v-icon right>mdi-arrow-right</v-icon></v-btn>
+          <v-btn type="submit" block x-large color="primary" dark depressed class="login-btn rounded-lg" :disabled="!form.email||!form.password">Sign in <v-icon right>mdi-arrow-right</v-icon></v-btn>
         </v-form>
         <div class="text-center caption grey--text mt-7">Zeerak Real Estate &amp; Builders</div>
       </v-card>
