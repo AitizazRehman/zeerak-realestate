@@ -14,8 +14,6 @@
     </div>
   </v-card>
 
-  <v-progress-linear v-if="loading" indeterminate color="#165134" class="mb-4"/>
-
   <template v-if="property">
     <v-row class="mb-1">
       <v-col cols="6" md="3"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Property Price</div><div class="text-h6 font-weight-bold">PKR {{formatNumber(property.price)}}</div></v-card></v-col>
@@ -79,7 +77,7 @@
             <template v-if="$can('properties.edit')">
               <v-select v-model="newStatus" :items="statuses" item-text="text" item-value="value" label="Status" outlined dense/>
               <v-textarea v-model="statusNotes" label="Reason / Notes" outlined dense rows="3" hint="Add a note so status history remains clear" persistent-hint/>
-              <v-btn block color="#165134" dark depressed class="mt-3" :loading="statusSaving" :disabled="newStatus===property.status" @click="changeStatus">Update Status</v-btn>
+              <v-btn block color="#165134" dark depressed class="mt-3" :disabled="newStatus===property.status" @click="changeStatus">Update Status</v-btn>
             </template>
             <v-alert v-else type="info" text dense>You have view-only access to this property.</v-alert>
           </v-card-text>
@@ -108,7 +106,7 @@
     <v-card>
       <v-card-title>Delete Document</v-card-title>
       <v-card-text><v-alert type="warning" outlined dense>Delete <strong>{{documentToDelete && documentToDelete.name}}</strong>? This cannot be undone.</v-alert></v-card-text>
-      <v-card-actions><v-spacer/><v-btn text :disabled="documentDeleting" @click="deleteDocumentDialog=false">Cancel</v-btn><v-btn color="error" :loading="documentDeleting" @click="confirmDeleteDocument">Delete</v-btn></v-card-actions>
+      <v-card-actions><v-spacer/><v-btn text :disabled="documentDeleting" @click="deleteDocumentDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDeleteDocument">Delete</v-btn></v-card-actions>
     </v-card>
   </v-dialog>
 </div>
