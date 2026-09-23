@@ -14,7 +14,7 @@
         <v-btn value="12m" small>12M</v-btn>
       </v-btn-toggle>
 
-      <v-btn icon color="#165134" @click="load">
+      <v-btn icon color="#165134" @click="changeRange">
         <v-icon>mdi-refresh</v-icon>
       </v-btn>
     </div>
@@ -483,8 +483,8 @@ export default {
 
       try{
         const params={}
-        if(from)params.from=from
-        if(to)params.to=to
+        if(typeof from==='string' && /^\d{4}-\d{2}-\d{2}$/.test(from))params.from=from
+        if(typeof to==='string' && /^\d{4}-\d{2}-\d{2}$/.test(to))params.to=to
 
         const r=await api.get('/sales/dashboard',{params:params})
         const d=r.data||{}
