@@ -39,9 +39,9 @@
         <v-col cols="12" sm="6" md="2"><v-select v-model="filters.action" :items="actions" item-text="text" item-value="value" clearable dense outlined hide-details label="Action" @change="applyFilters"/></v-col>
         <v-col cols="6" md="2"><v-text-field v-model="filters.from" clearable dense outlined hide-details label="From" type="date" @change="applyFilters"/></v-col>
         <v-col cols="6" md="2"><v-text-field v-model="filters.to" clearable dense outlined hide-details label="To" type="date" @change="applyFilters"/></v-col>
-        <v-col cols="12" md="1" class="text-md-right"><v-btn icon :loading="loading" @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
+        <v-col cols="12" md="1" class="text-md-right"><v-btn icon @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
         <v-col cols="12" md="3"><v-text-field v-model="filters.entity_id" clearable dense outlined hide-details label="Entity ID" type="number" @keyup.enter="applyFilters"/></v-col>
-        <v-col cols="12" md="9" class="text-md-right"><v-btn text color="grey darken-1" @click="reset"><v-icon left>mdi-filter-remove</v-icon>Reset Filters</v-btn><v-btn color="#165134" dark depressed :loading="loading" @click="applyFilters"><v-icon left>mdi-filter</v-icon>Apply</v-btn></v-col>
+        <v-col cols="12" md="9" class="text-md-right"><v-btn text color="grey darken-1" @click="reset"><v-icon left>mdi-filter-remove</v-icon>Reset Filters</v-btn><v-btn color="#165134" dark depressed @click="applyFilters"><v-icon left>mdi-filter</v-icon>Apply</v-btn></v-col>
       </v-row>
     </v-card>
 
@@ -51,7 +51,7 @@
         <v-spacer/><v-chip small outlined>{{total}} records</v-chip>
       </v-card-title>
       <v-divider/>
-      <v-data-table :headers="headers" :items="items" :loading="loading" :server-items-length="total" :options.sync="options" @update:options="load">
+      <v-data-table :headers="headers" :items="items" :server-items-length="total" :options.sync="options" @update:options="load">
         <template v-slot:item.id="{item}"><span class="font-weight-bold">#{{item.id}}</span></template>
         <template v-slot:item.entity_type="{item}">
           <div class="d-flex align-center py-2">
