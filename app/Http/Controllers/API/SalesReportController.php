@@ -103,6 +103,22 @@ class SalesReportController extends Controller
         return $query;
     }
 
+    private function applyExpenseProject($query, $projectId)
+    {
+        if ($projectId) {
+            $query->where(function ($expense) use ($projectId) {
+                $expense->where('project_id', $projectId)
+                    ->orWhere(function ($legacy) use ($projectId) {
+                        $legacy->whereNull('project_id')
+                            ->whereHas('property', function ($property) use ($projectId) {
+                                $property->where('project_id', $projectId);
+                            });
+                    });
+            });
+        }
+        return $query;
+    }
+
     public function projects()
     {
         $query = Project::query()->select('id','name','code')->where('is_active', true);
@@ -133,9 +149,11 @@ class SalesReportController extends Controller
             $projectId
         );
 
-        $expenses = $this->branchExpenses(Expense::query())
-            ->whereBetween('expense_date', [$from,$to]);
-        if ($projectId) $expenses->where('project_id', $projectId);
+        $expenses = $this->applyExpenseProject(
+            $this->branchExpenses(Expense::query())
+                ->whereBetween('expense_date', [$from,$to]),
+            $projectId
+        );
 
         $commissions = $this->applyCommissionProject(
             $this->branch(Commission::query(),'booking.property.project')
@@ -276,11 +294,12 @@ class SalesReportController extends Controller
         list($from,$to)=$this->dates($request);
         $projectId=$this->projectId($request);
 
-        $q=$this->branchExpenses(
-            Expense::with(['project:id,name','property:id,property_number'])
-        )->whereBetween('expense_date',[$from,$to]);
-
-        if($projectId) $q->where('project_id',$projectId);
+        $q=$this->applyExpenseProject(
+            $this->branchExpenses(
+                Expense::with(['project:id,name','property:id,property_number'])
+            )->whereBetween('expense_date',[$from,$to]),
+            $projectId
+        );
 
         return response()->json(
             $q->orderByDesc('expense_date')
@@ -362,9 +381,11 @@ class SalesReportController extends Controller
             $projectId
         );
 
-        $expenses=$this->branchExpenses(Expense::query())
-            ->whereBetween('expense_date',[$from,$to]);
-        if($projectId)$expenses->where('project_id',$projectId);
+        $expenses=$this->applyExpenseProject(
+            $this->branchExpenses(Expense::query())
+                ->whereBetween('expense_date',[$from,$to]),
+            $projectId
+        );
 
         $commissions=$this->applyCommissionProject(
             $this->branch(Commission::query(),'booking.property.project')
@@ -478,10 +499,11 @@ class SalesReportController extends Controller
         }
 
         if ($type === 'expenses') {
-            $q=$this->branchExpenses(Expense::with(['project','property']))
-                ->whereBetween('expense_date',[$from,$to]);
-
-            if($projectId)$q->where('project_id',$projectId);
+            $q=$this->applyExpenseProject(
+                $this->branchExpenses(Expense::with(['project','property']))
+                    ->whereBetween('expense_date',[$from,$to]),
+                $projectId
+            );
 
             return $q->orderByDesc('expense_date')->get()->map(function($x){
                 return [
