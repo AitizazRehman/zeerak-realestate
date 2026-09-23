@@ -55,10 +55,6 @@
         <v-btn v-if="canSave" color="#165134" dark large type="submit" :loading="saving"><v-icon left>mdi-content-save</v-icon>{{ isEdit ? 'Update Property' : 'Save Property' }}</v-btn>
       </div>
     </v-form>
-    <v-snackbar v-model="snackbar" :color="snackbarColor" bottom right>
-      {{ snackbarText }}
-      <template v-slot:action="{ attrs }"><v-btn text v-bind="attrs" @click="snackbar = false">Close</v-btn></template>
-    </v-snackbar>
   </v-container>
 </template>
 
@@ -83,8 +79,7 @@ export default {
         project_id: null, block_id: null, property_number: '', property_type: 'Residential', size: '', size_unit: 'Marla',
         price: 0, discount: 0, status: 'available', bedrooms: null, bathrooms: null, covered_area: null, covered_area_unit: 'Sq Ft',
         address: '', latitude: null, longitude: null, description: '', assigned_agent_id: null, is_featured: false, is_published: false
-      },
-      snackbar: false, snackbarText: '', snackbarColor: 'success'
+      }
     }
   },
   computed: {
@@ -146,7 +141,7 @@ export default {
         this.showMessage(message, 'error')
       } finally { this.saving = false }
     },
-    showMessage(message, color = 'success') { this.snackbarText = message; this.snackbarColor = color; this.snackbar = true }
+    showMessage(message, color = 'success') { this.$root.$emit(color === 'error' ? 'show-error' : color === 'warning' ? 'show-warning' : color === 'info' ? 'show-info' : 'show-success', message) }
   }
 }
 </script>
