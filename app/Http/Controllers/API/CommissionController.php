@@ -25,7 +25,7 @@ class CommissionController extends Controller
     }
     public function index(Request $r)
     {
-        $q = $this->scopeBranch(Commission::with(['booking.customer','booking.property','agent:id,name']));
+        $q = $this->scopeBranch(Commission::with(['booking.customer','booking.property','agent:id,name'])->withCount('financialDocuments'));
         if ($r->filled('agent_id')) $q->where('agent_id', (int)$r->agent_id);
         if ($r->filled('status')) $q->where('status', $r->status);
         $perPage = min(max((int)$r->get('per_page', 15), 1), 100);
