@@ -91,7 +91,7 @@
 
       <div class="d-flex justify-end mt-5">
         <v-btn text class="mr-2" @click="$router.push('/admin/projects')">Cancel</v-btn>
-        <v-btn v-if="canSave" color="primary" depressed :loading="saving" :disabled="!valid" type="submit">
+        <v-btn v-if="canSave" color="primary" depressed :disabled="!valid" type="submit">
           <v-icon left>mdi-content-save</v-icon>
           {{ isEdit ? 'Update Project' : 'Save Project' }}
         </v-btn>
