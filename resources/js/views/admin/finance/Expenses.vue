@@ -42,7 +42,7 @@
         <template v-slot:item.expense_date="{item}">{{dateOnly(item.expense_date)}}</template>
         <template v-slot:item.payment_method="{item}">{{formatText(item.payment_method)}}</template>
         <template v-slot:item.actions="{item}">
-          <v-btn v-if="$can('expenses.view')" icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn>
+          <v-badge v-if="$can('expenses.view')" :content="item.financial_documents_count" :value="item.financial_documents_count" color="#165134" overlap><v-btn icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn></v-badge>
           <v-btn v-if="$can('expenses.edit')" icon small title="Edit expense" @click="edit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
           <v-btn v-if="$can('expenses.delete')" icon small color="error" title="Delete expense" @click="openDelete(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
         </template>
@@ -88,6 +88,7 @@
       :title="documentEntity ? 'Expense Documents — '+documentEntity.expense_number : 'Expense Documents'"
       :can-upload="$can('expenses.create') || $can('expenses.edit')"
       :can-delete="$can('expenses.edit') || $can('expenses.delete')"
+      @updated="load"
     />
 
     <v-dialog v-model="deleteDialog" max-width="500" persistent>
