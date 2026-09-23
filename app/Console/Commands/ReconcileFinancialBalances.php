@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Booking;
 use App\Models\Installment;
+use App\Models\InstallmentPlan;
 use App\Models\Payment;
 use Illuminate\Console\Command;
 
@@ -49,8 +50,14 @@ class ReconcileFinancialBalances extends Command
             }
         });
 
-        Installment::orderBy('id')->chunkById(200, function ($installments) use ($fix, &$issues, &$fixed) {
+        Installment::with('plan')->orderBy('id')->chunkById(200, function ($installments) use ($fix, &$issues, &$fixed) {
             foreach ($installments as $installment) {
+                if ($installment->plan && (int) $installment->plan->booking_id !== (int) $installment->booking_id) {
+                    $issues++;
+                    $this->error('Installment #'.$installment->id.' booking #'.$installment->booking_id
+                        .' does not match installment plan booking #'.$installment->plan->booking_id.'. Manual review required.');
+                }
+
                 $verified = round((float) Payment::withTrashed()
                     ->where('installment_id', $installment->id)
                     ->whereNull('deleted_at')
@@ -88,6 +95,75 @@ class ReconcileFinancialBalances extends Command
                         ])->save();
                         $fixed++;
                     }
+                }
+            }
+        });
+
+        InstallmentPlan::withTrashed()->with('booking')->orderBy('id')->chunkById(100, function ($plans) use ($fix, &$issues, &$fixed) {
+            foreach ($plans as $plan) {
+                $count = $plan->installments()->count();
+                $scheduledTotal = round((float) $plan->installments()->sum('amount'), 2);
+                $outstanding = round((float) $plan->installments()->sum('remaining_amount'), 2);
+                $verifiedPayments = Payment::whereIn('installment_id', $plan->installments()->pluck('id'))
+                    ->where('status', 'verified')
+                    ->exists();
+
+                if ($count !== (int) $plan->number_of_installments) {
+                    $issues++;
+                    $this->error('Installment plan #'.$plan->id.' schedule count '.$count
+                        .' does not match configured count '.$plan->number_of_installments.'. Manual review required.');
+                }
+
+                if (abs($scheduledTotal - round((float) $plan->total_amount, 2)) > 0.01) {
+                    $issues++;
+                    $this->error('Installment plan #'.$plan->id.' schedule total '
+                        .number_format($scheduledTotal, 2, '.', '').' does not match plan total '
+                        .number_format((float) $plan->total_amount, 2, '.', '').'. Manual review required.');
+                }
+
+                if ($plan->status === 'completed' && $outstanding > 0.01) {
+                    $issues++;
+                    $this->error('Completed installment plan #'.$plan->id.' still has outstanding balance '
+                        .number_format($outstanding, 2, '.', '').'. Manual review required.');
+                }
+
+                if ($plan->status === 'cancelled' && $verifiedPayments) {
+                    $issues++;
+                    $this->error('Cancelled installment plan #'.$plan->id.' has verified payment history. Manual review required.');
+                }
+
+                if (!$plan->trashed() && $plan->status === 'active' && $outstanding <= 0.01 && $count > 0) {
+                    $issues++;
+                    $this->warn('Installment plan #'.$plan->id.' is active but fully paid.');
+
+                    if ($fix) {
+                        $plan->forceFill(['status' => 'completed'])->save();
+                        $fixed++;
+                    }
+                }
+
+                if ($plan->status === 'active' && $plan->booking && $outstanding > round((float) $plan->booking->remaining_amount, 2) + 0.01) {
+                    $issues++;
+                    $this->error('Installment plan #'.$plan->id.' outstanding '
+                        .number_format($outstanding, 2, '.', '').' exceeds booking remaining balance '
+                        .number_format((float) $plan->booking->remaining_amount, 2, '.', '').'. Manual review required.');
+                }
+            }
+        });
+
+        Payment::with(['booking','installment'])->where('status', 'verified')->orderBy('id')->chunkById(200, function ($payments) use (&$issues) {
+            foreach ($payments as $payment) {
+                if ($payment->booking && (int) $payment->customer_id !== (int) $payment->booking->customer_id) {
+                    $issues++;
+                    $this->error('Payment '.$payment->receipt_number.' (#'.$payment->id.') customer #'.$payment->customer_id
+                        .' does not match booking customer #'.$payment->booking->customer_id.'. Manual review required.');
+                }
+
+                if ($payment->installment && (int) $payment->installment->booking_id !== (int) $payment->booking_id) {
+                    $issues++;
+                    $this->error('Payment '.$payment->receipt_number.' (#'.$payment->id.') installment belongs to booking #'
+                        .$payment->installment->booking_id.' but payment references booking #'.$payment->booking_id
+                        .'. Manual review required.');
                 }
             }
         });
