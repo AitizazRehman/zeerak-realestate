@@ -144,24 +144,11 @@ class LeadController extends Controller
         $phone = trim((string) $lead->phone);
         $email = trim((string) $lead->email);
 
-        $query = Customer::query()->where(function ($customerQuery) use ($phone, $email) {
-            if ($phone !== '') {
-                $customerQuery->where('phone', $phone);
-            }
-
-            if ($email !== '') {
-                if ($phone !== '') {
-                    $customerQuery->orWhereRaw('LOWER(email) = ?', [strtolower($email)]);
-                } else {
-                    $customerQuery->whereRaw('LOWER(email) = ?', [strtolower($email)]);
-                }
-            }
-        });
-
         if ($phone === '' && $email === '') {
             return null;
         }
 
+        $query = Customer::query()->matchingIdentity($phone, $email);
         $branchId = $this->branchIdForLead($lead);
 
         if ($branchId) {
