@@ -25,6 +25,7 @@ class AcceptanceCheck extends Command
         $this->checkCoreTables();
         $this->checkCriticalRoutes();
         $this->checkLeadIntegrity();
+        $this->checkCustomerIdentityIntegrity();
         $this->checkSalesIntegrity();
         $this->checkFinancialDocumentIntegrity();
 
@@ -165,6 +166,44 @@ class AcceptanceCheck extends Command
                 $visitMismatch.' site visit(s) do not match their converted lead customer',
                 true
             );
+        }
+    }
+
+    private function checkCustomerIdentityIntegrity()
+    {
+        if (!Schema::hasTable('customers')) {
+            return;
+        }
+
+        $phoneExpression = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(phone, ' ', ''), '-', ''), '(', ''), ')', ''), '.', '')";
+        $duplicatePhones = DB::table('customers')
+            ->select('branch_id', DB::raw($phoneExpression.' as normalized_phone'), DB::raw('COUNT(*) as aggregate'))
+            ->whereNull('deleted_at')
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->groupBy('branch_id', DB::raw($phoneExpression))
+            ->havingRaw('COUNT(*) > 1')
+            ->count();
+
+        if ($duplicatePhones > 0) {
+            $this->warnCheck($duplicatePhones.' branch/customer group(s) share the same normalized phone number');
+        } else {
+            $this->pass('No duplicate customer phone groups detected within branches');
+        }
+
+        $duplicateEmails = DB::table('customers')
+            ->select('branch_id', DB::raw('LOWER(TRIM(email)) as normalized_email'), DB::raw('COUNT(*) as aggregate'))
+            ->whereNull('deleted_at')
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->groupBy('branch_id', DB::raw('LOWER(TRIM(email))'))
+            ->havingRaw('COUNT(*) > 1')
+            ->count();
+
+        if ($duplicateEmails > 0) {
+            $this->warnCheck($duplicateEmails.' branch/customer group(s) share the same email address');
+        } else {
+            $this->pass('No duplicate customer email groups detected within branches');
         }
     }
 
