@@ -1,0 +1,274 @@
+/* ZeeraK global application theme */
+
+:root {
+    --zeerak-green: #165134;
+    --zeerak-gold: #b6913f;
+    --zeerak-light-bg: #f4f7f5;
+    --zeerak-dark-bg: #0f1713;
+    --zeerak-dark-surface: #16211b;
+    --zeerak-dark-surface-raised: #1b2921;
+    --zeerak-dark-border: rgba(226, 238, 231, .09);
+    --zeerak-dark-text: #e8f0eb;
+    --zeerak-dark-muted: #93a39a;
+}
+
+html,
+body {
+    background: var(--zeerak-light-bg);
+}
+
+.theme--dark.v-application {
+    background: var(--zeerak-dark-bg) !important;
+    color: var(--zeerak-dark-text) !important;
+}
+
+/* Main application surfaces */
+.theme--dark.v-application .v-main,
+.theme--dark.v-application .v-main__wrap,
+.theme--dark.v-application .app-content {
+    background: var(--zeerak-dark-bg) !important;
+}
+
+.theme--dark.v-application .v-card,
+.theme--dark.v-application .panel,
+.theme--dark.v-application .section-card,
+.theme--dark.v-application .summary-card,
+.theme--dark.v-application .stat-card,
+.theme--dark.v-application .metric-card,
+.theme--dark.v-application .mini-card,
+.theme--dark.v-application .filter-card,
+.theme--dark.v-application .table-card {
+    background: var(--zeerak-dark-surface) !important;
+    border-color: var(--zeerak-dark-border) !important;
+    color: var(--zeerak-dark-text) !important;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, .18) !important;
+}
+
+/* Keep intentional branded hero cards rich rather than flat-black. */
+.theme--dark.v-application .hero {
+    border-color: rgba(91, 183, 125, .22) !important;
+}
+
+/* Navigation */
+.theme--dark.v-application .v-navigation-drawer {
+    background: #101a15 !important;
+    border-right: 1px solid var(--zeerak-dark-border) !important;
+}
+
+.theme--dark.v-application .v-navigation-drawer .v-list {
+    background: transparent !important;
+}
+
+.theme--dark.v-application .v-navigation-drawer .v-list-item,
+.theme--dark.v-application .v-navigation-drawer .v-list-item__title,
+.theme--dark.v-application .v-navigation-drawer .v-list-group__header {
+    color: #c9d6cf !important;
+}
+
+.theme--dark.v-application .v-navigation-drawer .v-icon {
+    color: #8da096 !important;
+}
+
+.theme--dark.v-application .v-navigation-drawer .v-list-item--active {
+    background: rgba(91, 183, 125, .13) !important;
+    color: #75cf96 !important;
+}
+
+.theme--dark.v-application .v-navigation-drawer .v-list-item--active .v-icon,
+.theme--dark.v-application .v-navigation-drawer .v-list-item--active .v-list-item__title {
+    color: #75cf96 !important;
+}
+
+/* Top bar and popup menus */
+.theme--dark.v-application .v-app-bar {
+    background: rgba(16, 26, 21, .94) !important;
+    border-color: var(--zeerak-dark-border) !important;
+    color: var(--zeerak-dark-text) !important;
+}
+
+.theme--dark.v-application .v-menu__content .v-card,
+.theme--dark.v-application .v-menu__content .v-list,
+.theme--dark.v-application .v-dialog .v-card {
+    background: #18241e !important;
+    border: 1px solid var(--zeerak-dark-border) !important;
+}
+
+/* Typography */
+.theme--dark.v-application .grey--text {
+    color: var(--zeerak-dark-muted) !important;
+}
+
+.theme--dark.v-application .text--secondary,
+.theme--dark.v-application .v-list-item__subtitle,
+.theme--dark.v-application .caption {
+    color: var(--zeerak-dark-muted) !important;
+}
+
+.theme--dark.v-application .section-kicker,
+.theme--dark.v-application .primary--text {
+    color: #6bc58c !important;
+}
+
+/* Inputs */
+.theme--dark.v-application .v-text-field--outlined fieldset,
+.theme--dark.v-application .v-input--is-disabled fieldset {
+    border-color: rgba(223, 235, 227, .13) !important;
+}
+
+.theme--dark.v-application .v-text-field--outlined .v-input__slot,
+.theme--dark.v-application .v-select .v-input__slot,
+.theme--dark.v-application .v-autocomplete .v-input__slot,
+.theme--dark.v-application .v-textarea .v-input__slot {
+    background: #121c17 !important;
+}
+
+.theme--dark.v-application .v-input input,
+.theme--dark.v-application .v-input textarea,
+.theme--dark.v-application .v-select__selection,
+.theme--dark.v-application .v-label {
+    color: #dce7e0 !important;
+}
+
+.theme--dark.v-application .v-input--is-focused fieldset {
+    border-color: #5bb77d !important;
+}
+
+.theme--dark.v-application .v-input--is-disabled {
+    opacity: .68;
+}
+
+/* Tables */
+.theme--dark.v-application .v-data-table {
+    background: transparent !important;
+    color: var(--zeerak-dark-text) !important;
+}
+
+.theme--dark.v-application .v-data-table .v-data-table-header th {
+    background: #142019 !important;
+    color: #9fb0a6 !important;
+    border-color: var(--zeerak-dark-border) !important;
+}
+
+.theme--dark.v-application .v-data-table tbody tr {
+    background: transparent !important;
+}
+
+.theme--dark.v-application .v-data-table tbody tr:hover {
+    background: rgba(91, 183, 125, .055) !important;
+}
+
+.theme--dark.v-application .v-data-table td,
+.theme--dark.v-application .v-data-table th {
+    border-color: rgba(226, 238, 231, .065) !important;
+}
+
+/* Dividers, tabs, chips and timelines */
+.theme--dark.v-application .v-divider {
+    border-color: var(--zeerak-dark-border) !important;
+}
+
+.theme--dark.v-application .v-tabs,
+.theme--dark.v-application .v-tabs-items,
+.theme--dark.v-application .v-tab-item {
+    background: transparent !important;
+}
+
+.theme--dark.v-application .v-chip:not(.error):not(.success):not(.warning):not(.info) {
+    border-color: rgba(224, 236, 228, .16) !important;
+}
+
+.theme--dark.v-application .v-timeline:before {
+    background: rgba(224, 236, 228, .10) !important;
+}
+
+/* Dashboard charts and custom components */
+.theme--dark.v-application .period-strip {
+    background: rgba(91, 183, 125, .055) !important;
+    border-color: var(--zeerak-dark-border) !important;
+}
+
+.theme--dark.v-application .grid line {
+    stroke: rgba(222, 236, 227, .09) !important;
+}
+
+.theme--dark.v-application .grid text,
+.theme--dark.v-application .month-label {
+    fill: #819188 !important;
+}
+
+.theme--dark.v-application .pipeline-track {
+    background: rgba(222, 236, 227, .09) !important;
+}
+
+.theme--dark.v-application .donut:after {
+    background: var(--zeerak-dark-surface) !important;
+}
+
+.theme--dark.v-application .attention-row,
+.theme--dark.v-application .rank-row,
+.theme--dark.v-application .inventory-item {
+    border-color: rgba(226, 238, 231, .07) !important;
+}
+
+.theme--dark.v-application .clickable:hover,
+.theme--dark.v-application .clickable-row:hover {
+    background: rgba(91, 183, 125, .055) !important;
+}
+
+/* Soft icon backgrounds */
+.theme--dark.v-application .soft-green {
+    background: rgba(91, 183, 125, .13) !important;
+}
+
+.theme--dark.v-application .soft-blue {
+    background: rgba(103, 169, 255, .13) !important;
+}
+
+.theme--dark.v-application .soft-amber {
+    background: rgba(246, 200, 95, .13) !important;
+}
+
+.theme--dark.v-application .soft-red {
+    background: rgba(255, 107, 107, .13) !important;
+}
+
+.theme--dark.v-application .soft-purple {
+    background: rgba(181, 137, 255, .13) !important;
+}
+
+/* Alerts and empty states */
+.theme--dark.v-application .empty,
+.theme--dark.v-application .empty-state,
+.theme--dark.v-application .empty-table {
+    color: var(--zeerak-dark-muted) !important;
+}
+
+/* Scrollbars */
+.theme--dark.v-application * {
+    scrollbar-color: #34483d #101713;
+}
+
+.theme--dark.v-application *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+}
+
+.theme--dark.v-application *::-webkit-scrollbar-track {
+    background: #101713;
+}
+
+.theme--dark.v-application *::-webkit-scrollbar-thumb {
+    background: #34483d;
+    border: 2px solid #101713;
+    border-radius: 999px;
+}
+
+.theme--dark.v-application *::-webkit-scrollbar-thumb:hover {
+    background: #466151;
+}
+
+/* Selection */
+.theme--dark.v-application ::selection {
+    background: rgba(91, 183, 125, .35);
+    color: #fff;
+}
