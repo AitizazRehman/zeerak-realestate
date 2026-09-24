@@ -209,6 +209,60 @@ class AcceptanceCheck extends Command
 
     private function checkSalesIntegrity()
     {
+        if (Schema::hasTable('bookings') && Schema::hasTable('customers') && Schema::hasTable('properties') && Schema::hasTable('projects')) {
+            $bookingBranchMismatch = DB::table('bookings as b')
+                ->join('customers as c', 'c.id', '=', 'b.customer_id')
+                ->join('properties as p', 'p.id', '=', 'b.property_id')
+                ->join('projects as pr', 'pr.id', '=', 'p.project_id')
+                ->whereNull('b.deleted_at')
+                ->whereNull('c.deleted_at')
+                ->whereNull('p.deleted_at')
+                ->whereNull('pr.deleted_at')
+                ->whereNotNull('c.branch_id')
+                ->whereNotNull('pr.branch_id')
+                ->whereRaw('c.branch_id <> pr.branch_id')
+                ->count();
+
+            $this->check(
+                $bookingBranchMismatch === 0,
+                'Booking customers and properties share the same branch',
+                $bookingBranchMismatch.' booking(s) link a customer to a property from another branch',
+                true
+            );
+
+            $activeBookingInactiveCustomer = DB::table('bookings as b')
+                ->join('customers as c', 'c.id', '=', 'b.customer_id')
+                ->whereNull('b.deleted_at')
+                ->whereNull('c.deleted_at')
+                ->whereIn('b.status', ['reserved', 'confirmed'])
+                ->where('c.is_active', false)
+                ->count();
+
+            $this->check(
+                $activeBookingInactiveCustomer === 0,
+                'Active bookings use active customers',
+                $activeBookingInactiveCustomer.' active booking(s) belong to inactive customers',
+                true
+            );
+
+            $activeBookingInactiveProject = DB::table('bookings as b')
+                ->join('properties as p', 'p.id', '=', 'b.property_id')
+                ->join('projects as pr', 'pr.id', '=', 'p.project_id')
+                ->whereNull('b.deleted_at')
+                ->whereNull('p.deleted_at')
+                ->whereNull('pr.deleted_at')
+                ->whereIn('b.status', ['reserved', 'confirmed'])
+                ->where('pr.is_active', false)
+                ->count();
+
+            $this->check(
+                $activeBookingInactiveProject === 0,
+                'Active bookings belong to active projects',
+                $activeBookingInactiveProject.' active booking(s) belong to inactive projects',
+                true
+            );
+        }
+
         if (Schema::hasTable('payments') && Schema::hasTable('bookings')) {
             $paymentCustomerMismatch = DB::table('payments as p')
                 ->join('bookings as b', 'b.id', '=', 'p.booking_id')
