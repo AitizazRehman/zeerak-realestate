@@ -264,17 +264,18 @@ export default {
   width:56px;
   height:56px;
   padding:5px;
-  border-radius:15px;
+  border-radius:50%;
   background:#fff;
-  border:1px solid rgba(22,81,52,.08);
+  border:2px solid rgba(22,81,52,.14);
   box-shadow:0 9px 24px rgba(18,60,39,.08);
+  overflow:hidden;
 }
 
 .logo-box img{
   width:100%;
   height:100%;
   object-fit:contain;
-  border-radius:10px;
+  border-radius:50%;
 }
 
 .brand-title{
