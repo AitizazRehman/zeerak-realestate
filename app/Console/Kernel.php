@@ -16,6 +16,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('zeerak:update-overdue-installments')
             ->dailyAt('00:10')
             ->withoutOverlapping(30);
+
+        if (config('backup.enabled')) {
+            $schedule->command('zeerak:backup')
+                ->dailyAt(config('backup.schedule_time', '02:00'))
+                ->withoutOverlapping(180);
+        }
     }
 
     protected function commands()
