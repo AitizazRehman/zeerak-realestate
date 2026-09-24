@@ -41,7 +41,9 @@ class BackupApplication extends Command
         $backupPath = $this->backupPath();
 
         try {
-            File::ensureDirectoryExists($backupPath, 0750, true);
+            if (!is_dir($backupPath) && !File::makeDirectory($backupPath, 0750, true, true)) {
+                throw new \RuntimeException('Unable to create backup directory.');
+            }
         } catch (\Throwable $e) {
             $this->error('Unable to create backup directory: '.$e->getMessage());
             return 1;
