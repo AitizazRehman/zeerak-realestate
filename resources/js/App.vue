@@ -153,11 +153,78 @@ export default {
             const logo = this.appLogoUrl || '/images/zeerak-logo.jpeg'
 
             document.title = company + ' | Management Portal'
+            this.applyCircularFavicon(logo)
+        },
 
+        applyCircularFavicon(logo) {
             const icons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
-            icons.forEach(function (icon) {
-                icon.setAttribute('href', logo)
-            })
+
+            const applyIcon = function (href, type) {
+                icons.forEach(function (icon) {
+                    icon.setAttribute('href', href)
+
+                    if (type && icon.getAttribute('rel') !== 'apple-touch-icon') {
+                        icon.setAttribute('type', type)
+                    }
+                })
+            }
+
+            // Keep the original logo as an immediate fallback while the round favicon is prepared.
+            applyIcon(logo)
+
+            const image = new Image()
+
+            image.onload = function () {
+                try {
+                    const size = 128
+                    const borderWidth = 7
+                    const outerRadius = (size / 2) - 4
+                    const innerRadius = outerRadius - borderWidth
+                    const canvas = document.createElement('canvas')
+                    const context = canvas.getContext('2d')
+
+                    if (!context) return
+
+                    canvas.width = size
+                    canvas.height = size
+                    context.clearRect(0, 0, size, size)
+
+                    // Circular white base with ZeeraK green border.
+                    context.beginPath()
+                    context.arc(size / 2, size / 2, outerRadius, 0, Math.PI * 2)
+                    context.fillStyle = '#ffffff'
+                    context.fill()
+                    context.lineWidth = borderWidth
+                    context.strokeStyle = '#165134'
+                    context.stroke()
+
+                    // Clip the actual company logo inside the circle.
+                    context.save()
+                    context.beginPath()
+                    context.arc(size / 2, size / 2, innerRadius - 3, 0, Math.PI * 2)
+                    context.clip()
+
+                    const maxSize = (innerRadius - 8) * 2
+                    const scale = Math.min(maxSize / image.naturalWidth, maxSize / image.naturalHeight)
+                    const width = image.naturalWidth * scale
+                    const height = image.naturalHeight * scale
+                    const x = (size - width) / 2
+                    const y = (size - height) / 2
+
+                    context.drawImage(image, x, y, width, height)
+                    context.restore()
+
+                    applyIcon(canvas.toDataURL('image/png'), 'image/png')
+                } catch (e) {
+                    applyIcon(logo)
+                }
+            }
+
+            image.onerror = function () {
+                applyIcon(logo)
+            }
+
+            image.src = logo
         },
 
         onSuccessMessage(message) {
