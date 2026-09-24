@@ -272,3 +272,97 @@ body {
     background: rgba(91, 183, 125, .35);
     color: #fff;
 }
+
+
+/* Custom content that used fixed light colors */
+.theme--dark.v-application .field-label,
+.theme--dark.v-application .field-value,
+.theme--dark.v-application .description,
+.theme--dark.v-application .app-title,
+.theme--dark.v-application .font-weight-bold,
+.theme--dark.v-application .font-weight-medium {
+    color: var(--zeerak-dark-text);
+}
+
+.theme--dark.v-application .filter-card,
+.theme--dark.v-application .table-card {
+    background: var(--zeerak-dark-surface) !important;
+}
+
+.theme--dark.v-application .v-pagination__item,
+.theme--dark.v-application .v-pagination__navigation {
+    background: #18241e !important;
+    color: #cbd8d0 !important;
+}
+
+.theme--dark.v-application .v-pagination__item--active {
+    background: #5bb77d !important;
+    color: #0c1711 !important;
+}
+
+.theme--dark.v-application .v-list-item:hover:before {
+    opacity: .04 !important;
+}
+
+/* Login inherits a complete dark presentation after logout as well. */
+.theme--dark.v-application .login-page {
+    background:
+        radial-gradient(circle at 15% 15%, rgba(91, 183, 125, .08), transparent 28%),
+        radial-gradient(circle at 85% 85%, rgba(201, 168, 91, .06), transparent 30%),
+        #0f1713 !important;
+}
+
+.theme--dark.v-application .background-grid {
+    background-image:
+        linear-gradient(rgba(226, 238, 231, .025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(226, 238, 231, .025) 1px, transparent 1px) !important;
+}
+
+.theme--dark.v-application .top-brand .brand-title,
+.theme--dark.v-application .form-intro h1,
+.theme--dark.v-application .field-group label {
+    color: #e8f0eb !important;
+}
+
+.theme--dark.v-application .top-brand .brand-subtitle,
+.theme--dark.v-application .form-intro p,
+.theme--dark.v-application .security-hint,
+.theme--dark.v-application .session-note,
+.theme--dark.v-application .page-footer {
+    color: #91a099 !important;
+}
+
+.theme--dark.v-application .auth-card {
+    background: #16211b !important;
+    border-color: rgba(226, 238, 231, .10) !important;
+    box-shadow: 0 24px 65px rgba(0, 0, 0, .34) !important;
+}
+
+.theme--dark.v-application .access-separator:before {
+    background: rgba(226, 238, 231, .08) !important;
+}
+
+.theme--dark.v-application .access-separator span {
+    background: #16211b !important;
+    color: #7f9087 !important;
+}
+
+.theme--dark.v-application .security-item {
+    color: #a5b5ac !important;
+}
+
+.theme--dark.v-application .logo-box {
+    background: #f7faf8 !important;
+    border-color: rgba(255, 255, 255, .08) !important;
+}
+
+/* Global loader */
+.theme--dark.v-application .global-loader {
+    background: #18241e !important;
+    color: #e8f0eb !important;
+    border-color: rgba(226, 238, 231, .10) !important;
+}
+
+.theme--dark.v-application .loader-mark {
+    background: #f7faf8 !important;
+}
