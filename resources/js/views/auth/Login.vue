@@ -7,11 +7,11 @@
     <div class="login-wrap">
       <div class="top-brand">
         <div class="logo-box">
-          <img src="/images/zeerak-logo.jpeg" alt="ZeeraK">
+          <img :src="appLogo" :alt="appName">
         </div>
         <div>
-          <div class="brand-title">ZeeraK Management Portal</div>
-          <div class="brand-subtitle">Secure business workspace</div>
+          <div class="brand-title">{{appName}}</div>
+          <div class="brand-subtitle">Management Portal</div>
         </div>
       </div>
 
@@ -155,6 +155,14 @@ export default {
   },
 
   computed:{
+    appName(){
+      return this.$store.getters['settings/companyName'] || 'ZeeraK Real Estate & Builders'
+    },
+
+    appLogo(){
+      return this.$store.getters['settings/logoUrl'] || '/images/zeerak-logo.jpeg'
+    },
+
     canSubmit(){
       return !!(this.form.email && this.form.password)
     },
