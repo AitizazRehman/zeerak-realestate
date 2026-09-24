@@ -98,6 +98,24 @@ export default {
                     : this.snackbar.type === 'info'
                         ? 'Information'
                         : 'Success'
+        },
+
+        appCompanyName() {
+            return this.$store.getters['settings/companyName']
+        },
+
+        appLogoUrl() {
+            return this.$store.getters['settings/logoUrl']
+        }
+    },
+
+    watch: {
+        appCompanyName() {
+            this.applyBranding()
+        },
+
+        appLogoUrl() {
+            this.applyBranding()
         }
     },
 
@@ -110,6 +128,9 @@ export default {
         this.$root.$on('show-error', this.onErrorMessage)
         this.$root.$on('show-warning', this.onWarningMessage)
         this.$root.$on('show-info', this.onInfoMessage)
+
+        this.applyBranding()
+        this.$store.dispatch('settings/loadCompany')
     },
 
     beforeDestroy() {
@@ -127,6 +148,18 @@ export default {
     },
 
     methods: {
+        applyBranding() {
+            const company = this.appCompanyName || 'ZeeraK Real Estate & Builders'
+            const logo = this.appLogoUrl || '/images/zeerak-logo.jpeg'
+
+            document.title = company + ' | Management Portal'
+
+            const icons = document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]')
+            icons.forEach(function (icon) {
+                icon.setAttribute('href', logo)
+            })
+        },
+
         onSuccessMessage(message) {
             this.showMessage({ type: 'success', text: message })
         },
