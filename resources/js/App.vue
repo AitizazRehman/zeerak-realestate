@@ -6,9 +6,9 @@
             <v-card class="global-loader pa-5 text-center" elevation="8">
                 <div class="loader-mark mx-auto mb-3">
                     <img
-                        :src="appLogoUrl || '/images/zeerak-logo.jpeg'"
+                        src="/images/zeerak-logo.jpeg"
                         class="loader-logo"
-                        alt=""
+                        alt="ZeeraK"
                     >
                 </div>
                 <v-progress-circular
@@ -114,7 +114,8 @@ export default {
     },
 
     created() {
-        this.preloadLoaderLogo(this.appLogoUrl || '/images/zeerak-logo.jpeg')
+        this.applyThemePreference(localStorage.getItem('zeerak_dark_mode') === '1')
+        this.preloadLoaderLogo('/images/zeerak-logo.jpeg')
     },
 
     watch: {
@@ -122,8 +123,7 @@ export default {
             this.applyBranding()
         },
 
-        appLogoUrl(value) {
-            this.preloadLoaderLogo(value || '/images/zeerak-logo.jpeg')
+        appLogoUrl() {
             this.applyBranding()
         }
     },
@@ -137,7 +137,9 @@ export default {
         this.$root.$on('show-error', this.onErrorMessage)
         this.$root.$on('show-warning', this.onWarningMessage)
         this.$root.$on('show-info', this.onInfoMessage)
+        this.$root.$on('theme-changed', this.applyThemePreference)
 
+        this.applyThemePreference(localStorage.getItem('zeerak_dark_mode') === '1')
         this.applyBranding()
         this.$store.dispatch('settings/loadCompany')
     },
@@ -150,6 +152,7 @@ export default {
         this.$root.$off('show-error', this.onErrorMessage)
         this.$root.$off('show-warning', this.onWarningMessage)
         this.$root.$off('show-info', this.onInfoMessage)
+        this.$root.$off('theme-changed', this.applyThemePreference)
 
         if (this.loaderTimer) {
             clearTimeout(this.loaderTimer)
@@ -157,6 +160,14 @@ export default {
     },
 
     methods: {
+        applyThemePreference(value) {
+            const enabled = value === true || value === '1'
+            this.$vuetify.theme.dark = enabled
+            localStorage.setItem('zeerak_dark_mode', enabled ? '1' : '0')
+            document.documentElement.setAttribute('data-theme', enabled ? 'dark' : 'light')
+            document.body.classList.toggle('zeerak-dark', enabled)
+        },
+
         preloadLoaderLogo(url) {
             if (!url) return
 
@@ -344,24 +355,26 @@ export default {
     border:1px solid rgba(22,81,52,.1)
 }
 .loader-mark{
-    width:62px;
-    height:62px;
-    border-radius:50%;
+    width:64px;
+    height:64px;
+    padding:3px;
+    border-radius:50%!important;
     background:#fff;
     display:flex;
     align-items:center;
     justify-content:center;
     box-shadow:0 6px 20px rgba(22,81,52,.10);
-    border:2px solid rgba(22,81,52,.18);
-    overflow:hidden
+    border:2px solid #165134;
+    overflow:hidden;
+    clip-path:circle(50% at 50% 50%)
 }
 .loader-logo{
     width:100%;
     height:100%;
     display:block;
-    object-fit:contain;
-    border-radius:50%;
-    padding:4px;
+    object-fit:cover;
+    border-radius:50%!important;
+    clip-path:circle(50% at 50% 50%);
     background:#fff
 }
 .global-snackbar ::v-deep .v-snack__wrapper{
