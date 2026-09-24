@@ -3,7 +3,7 @@
         <router-view />
 
         <v-overlay :value="globalLoading" opacity="0.18" z-index="9998">
-            <v-card class="global-loader pa-5 text-center" light elevation="8">
+            <v-card class="global-loader pa-5 text-center" elevation="8">
                 <div class="loader-mark mx-auto mb-3">
                     <v-img src="/images/zeerak-logo.jpeg" contain width="48" height="48" />
                 </div>
