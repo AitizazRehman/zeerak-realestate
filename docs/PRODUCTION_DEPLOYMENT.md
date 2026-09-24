@@ -18,6 +18,12 @@ LOG_DAYS=30
 
 SESSION_SECURE_COOKIE=true
 SESSION_SAME_SITE=lax
+
+SECURITY_HSTS_ENABLED=true
+SECURITY_HSTS_MAX_AGE=31536000
+SECURITY_HSTS_INCLUDE_SUBDOMAINS=false
+SECURITY_HSTS_PRELOAD=false
+
 QUEUE_CONNECTION=sync
 ```
 
@@ -221,10 +227,21 @@ Investigate recurring HTTP 500 errors, permission failures, failed uploads, auth
 
 The application adds response headers for:
 - MIME sniffing protection
-- Clickjacking protection
-- Referrer policy
-- Browser camera/microphone/geolocation restrictions
-- HSTS when the request is HTTPS
+- clickjacking protection
+- referrer policy
+- browser camera/microphone/geolocation restrictions
+- HSTS on HTTPS responses
+
+HSTS is configurable. The safe default deliberately leaves `includeSubDomains` and `preload` disabled:
+
+```env
+SECURITY_HSTS_ENABLED=true
+SECURITY_HSTS_MAX_AGE=31536000
+SECURITY_HSTS_INCLUDE_SUBDOMAINS=false
+SECURITY_HSTS_PRELOAD=false
+```
+
+Only enable `SECURITY_HSTS_INCLUDE_SUBDOMAINS=true` after confirming every current and future subdomain is permanently served over HTTPS. Only enable preload after deliberately meeting browser preload requirements; it is difficult to reverse quickly.
 
 Production must terminate HTTPS correctly. If a reverse proxy/load balancer is used, configure Laravel trusted proxies correctly so HTTPS detection remains accurate.
 
