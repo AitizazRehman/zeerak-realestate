@@ -14,6 +14,7 @@ class UpdateCustomerRequest extends FormRequest
         $customer = $this->route('customer');
         $id = is_object($customer) ? $customer->id : $customer;
         return [
+            'branch_id' => ['nullable','integer','exists:branches,id'],
             'name' => ['required','string','max:150'],
             'cnic' => ['nullable','string','max:30',Rule::unique('customers','cnic')->ignore($id)],
             'phone' => ['required','string','max:30'],
