@@ -2,8 +2,18 @@
     <v-app>
         <router-view />
 
-        <v-overlay :value="globalLoading" opacity="0.18" z-index="9998">
-            <v-card class="global-loader pa-5 text-center" elevation="8">
+        <v-overlay
+            :value="globalLoading"
+            :color="themeDark ? '#050907' : '#dfe7e2'"
+            :opacity="themeDark ? 0.42 : 0.32"
+            z-index="9998"
+        >
+            <v-card
+                :dark="themeDark"
+                :light="!themeDark"
+                :class="['global-loader','pa-5','text-center',themeDark ? 'loader-dark' : 'loader-light']"
+                elevation="8"
+            >
                 <div class="loader-mark mx-auto mb-3">
                     <img
                         src="/images/zeerak-logo.jpeg"
@@ -13,12 +23,12 @@
                 </div>
                 <v-progress-circular
                     indeterminate
-                    color="#165134"
+                    :color="themeDark ? '#66C98A' : '#165134'"
                     size="34"
                     width="3"
                 />
                 <div class="mt-3 font-weight-medium">Please wait…</div>
-                <div class="caption grey--text">Processing your request</div>
+                <div class="caption loader-caption">Processing your request</div>
             </v-card>
         </v-overlay>
 
@@ -60,6 +70,7 @@ export default {
             activeRequests: 0,
             globalLoading: false,
             loaderTimer: null,
+            themeDark: localStorage.getItem('zeerak_dark_mode') === '1',
             lastMessage: '',
             lastMessageAt: 0,
             lastApiMessageAt: 0,
@@ -162,6 +173,7 @@ export default {
     methods: {
         applyThemePreference(value) {
             const enabled = value === true || value === '1'
+            this.themeDark = enabled
             this.$vuetify.theme.dark = enabled
             localStorage.setItem('zeerak_dark_mode', enabled ? '1' : '0')
             document.documentElement.setAttribute('data-theme', enabled ? 'dark' : 'light')
@@ -352,7 +364,25 @@ export default {
 .global-loader{
     min-width:190px;
     border-radius:18px!important;
-    border:1px solid rgba(22,81,52,.1)
+    transition:background-color .2s ease,color .2s ease,border-color .2s ease
+}
+.global-loader.loader-light{
+    background:#ffffff!important;
+    color:#1c2b23!important;
+    border:1px solid rgba(22,81,52,.12)!important;
+    box-shadow:0 14px 40px rgba(25,54,40,.14)!important
+}
+.global-loader.loader-dark{
+    background:#18241e!important;
+    color:#e8f0eb!important;
+    border:1px solid rgba(226,238,231,.10)!important;
+    box-shadow:0 18px 46px rgba(0,0,0,.36)!important
+}
+.loader-light .loader-caption{
+    color:#7b8780!important
+}
+.loader-dark .loader-caption{
+    color:#93a39a!important
 }
 .loader-mark{
     width:64px;
