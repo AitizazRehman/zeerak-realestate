@@ -19,6 +19,11 @@
                         src="/images/zeerak-logo.jpeg"
                         class="loader-logo"
                         alt="ZeeraK"
+                        width="58"
+                        height="58"
+                        loading="eager"
+                        decoding="sync"
+                        fetchpriority="high"
                     >
                 </div>
                 <v-progress-circular
@@ -70,6 +75,8 @@ export default {
             activeRequests: 0,
             globalLoading: false,
             loaderTimer: null,
+            loaderHideTimer: null,
+            loaderShownAt: 0,
             themeDark: localStorage.getItem('zeerak_dark_mode') === '1',
             lastMessage: '',
             lastMessageAt: 0,
@@ -167,6 +174,10 @@ export default {
 
         if (this.loaderTimer) {
             clearTimeout(this.loaderTimer)
+        }
+
+        if (this.loaderHideTimer) {
+            clearTimeout(this.loaderHideTimer)
         }
     },
 
@@ -298,11 +309,17 @@ export default {
         startLoading() {
             this.activeRequests += 1
 
+            if (this.loaderHideTimer) {
+                clearTimeout(this.loaderHideTimer)
+                this.loaderHideTimer = null
+            }
+
             if (this.activeRequests === 1) {
                 if (this.loaderTimer) clearTimeout(this.loaderTimer)
 
                 this.loaderTimer = setTimeout(() => {
                     if (this.activeRequests > 0) {
+                        this.loaderShownAt = Date.now()
                         this.globalLoading = true
                     }
                 }, 140)
@@ -312,14 +329,28 @@ export default {
         finishLoading() {
             this.activeRequests = Math.max(0, this.activeRequests - 1)
 
-            if (this.activeRequests === 0) {
-                if (this.loaderTimer) {
-                    clearTimeout(this.loaderTimer)
-                    this.loaderTimer = null
-                }
+            if (this.activeRequests !== 0) return
 
-                this.globalLoading = false
+            if (this.loaderTimer) {
+                clearTimeout(this.loaderTimer)
+                this.loaderTimer = null
             }
+
+            if (!this.globalLoading) return
+
+            // Keep a visible loader on screen long enough for the logo to paint.
+            // This also prevents a distracting flash on medium-speed API requests.
+            const minimumVisibleTime = 450
+            const elapsed = Date.now() - this.loaderShownAt
+            const remaining = Math.max(0, minimumVisibleTime - elapsed)
+
+            this.loaderHideTimer = setTimeout(() => {
+                if (this.activeRequests === 0) {
+                    this.globalLoading = false
+                    this.loaderShownAt = 0
+                }
+                this.loaderHideTimer = null
+            }, remaining)
         },
 
         showMessage(payload) {
