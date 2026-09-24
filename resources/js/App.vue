@@ -5,7 +5,11 @@
         <v-overlay :value="globalLoading" opacity="0.18" z-index="9998">
             <v-card class="global-loader pa-5 text-center" elevation="8">
                 <div class="loader-mark mx-auto mb-3">
-                    <v-img src="/images/zeerak-logo.jpeg" contain width="48" height="48" />
+                    <img
+                        :src="appLogoUrl || '/images/zeerak-logo.jpeg'"
+                        class="loader-logo"
+                        alt=""
+                    >
                 </div>
                 <v-progress-circular
                     indeterminate
@@ -109,12 +113,17 @@ export default {
         }
     },
 
+    created() {
+        this.preloadLoaderLogo(this.appLogoUrl || '/images/zeerak-logo.jpeg')
+    },
+
     watch: {
         appCompanyName() {
             this.applyBranding()
         },
 
-        appLogoUrl() {
+        appLogoUrl(value) {
+            this.preloadLoaderLogo(value || '/images/zeerak-logo.jpeg')
             this.applyBranding()
         }
     },
@@ -148,6 +157,26 @@ export default {
     },
 
     methods: {
+        preloadLoaderLogo(url) {
+            if (!url) return
+
+            const existing = document.querySelector('link[data-zeerak-loader-preload]')
+            if (existing && existing.getAttribute('href') === url) return
+
+            if (existing) existing.parentNode.removeChild(existing)
+
+            const preload = document.createElement('link')
+            preload.rel = 'preload'
+            preload.as = 'image'
+            preload.href = url
+            preload.setAttribute('data-zeerak-loader-preload', '1')
+            document.head.appendChild(preload)
+
+            const image = new Image()
+            image.decoding = 'async'
+            image.src = url
+        },
+
         applyBranding() {
             const company = this.appCompanyName || 'ZeeraK Real Estate & Builders'
             const logo = this.appLogoUrl || '/images/zeerak-logo.jpeg'
@@ -315,16 +344,25 @@ export default {
     border:1px solid rgba(22,81,52,.1)
 }
 .loader-mark{
-    width:58px;
-    height:58px;
+    width:62px;
+    height:62px;
     border-radius:50%;
     background:#fff;
     display:flex;
     align-items:center;
     justify-content:center;
     box-shadow:0 6px 20px rgba(22,81,52,.10);
-    border:2px solid rgba(22,81,52,.12);
+    border:2px solid rgba(22,81,52,.18);
     overflow:hidden
+}
+.loader-logo{
+    width:100%;
+    height:100%;
+    display:block;
+    object-fit:contain;
+    border-radius:50%;
+    padding:4px;
+    background:#fff
 }
 .global-snackbar ::v-deep .v-snack__wrapper{
     border-radius:14px!important;
