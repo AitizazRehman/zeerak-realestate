@@ -85,31 +85,127 @@ php artisan zeerak:update-overdue-installments
 
 ## 5. Database and uploaded-file backups
 
-Back up both the database and Laravel storage. Private financial receipts/invoices are stored under `storage/app`; profile/company images are stored under `storage/app/public`.
+ZeeraK includes a built-in backup command for both MySQL and `storage/app`. The backup directory is deliberately separate from `storage/app` so backups cannot recursively include themselves.
 
-Example database backup:
+Recommended production configuration:
 
-```bash
-mkdir -p /var/backups/zeerak
-mysqldump --single-transaction --quick --routines --triggers \
-  -u YOUR_DB_USER -p YOUR_DB_NAME \
-  | gzip > /var/backups/zeerak/db-$(date +%F-%H%M).sql.gz
+```env
+BACKUP_ENABLED=true
+BACKUP_PATH=/var/backups/zeerak
+BACKUP_RETENTION_DAYS=14
+BACKUP_SCHEDULE_TIME=02:00
+BACKUP_DATABASE=true
+BACKUP_FILES=true
+MYSQLDUMP_PATH=/usr/bin/mysqldump
 ```
 
-Example uploaded-file backup:
+For local XAMPP on Windows, an example dump path is:
 
-```bash
-tar -czf /var/backups/zeerak/storage-$(date +%F-%H%M).tar.gz \
-  -C /var/www/html/zeerak-realestate storage/app
+```env
+MYSQLDUMP_PATH=C:\xampp\mysql\bin\mysqldump.exe
 ```
 
-Keep backups outside the web root and copy them to a second server or secure external storage. Test restores periodically.
+Create a backup manually:
 
-A practical schedule is:
-- Database: daily
-- `storage/app`: daily
-- Retain daily backups for at least 14 days
-- Retain at least one monthly backup separately
+```bash
+php artisan zeerak:backup
+```
+
+The command creates:
+- a raw MySQL `.sql` dump
+- a ZIP archive of `storage/app`, including private financial documents and public uploads
+- a JSON manifest containing SHA-256 checksums, artifact sizes and backup metadata
+
+Verify the newest backup:
+
+```bash
+php artisan zeerak:verify-backup
+```
+
+Or verify a specific manifest:
+
+```bash
+php artisan zeerak:verify-backup /var/backups/zeerak/zeerak-YYYYMMDD-HHMMSS-PID-manifest.json
+```
+
+Useful manual modes:
+
+```bash
+php artisan zeerak:backup --database-only
+php artisan zeerak:backup --files-only
+php artisan zeerak:backup --no-prune
+```
+
+When `BACKUP_ENABLED=true`, Laravel schedules a full backup every day at `BACKUP_SCHEDULE_TIME`. Old ZeeraK backup artifacts are removed after `BACKUP_RETENTION_DAYS`. The scheduler cron entry from section 4 must therefore be active.
+
+### Off-site backup requirement
+
+A backup stored only on the application server is not sufficient disaster recovery. Copy the completed backup set to a second server, encrypted cloud/object storage, or another protected location. Do not expose the backup directory through Apache.
+
+At minimum:
+- keep daily backups for 14 days
+- keep an additional monthly copy separately
+- verify backups after copying off-site
+- test a restore periodically on a non-production environment
+
+### Restore runbook
+
+Do not restore directly over a live production system without first taking a fresh backup of its current state.
+
+1. Put the application into maintenance mode and create one final backup:
+
+```bash
+php artisan down
+php artisan zeerak:backup --no-prune
+php artisan zeerak:verify-backup
+```
+
+2. Verify the backup set that will be restored:
+
+```bash
+php artisan zeerak:verify-backup /path/to/zeerak-...-manifest.json
+```
+
+3. Restore the SQL dump to the intended MySQL database. Use credentials supplied interactively or through a protected MySQL option file rather than placing the password directly in shell history:
+
+```bash
+mysql -u YOUR_DB_USER -p YOUR_DB_NAME < /path/to/zeerak-...-database.sql
+```
+
+4. Restore files into a temporary directory first, inspect them, then synchronize the extracted `storage-app/` contents into the application's `storage/app/` directory:
+
+```bash
+mkdir -p /tmp/zeerak-restore
+unzip /path/to/zeerak-...-storage.zip -d /tmp/zeerak-restore
+rsync -a /tmp/zeerak-restore/storage-app/ /var/www/html/zeerak-realestate/storage/app/
+```
+
+5. Restore ownership/permissions and rebuild Laravel caches:
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo find storage bootstrap/cache -type d -exec chmod 775 {} \;
+sudo find storage bootstrap/cache -type f -exec chmod 664 {} \;
+
+php artisan optimize:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan storage:link
+```
+
+6. Validate the restored application before reopening it:
+
+```bash
+php artisan zeerak:production-check
+php artisan zeerak:reconcile-finances
+```
+
+Then test login, branch access, recent bookings/payments, a private document download, a customer statement and a payment receipt. Only after those checks succeed:
+
+```bash
+php artisan up
+```
 
 ## 6. Logs
 
