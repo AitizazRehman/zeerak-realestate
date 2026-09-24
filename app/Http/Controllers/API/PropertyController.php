@@ -33,11 +33,22 @@ class PropertyController extends Controller
     public function index(Request $request)
     {
         $query = $this->applyBranchScope(Property::with([
-            'project:id,name,code',
+            'project:id,name,code,branch_id,is_active',
+            'project.branch:id,name,is_active',
             'block:id,project_id,name,code',
             'assignedAgent:id,name,email',
             'images',
         ]));
+
+        if ($request->boolean('bookable')) {
+            $query->where('status', 'available')
+                ->whereHas('project', function ($projectQuery) {
+                    $projectQuery->where('is_active', true)
+                        ->whereHas('branch', function ($branchQuery) {
+                            $branchQuery->where('is_active', true);
+                        });
+                });
+        }
 
         if ($request->filled('project_id')) {
             $query->where('project_id', $request->project_id);
