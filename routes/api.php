@@ -57,10 +57,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('payments', [PaymentController::class, 'index'])->middleware('permission:payments.view'); Route::post('payments', [PaymentController::class, 'store'])->middleware('permission:payments.create'); Route::get('payments/{payment}', [PaymentController::class, 'show'])->middleware('permission:payments.view'); Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->middleware('permission:payments.view'); Route::post('payments/{payment}/reverse', [PaymentController::class, 'reverse'])->middleware('permission:payments.edit');
     Route::get('financial-audits/export/{format}', [FinancialAuditController::class, 'export'])->middleware('permission:reports.view');
     Route::get('financial-audits', [FinancialAuditController::class, 'index'])->middleware('permission:reports.view');
-    Route::get('financial-documents/{type}/{id}', [FinancialDocumentController::class, 'index']);
-    Route::post('financial-documents/{type}/{id}', [FinancialDocumentController::class, 'store']);
-    Route::get('financial-document-files/{document}', [FinancialDocumentController::class, 'download']);
-    Route::delete('financial-documents/{document}', [FinancialDocumentController::class, 'destroy']);
+    Route::get('financial-documents/{type}/{id}', [FinancialDocumentController::class, 'index'])
+        ->where(['type'=>'payment|installment|commission|expense','id'=>'[0-9]+']);
+    Route::post('financial-documents/{type}/{id}', [FinancialDocumentController::class, 'store'])
+        ->where(['type'=>'payment|installment|commission|expense','id'=>'[0-9]+']);
+    Route::get('financial-document-files/{document}', [FinancialDocumentController::class, 'download'])
+        ->whereNumber('document');
+    Route::delete('financial-documents/{document}', [FinancialDocumentController::class, 'destroy'])
+        ->whereNumber('document');
 
     Route::prefix('reports')->middleware('permission:reports.view')->group(function () {
         Route::get('projects', [SalesReportController::class, 'projects']);
