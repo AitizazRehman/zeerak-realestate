@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Booking;
+use App\Models\Customer;
 use App\Models\Property;
 use App\Models\PropertyStatusHistory;
 use App\Models\User;
@@ -37,6 +38,41 @@ class BookingController extends Controller
 
         if ((int) $agent->branch_id !== (int) $branchId) {
             abort(422, 'The selected sales agent must belong to the property branch.');
+        }
+    }
+
+    private function ensureBookingEligibility(Property $property, Customer $customer)
+    {
+        $project = $property->project;
+
+        if (!$project) {
+            abort(422, 'The selected property is not assigned to a project.');
+        }
+
+        if (!$project->is_active) {
+            abort(422, 'Bookings cannot be created for a property in an inactive project.');
+        }
+
+        if (!$project->branch) {
+            abort(422, 'The selected property project is not assigned to a branch.');
+        }
+
+        if (!$project->branch->is_active) {
+            abort(422, 'Bookings cannot be created for a property in an inactive branch.');
+        }
+
+        $this->ensureBranchAccess($project->branch_id);
+
+        if (!$customer->is_active) {
+            abort(422, 'The selected customer is inactive. Reactivate the customer before creating a booking.');
+        }
+
+        if (!$customer->branch_id) {
+            abort(422, 'The selected customer has no branch ownership. Assign a branch before creating a booking.');
+        }
+
+        if ((int) $customer->branch_id !== (int) $project->branch_id) {
+            abort(422, 'The selected customer and property must belong to the same branch.');
         }
     }
 
@@ -83,8 +119,10 @@ class BookingController extends Controller
         ]);
 
         $booking = DB::transaction(function () use ($data, $request) {
-            $property = Property::lockForUpdate()->findOrFail($data['property_id']);
-            $this->ensureBranchAccess($property->project->branch_id);
+            $property = Property::with('project.branch')->lockForUpdate()->findOrFail($data['property_id']);
+            $customer = Customer::lockForUpdate()->findOrFail($data['customer_id']);
+
+            $this->ensureBookingEligibility($property, $customer);
             $this->ensureSalesAgentAccess($data['sales_agent_id'] ?? null, $property->project->branch_id);
 
             if ($property->status !== 'available') {
