@@ -6,9 +6,11 @@ import '@mdi/font/css/materialdesignicons.css';
 
 Vue.use(Vuetify);
 
+const prefersDark = localStorage.getItem('zeerak_dark_mode') === '1';
+
 export default new Vuetify({
     theme: {
-        dark: false,
+        dark: prefersDark,
 
         themes: {
             light: {
@@ -18,18 +20,28 @@ export default new Vuetify({
                 error: '#D32F2F',
                 warning: '#F9A825',
                 info: '#1976D2',
-                success: '#388E3C'
+                success: '#388E3C',
+                background: '#F4F7F5',
+                surface: '#FFFFFF',
+                gold: '#B6913F'
             },
 
             dark: {
-                primary: '#43A047',
-                secondary: '#66BB6A',
-                accent: '#81C784',
-                error: '#EF5350',
-                warning: '#FFCA28',
-                info: '#42A5F5',
-                success: '#66BB6A'
+                primary: '#5BB77D',
+                secondary: '#73C692',
+                accent: '#C9A85B',
+                error: '#FF6B6B',
+                warning: '#F6C85F',
+                info: '#67A9FF',
+                success: '#66C98A',
+                background: '#0F1713',
+                surface: '#16211B',
+                gold: '#C9A85B'
             }
+        },
+
+        options: {
+            customProperties: true
         }
     },
 
