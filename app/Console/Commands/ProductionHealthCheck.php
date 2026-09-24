@@ -162,6 +162,46 @@ class ProductionHealthCheck extends Command
             $this->pass('Queue connection: '.config('queue.default'));
         }
 
+        if (config('backup.enabled')) {
+            $backupPath = (string) config('backup.path', storage_path('backups'));
+            $backupParent = is_dir($backupPath) ? $backupPath : dirname($backupPath);
+
+            $this->check(
+                is_dir($backupParent) && is_writable($backupParent),
+                'Backup destination is writable: '.$backupPath,
+                'Backup destination is not writable or its parent does not exist: '.$backupPath,
+                true
+            );
+
+            if (config('backup.include_files')) {
+                $this->check(
+                    class_exists(\ZipArchive::class),
+                    'PHP ZipArchive is available for storage backups',
+                    'PHP zip extension is required because BACKUP_FILES=true',
+                    true
+                );
+            }
+
+            $time = (string) config('backup.schedule_time', '02:00');
+            $this->check(
+                (bool) preg_match('/^(?:[01]\d|2[0-3]):[0-5]\d$/', $time),
+                'Backup schedule time is valid: '.$time,
+                'BACKUP_SCHEDULE_TIME must use HH:MM 24-hour format; current value is '.$time,
+                true
+            );
+
+            $this->check(
+                (int) config('backup.retention_days', 14) >= 1,
+                'Backup retention is configured: '.(int) config('backup.retention_days', 14).' day(s)',
+                'BACKUP_RETENTION_DAYS must be at least 1',
+                true
+            );
+
+            $this->pass('Automated application backups are enabled');
+        } else {
+            $this->warnCheck('BACKUP_ENABLED=false. Enable and verify automated backups before production launch.');
+        }
+
         if (app()->isDownForMaintenance()) {
             $this->warnCheck('Application is currently in maintenance mode');
         } else {
@@ -170,7 +210,7 @@ class ProductionHealthCheck extends Command
 
         $this->newLine();
         $this->line('Scheduler requirement: add one cron entry running "php artisan schedule:run" every minute.');
-        $this->line('Backup requirement: back up both MySQL and storage/app, including private financial documents.');
+        $this->line('Backup verification: run "php artisan zeerak:backup" and "php artisan zeerak:verify-backup".');
         $this->newLine();
 
         $this->info('Failures: '.$this->failures.' | Warnings: '.$this->warnings);
