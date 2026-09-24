@@ -11,6 +11,7 @@ class StoreCustomerRequest extends FormRequest
     public function rules()
     {
         return [
+            'branch_id' => ['nullable','integer','exists:branches,id'],
             'name' => ['required','string','max:150'],
             'cnic' => ['nullable','string','max:30','unique:customers,cnic'],
             'phone' => ['required','string','max:30'],
