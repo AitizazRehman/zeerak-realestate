@@ -32,6 +32,7 @@ use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\FinancialDocumentController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
+Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('profile', [ProfileController::class, 'show']); Route::put('profile', [ProfileController::class, 'update']); Route::put('profile/password', [ProfileController::class, 'password']); Route::post('profile/photo', [ProfileController::class, 'photo']);
     Route::prefix('auth')->group(function () { Route::get('/me', [AuthController::class, 'me']); Route::post('/logout', [AuthController::class, 'logout']); });
