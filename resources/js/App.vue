@@ -217,12 +217,14 @@ export default {
 .loader-mark{
     width:58px;
     height:58px;
-    border-radius:14px;
+    border-radius:50%;
     background:#fff;
     display:flex;
     align-items:center;
     justify-content:center;
-    box-shadow:0 6px 20px rgba(22,81,52,.10)
+    box-shadow:0 6px 20px rgba(22,81,52,.10);
+    border:2px solid rgba(22,81,52,.12);
+    overflow:hidden
 }
 .global-snackbar ::v-deep .v-snack__wrapper{
     border-radius:14px!important;
