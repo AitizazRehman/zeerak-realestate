@@ -7,12 +7,15 @@ use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Models\Customer;
+use App\Models\Branch;
 use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\Installment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -65,9 +68,87 @@ class CustomerController extends Controller
         }
     }
 
+    private function resolveMutationBranch(array &$data, Request $request, Customer $customer = null)
+    {
+        if (!$this->canAccessAllBranches()) {
+            if (!$request->user()->branch_id) {
+                abort(422, 'Your user account must be assigned to a branch before managing customers.');
+            }
+
+            $data['branch_id'] = $customer && $customer->branch_id
+                ? $customer->branch_id
+                : $request->user()->branch_id;
+
+            return (int) $data['branch_id'];
+        }
+
+        $branchId = isset($data['branch_id']) && $data['branch_id']
+            ? (int) $data['branch_id']
+            : ($customer && $customer->branch_id ? (int) $customer->branch_id : null);
+
+        if (!$branchId) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['Select an active branch for this customer.'],
+            ]);
+        }
+
+        $branch = Branch::where('is_active', true)->find($branchId);
+
+        if (!$branch) {
+            throw ValidationException::withMessages([
+                'branch_id' => ['The selected branch is inactive or unavailable.'],
+            ]);
+        }
+
+        $data['branch_id'] = $branch->id;
+
+        return (int) $branch->id;
+    }
+
+    private function assertNoDuplicateIdentity($branchId, $phone, $email, $ignoreId = null)
+    {
+        $query = Customer::query()
+            ->matchingIdentity($phone, $email)
+            ->where(function ($branchQuery) use ($branchId) {
+                $branchQuery->where('branch_id', $branchId)
+                    ->orWhereNull('branch_id');
+            });
+
+        if ($ignoreId) {
+            $query->where('id', '!=', (int) $ignoreId);
+        }
+
+        $duplicate = $query->orderByDesc('id')->first();
+
+        if (!$duplicate) {
+            return;
+        }
+
+        $messages = [];
+        $normalizedPhone = Customer::normalizedPhone($phone);
+        $duplicatePhone = Customer::normalizedPhone($duplicate->phone);
+        $normalizedEmail = strtolower(trim((string) $email));
+        $duplicateEmail = strtolower(trim((string) $duplicate->email));
+        $reference = $duplicate->customer_number ?: '#'.$duplicate->id;
+
+        if ($normalizedPhone !== '' && $normalizedPhone === $duplicatePhone) {
+            $messages['phone'] = ['This phone already belongs to customer '.$reference.'.'];
+        }
+
+        if ($normalizedEmail !== '' && $normalizedEmail === $duplicateEmail) {
+            $messages['email'] = ['This email already belongs to customer '.$reference.'.'];
+        }
+
+        if (!$messages) {
+            $messages['phone'] = ['A customer with the same phone or email already exists ('.$reference.').'];
+        }
+
+        throw ValidationException::withMessages($messages);
+    }
+
     public function index(Request $request)
     {
-        $query = $this->scopeBranch(Customer::query());
+        $query = $this->scopeBranch(Customer::with('branch:id,name'));
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -85,17 +166,19 @@ class CustomerController extends Controller
     public function store(StoreCustomerRequest $request)
     {
         $data = $request->validated();
-        if (!$this->canAccessAllBranches()) {
-            if (!$request->user()->branch_id) {
-                abort(422, 'Your user account must be assigned to a branch before creating customers.');
-            }
-            $data['branch_id'] = $request->user()->branch_id;
-        }
+        $branchId = $this->resolveMutationBranch($data, $request);
+        $this->assertNoDuplicateIdentity($branchId, $data['phone'], isset($data['email']) ? $data['email'] : null);
 
-        $customer = Customer::create(array_merge($data, [
-            'customer_number' => $this->generateCustomerNumber(),
-        ]));
-        return response()->json(['message' => 'Customer created successfully.', 'customer' => $customer], 201);
+        $customer = DB::transaction(function () use ($data) {
+            return Customer::create(array_merge($data, [
+                'customer_number' => $this->generateCustomerNumber(),
+            ]));
+        });
+
+        return response()->json([
+            'message' => 'Customer created successfully.',
+            'customer' => $customer->load('branch:id,name'),
+        ], 201);
     }
 
     private function generateCustomerNumber()
@@ -143,8 +226,22 @@ class CustomerController extends Controller
     {
         $this->ensureCustomerAccess($customer);
         $this->ensureCustomerMutationAccess($customer);
-        $customer->update($request->validated());
-        return response()->json(['message' => 'Customer updated successfully.', 'customer' => $customer->fresh()]);
+
+        $data = $request->validated();
+        $branchId = $this->resolveMutationBranch($data, $request, $customer);
+        $this->assertNoDuplicateIdentity(
+            $branchId,
+            $data['phone'],
+            isset($data['email']) ? $data['email'] : null,
+            $customer->id
+        );
+
+        $customer->update($data);
+
+        return response()->json([
+            'message' => 'Customer updated successfully.',
+            'customer' => $customer->fresh()->load('branch:id,name'),
+        ]);
     }
 
     public function destroy(Customer $customer)
