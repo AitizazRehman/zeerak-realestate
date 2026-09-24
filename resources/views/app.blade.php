@@ -14,6 +14,7 @@
         {{ config('app.name', 'Zeerak Real Estate & Builders') }}
     </title>
 
+    <link rel="preload" as="image" href="{{ asset('images/zeerak-logo.jpeg') }}">
     <link rel="icon" type="image/jpeg" href="{{ asset('images/zeerak-logo.jpeg') }}">
     <link rel="shortcut icon" type="image/jpeg" href="{{ asset('images/zeerak-logo.jpeg') }}">
     <link rel="apple-touch-icon" href="{{ asset('images/zeerak-logo.jpeg') }}">
