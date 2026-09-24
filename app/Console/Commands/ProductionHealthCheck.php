@@ -147,6 +147,31 @@ class ProductionHealthCheck extends Command
                 'SESSION_SECURE_COOKIE should be true for HTTPS',
                 true
             );
+
+            $this->check(
+                (bool) config('security.hsts.enabled', true),
+                'HSTS is enabled for HTTPS responses',
+                'SECURITY_HSTS_ENABLED should be true in production',
+                true
+            );
+
+            $hstsMaxAge = (int) config('security.hsts.max_age', 31536000);
+            $this->check(
+                $hstsMaxAge >= 15552000,
+                'HSTS max-age is sufficiently long: '.$hstsMaxAge,
+                'SECURITY_HSTS_MAX_AGE should be at least 15552000 seconds in production',
+                false
+            );
+
+            if (config('security.hsts.include_subdomains', false)) {
+                $this->warnCheck('HSTS includeSubDomains is enabled. Confirm every subdomain is permanently available over HTTPS.');
+            } else {
+                $this->pass('HSTS includeSubDomains is safely disabled by default');
+            }
+
+            if (config('security.hsts.preload', false)) {
+                $this->warnCheck('HSTS preload is enabled. Confirm the domain intentionally meets browser preload requirements.');
+            }
         }
 
         $this->check(
