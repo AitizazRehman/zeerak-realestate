@@ -118,7 +118,7 @@ class BackupApplication extends Command
             $this->newLine();
             $this->info('Backup completed successfully.');
             $this->line('Manifest: '.$manifestPath);
-            $this->line('Verify with: php artisan zeerak:verify-backup '.escapeshellarg($manifestPath));
+            $this->line('Verify with: php artisan zeerak:verify-backup '.$this->commandArgument($manifestPath));
 
             return 0;
         } catch (\Throwable $e) {
@@ -206,16 +206,20 @@ class BackupApplication extends Command
                 $binary = 'mysqldump';
             }
 
+            if ($this->looksLikePath($binary) && !is_file($binary)) {
+                throw new \RuntimeException('mysqldump was not found at MYSQLDUMP_PATH: '.$binary);
+            }
+
             $arguments = [
-                escapeshellarg($binary),
-                escapeshellarg('--defaults-extra-file='.$credentials),
+                $this->commandArgument($binary),
+                $this->commandArgument('--defaults-extra-file='.$credentials),
                 '--single-transaction',
                 '--quick',
                 '--routines',
                 '--triggers',
                 '--events',
                 '--default-character-set=utf8mb4',
-                escapeshellarg($databaseName),
+                $this->commandArgument($databaseName),
             ];
 
             $command = implode(' ', $arguments);
@@ -225,7 +229,15 @@ class BackupApplication extends Command
                 2 => ['pipe', 'w'],
             ];
 
-            $process = proc_open($command, $descriptors, $pipes);
+            // Windows cmd.exe does not understand the single-quoted arguments
+            // produced by escapeshellarg() in the same way as Unix shells.
+            // bypass_shell sends our double-quoted command line directly to
+            // CreateProcess and keeps paths such as C:\xampp\... intact.
+            $processOptions = DIRECTORY_SEPARATOR === '\\'
+                ? ['bypass_shell' => true]
+                : [];
+
+            $process = proc_open($command, $descriptors, $pipes, null, null, $processOptions);
 
             if (!is_resource($process)) {
                 throw new \RuntimeException('Unable to start mysqldump. Check MYSQLDUMP_PATH.');
@@ -253,6 +265,30 @@ class BackupApplication extends Command
         } finally {
             @unlink($credentials);
         }
+    }
+
+    private function commandArgument($value)
+    {
+        $value = (string) $value;
+
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            return escapeshellarg($value);
+        }
+
+        // Quote for the Windows CreateProcess/C runtime command-line parser.
+        // Double backslashes that precede a quote and at the end of the
+        // argument so paths and values survive parsing unchanged.
+        $value = preg_replace('/(\\\\*)"/', '$1$1\\\\"', $value);
+        $value = preg_replace('/(\\\\+)$/', '$1$1', $value);
+
+        return '"'.$value.'"';
+    }
+
+    private function looksLikePath($value)
+    {
+        $value = (string) $value;
+
+        return strpos($value, '/') !== false || strpos($value, '\\') !== false;
     }
 
     private function mysqlOptionValue($value)
