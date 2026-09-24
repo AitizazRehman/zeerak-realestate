@@ -102,7 +102,7 @@ MYSQLDUMP_PATH=/usr/bin/mysqldump
 For local XAMPP on Windows, an example dump path is:
 
 ```env
-MYSQLDUMP_PATH=C:\xampp\mysql\bin\mysqldump.exe
+MYSQLDUMP_PATH=C:/xampp/mysql/bin/mysqldump.exe
 ```
 
 Create a backup manually:
