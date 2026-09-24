@@ -273,9 +273,17 @@ class FinancialDocumentController extends Controller
         $stagedPath = null;
 
         if ($disk->exists($path)) {
-            $stagedPath = 'financial-documents/.deleting/'.Str::random(40).'-'.basename($path);
+            $stagedDirectory = 'financial-documents/.deleting';
 
-            if (!$disk->move($path, $stagedPath)) {
+            if (!$disk->exists($stagedDirectory) && !$disk->makeDirectory($stagedDirectory)) {
+                abort(500, 'Document deletion staging directory could not be created.');
+            }
+
+            $stagedPath = $stagedDirectory.'/'.Str::random(40).'-'.basename($path);
+
+            // Copy instead of moving first. If PHP/database fails before commit,
+            // the active document still points to its original intact file.
+            if (!$disk->copy($path, $stagedPath)) {
                 abort(500, 'Document could not be prepared for deletion.');
             }
         }
@@ -295,11 +303,18 @@ class FinancialDocumentController extends Controller
                 ]);
             });
         } catch (\Throwable $e) {
-            if ($stagedPath && $disk->exists($stagedPath) && !$disk->exists($path)) {
-                $disk->move($stagedPath, $path);
+            if ($stagedPath && $disk->exists($stagedPath)) {
+                $disk->delete($stagedPath);
             }
 
             throw $e;
+        }
+
+        if ($disk->exists($path) && !$disk->delete($path)) {
+            Log::warning('Financial document database deletion succeeded but original file cleanup failed.', [
+                'document_id' => $document->id,
+                'file_path' => $path,
+            ]);
         }
 
         if ($stagedPath && $disk->exists($stagedPath) && !$disk->delete($stagedPath)) {
