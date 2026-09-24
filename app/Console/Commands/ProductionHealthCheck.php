@@ -62,7 +62,7 @@ class ProductionHealthCheck extends Command
             true
         );
 
-        foreach (['openssl','mbstring','fileinfo','pdo_mysql'] as $extension) {
+        foreach (['openssl','mbstring','fileinfo','pdo_mysql','zip'] as $extension) {
             $this->check(
                 extension_loaded($extension),
                 'PHP extension loaded: '.$extension,
