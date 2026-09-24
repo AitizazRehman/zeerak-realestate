@@ -52,6 +52,7 @@ php artisan route:cache
 php artisan view:cache
 
 php artisan zeerak:production-check
+php artisan zeerak:acceptance-check
 php artisan zeerak:reconcile-finances
 
 php artisan up
@@ -269,8 +270,11 @@ Run:
 
 ```bash
 php artisan zeerak:production-check --strict
+php artisan zeerak:acceptance-check --strict
 php artisan zeerak:reconcile-finances
 ```
+
+The acceptance command is non-destructive. It checks critical routes and cross-module data integrity without modifying records. The detailed manual workflow checklist is in `docs/ACCEPTANCE_TESTING.md`.
 
 Then test:
 - Login/logout
