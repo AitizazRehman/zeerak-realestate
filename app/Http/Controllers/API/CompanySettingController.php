@@ -9,6 +9,15 @@ class CompanySettingController extends Controller {
  use ChecksBranchAccess;
  private function ensureSettingsAdministrator(){abort_unless($this->canAccessAllBranches(),403,'Only administrators can modify company settings.');}
  private function setting(){return CompanySetting::firstOrCreate([],['company_name'=>'ZeeraK Real Estate & Builders','currency'=>'PKR']);}
+ public function publicSettings(){
+  $s=$this->setting();
+  return response()->json([
+   'company_name'=>$s->company_name,
+   'legal_name'=>$s->legal_name,
+   'logo_url'=>$s->logo_url,
+   'currency'=>$s->currency ?: 'PKR',
+  ]);
+ }
  public function show(){return response()->json($this->setting());}
  public function update(Request $request){
   $this->ensureSettingsAdministrator();
