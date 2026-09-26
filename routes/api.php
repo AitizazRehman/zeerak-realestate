@@ -32,6 +32,7 @@ use App\Http\Controllers\API\ProfileController;
 use App\Http\Controllers\API\FinancialDocumentController;
 use App\Http\Controllers\API\ChartOfAccountController;
 use App\Http\Controllers\API\FiscalYearController;
+use App\Http\Controllers\API\JournalEntryController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -65,6 +66,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('accounting/fiscal-years', [FiscalYearController::class, 'store'])->middleware('permission:accounting.create');
     Route::patch('accounting/fiscal-years/{fiscalYear}/status', [FiscalYearController::class, 'status'])->middleware('permission:accounting.edit');
     Route::patch('accounting/periods/{accountingPeriod}/status', [FiscalYearController::class, 'periodStatus'])->middleware('permission:accounting.edit');
+    Route::get('accounting/journal-entries', [JournalEntryController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('accounting/journal-entries', [JournalEntryController::class, 'store'])->middleware('permission:accounting.create');
+    Route::get('accounting/journal-entries/{journalEntry}', [JournalEntryController::class, 'show'])->middleware('permission:accounting.view');
+    Route::post('accounting/journal-entries/{journalEntry}/post', [JournalEntryController::class, 'post'])->middleware('permission:accounting.edit');
+    Route::post('accounting/journal-entries/{journalEntry}/reverse', [JournalEntryController::class, 'reverse'])->middleware('permission:accounting.edit');
     Route::post('accounting/chart-of-accounts', [ChartOfAccountController::class, 'store'])->middleware('permission:accounting.create');
     Route::put('accounting/chart-of-accounts/{chartOfAccount}', [ChartOfAccountController::class, 'update'])->middleware('permission:accounting.edit');
     Route::patch('accounting/chart-of-accounts/{chartOfAccount}', [ChartOfAccountController::class, 'update'])->middleware('permission:accounting.edit');
