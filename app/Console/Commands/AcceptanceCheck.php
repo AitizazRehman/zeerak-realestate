@@ -59,6 +59,7 @@ class AcceptanceCheck extends Command
             'expenses',
             'financial_documents',
             'financial_audits',
+            'chart_of_accounts',
         ];
 
         foreach ($tables as $table) {
@@ -91,6 +92,8 @@ class AcceptanceCheck extends Command
             ['POST', 'api/financial-documents/{type}/{id}'],
             ['GET', 'api/reports/summary'],
             ['GET', 'api/sales/dashboard'],
+            ['GET', 'api/accounting/chart-of-accounts'],
+            ['POST', 'api/accounting/chart-of-accounts'],
         ];
 
         $registered = [];
