@@ -31,6 +31,7 @@ class SalesReportController extends Controller
 
     private function branchExpenses($query)
     {
+        $query->unreversed();
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
             $query->where(function ($q) use ($branchId) {

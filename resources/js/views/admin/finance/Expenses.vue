@@ -24,12 +24,12 @@
     <v-card flat class="filter-card mb-4">
       <v-card-text>
         <v-row dense align="center">
-          <v-col cols="12" md="3"><v-text-field v-model="filters.search" outlined dense hide-details clearable prepend-inner-icon="mdi-magnify" label="Expense, vendor or description" @keyup.enter="load" @click:clear="load"/></v-col>
+          <v-col cols="12" md="2"><v-text-field v-model="filters.search" outlined dense hide-details clearable prepend-inner-icon="mdi-magnify" label="Expense, vendor or description" @keyup.enter="load" @click:clear="load"/></v-col>
           <v-col cols="12" md="2"><v-select v-model="filters.project_id" :items="projects" item-text="name" item-value="id" outlined dense hide-details clearable label="Project" @change="load"/></v-col>
           <v-col cols="12" md="2"><v-select v-model="filters.category" :items="categories" outlined dense hide-details clearable label="Category" @change="load"/></v-col>
           <v-col cols="6" md="2"><v-text-field v-model="filters.from" type="date" outlined dense hide-details label="From" @change="load"/></v-col>
           <v-col cols="6" md="2"><v-text-field v-model="filters.to" type="date" outlined dense hide-details label="To" @change="load"/></v-col>
-          <v-col cols="12" md="1" class="text-md-right"><v-btn icon @click="load"><v-icon>mdi-refresh</v-icon></v-btn></v-col>
+          <v-col cols="12" md="2"><v-select v-model="filters.status" :items="[{text:'Active',value:'active'},{text:'Reversed',value:'reversed'},{text:'All',value:'all'}]" outlined dense hide-details label="Status" @change="load" /></v-col>
         </v-row>
       </v-card-text>
     </v-card>
@@ -41,10 +41,13 @@
         <template v-slot:item.amount="{item}"><strong>PKR {{money(item.amount)}}</strong></template>
         <template v-slot:item.expense_date="{item}">{{dateOnly(item.expense_date)}}</template>
         <template v-slot:item.payment_method="{item}">{{formatText(item.payment_method)}}</template>
+        <template v-slot:item.journal="{item}"><div>{{ item.journal_entry ? item.journal_entry.entry_number : 'Not posted' }}</div><div v-if="item.reversal_journal" class="caption">Reversal: {{ item.reversal_journal.entry_number }}</div></template>
+        <template v-slot:item.status="{item}"><v-chip small outlined :color="item.reversed_at ? 'error' : 'success'">{{ item.reversed_at ? 'Reversed' : 'Active' }}</v-chip></template>
+        <template v-slot:item.description="{item}"><div>{{item.description}}</div><div v-if="item.reversed_at" class="caption grey--text">Reversed {{dateOnly(item.reversal_date)}}: {{item.reversal_reason}}</div></template>
         <template v-slot:item.actions="{item}">
           <v-badge v-if="$can('expenses.view')" :content="item.financial_documents_count" :value="item.financial_documents_count" color="#165134" overlap><v-btn icon small color="blue-grey" title="Receipts / invoices / documents" @click="openDocuments(item)"><v-icon small>mdi-paperclip</v-icon></v-btn></v-badge>
-          <v-btn v-if="$can('expenses.edit')" icon small title="Edit expense" @click="edit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
-          <v-btn v-if="$can('expenses.delete')" icon small color="error" title="Delete expense" @click="openDelete(item)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
+          <v-btn v-if="$can('expenses.edit') && !item.reversed_at" icon small title="Edit expense" @click="edit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
+          <v-btn v-if="$can('expenses.delete') && !item.reversed_at" icon small color="error" title="Reverse expense" @click="openDelete(item)"><v-icon small>mdi-undo</v-icon></v-btn>
         </template>
         <template v-slot:no-data><div class="pa-10 text-center grey--text"><v-icon size="52" color="grey lighten-1">mdi-receipt-text-outline</v-icon><div class="mt-2">No expenses found.</div></div></template>
       </v-data-table>
@@ -58,16 +61,20 @@
         </v-card-title>
         <v-divider/>
         <v-card-text class="pt-5">
+          <v-alert v-if="postedEditing" type="info" text dense>Posted financial details are locked. To change the amount, date, allocation or accounts, reverse this expense and record a replacement.</v-alert>
+          <v-alert v-if="!editing && !accountsLoading && (!expenseAccounts.length || !cashAccounts.length)" type="warning" text dense>Set up expense and cash/bank posting accounts and open the accounting period before recording expenses.</v-alert>
           <v-row>
-            <v-col cols="12" md="6"><v-select v-model="form.project_id" :items="projects" item-text="name" item-value="id" outlined dense clearable label="Project" @change="formProjectChanged"/></v-col>
-            <v-col cols="12" md="6"><v-autocomplete v-model="form.property_id" :items="properties" item-text="property_number" item-value="id" outlined dense clearable label="Property (optional)" :disabled="!form.project_id"/></v-col>
-            <v-col cols="12" md="6"><v-select v-model="form.category" :items="categories" outlined dense label="Category *"/></v-col>
+            <v-col cols="12" md="6"><v-select v-model="form.project_id" :items="projects" item-text="name" item-value="id" outlined dense clearable label="Project" :disabled="postedEditing" @change="formProjectChanged"/></v-col>
+            <v-col cols="12" md="6"><v-autocomplete v-model="form.property_id" :items="properties" item-text="property_number" item-value="id" outlined dense clearable label="Property (optional)" :disabled="postedEditing || !form.project_id"/></v-col>
+            <v-col cols="12" md="6"><v-select v-model="form.category" :items="categories" outlined dense label="Category *" :disabled="postedEditing"/></v-col>
             <v-col cols="12" md="6"><v-text-field v-model="form.vendor_name" outlined dense label="Vendor / Payee"/></v-col>
             <v-col cols="12"><v-text-field v-model="form.description" outlined dense label="Description *"/></v-col>
-            <v-col cols="12" md="6"><v-text-field v-model="form.amount" type="number" min="0.01" step="0.01" outlined dense label="Amount *" prefix="PKR"/></v-col>
-            <v-col cols="12" md="6"><v-text-field v-model="form.expense_date" type="date" outlined dense label="Expense Date *"/></v-col>
-            <v-col cols="12" md="6"><v-select v-model="form.payment_method" :items="methods" outlined dense label="Payment Method *"/></v-col>
+            <v-col cols="12" md="6"><v-text-field v-model="form.amount" type="number" min="0.01" step="0.01" outlined dense label="Amount *" :disabled="postedEditing" prefix="PKR"/></v-col>
+            <v-col cols="12" md="6"><v-text-field v-model="form.expense_date" type="date" outlined dense label="Expense Date *" :disabled="postedEditing"/></v-col>
+            <v-col cols="12" md="6"><v-select v-model="form.payment_method" :items="methods" outlined dense label="Payment Method *" :disabled="postedEditing" @change="paymentMethodChanged"/></v-col>
             <v-col cols="12" md="6"><v-text-field v-model="form.reference_number" outlined dense label="Reference #"/></v-col>
+            <v-col v-if="!editing || postedEditing" cols="12" md="6"><v-autocomplete v-model="form.expense_account_id" :items="expenseAccounts" item-text="label" item-value="id" label="Debit expense account *" outlined dense :disabled="postedEditing" :loading="accountsLoading" /></v-col>
+            <v-col v-if="!editing || postedEditing" cols="12" md="6"><v-autocomplete v-model="form.cash_bank_account_id" :items="cashAccounts" item-text="label" item-value="id" label="Paid from cash / bank account *" outlined dense :disabled="postedEditing" :loading="accountsLoading" /></v-col>
             <v-col cols="12"><v-textarea v-model="form.notes" outlined dense rows="2" label="Notes"/></v-col>
           </v-row>
           <v-alert type="info" text dense>After saving, you can attach a receipt, invoice, voucher, bank slip, cheque copy, agreement or other supporting document.</v-alert>
@@ -75,8 +82,8 @@
         <v-card-actions class="px-6 pb-5">
           <v-spacer/>
           <v-btn text :disabled="saving" @click="dialog=false">Cancel</v-btn>
-          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" outlined color="#165134" @click="save(false)">Save</v-btn>
-          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" color="#165134" dark depressed @click="save(true)"><v-icon left>mdi-paperclip</v-icon>Save & Add Document</v-btn>
+          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" outlined color="#165134" :loading="saving" :disabled="saving || accountsLoading" @click="save(false)">Save</v-btn>
+          <v-btn v-if="(editing && $can('expenses.edit')) || (!editing && $can('expenses.create'))" color="#165134" dark depressed :disabled="saving || accountsLoading" @click="save(true)"><v-icon left>mdi-paperclip</v-icon>Save & Add Document</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -93,9 +100,12 @@
 
     <v-dialog v-model="deleteDialog" max-width="500" persistent>
       <v-card>
-        <v-card-title>Delete Expense</v-card-title>
-        <v-card-text><v-alert type="warning" outlined dense>This permanently removes <strong>{{deleteItem && deleteItem.expense_number}}</strong>. Expenses with supporting documents must have those documents removed first. The financial audit history is retained.</v-alert></v-card-text>
-        <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" @click="confirmDelete">Delete Expense</v-btn></v-card-actions>
+        <v-card-title>Reverse Expense</v-card-title>
+        <v-card-text><v-alert type="warning" outlined dense>Reverse <strong>{{deleteItem && deleteItem.expense_number}}</strong> and exclude it from active expense totals. The original record, journals and attachments will be retained.</v-alert>
+          <v-text-field v-model="reversalDate" type="date" outlined dense label="Reversal date *" :disabled="deleting" />
+          <v-textarea v-model="reversalReason" outlined dense label="Reason *" :disabled="deleting" />
+        </v-card-text>
+        <v-card-actions><v-spacer/><v-btn text :disabled="deleting" @click="deleteDialog=false">Cancel</v-btn><v-btn color="error" :loading="deleting" :disabled="deleting || !reversalDate || !reversalReason.trim()" @click="confirmDelete">Reverse Expense</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </div>
@@ -110,26 +120,30 @@ export default {
   components:{FinancialDocumentsDialog},
   data:()=>({
     loading:false,saving:false,dialog:false,deleteDialog:false,deleting:false,deleteItem:null,
-    documentsDialog:false,documentEntity:null,editing:null,items:[],total:0,projects:[],properties:[],loadingProperties:false,
+    accountsLoading:false,expenseAccounts:[],cashAccounts:[],reversalDate:'',reversalReason:'',documentsDialog:false,documentEntity:null,editing:null,items:[],total:0,projects:[],properties:[],loadingProperties:false,
     options:{page:1,itemsPerPage:15},
-    filters:{search:'',project_id:null,category:null,from:'',to:''},
+    filters:{status:'active',search:'',project_id:null,category:null,from:'',to:''},
     categories:['Land & Development','Construction','Materials','Labour','Utilities','Marketing','Office','Transport','Legal','Maintenance','Other'],
     methods:['cash','bank_transfer','cheque','online','other'],
     headers:[
       {text:'Expense # / Vendor',value:'expense_number'},{text:'Category',value:'category'},{text:'Description',value:'description'},
       {text:'Project / Property',value:'project.name'},{text:'Amount',value:'amount',align:'right'},{text:'Date',value:'expense_date'},
-      {text:'Method',value:'payment_method'},{text:'Actions',value:'actions',sortable:false,align:'right'}
+      {text:'Method',value:'payment_method'},{text:'Status',value:'status'},{text:'Journal',value:'journal'},{text:'Actions',value:'actions',sortable:false,align:'right'}
     ],
-    form:{project_id:null,property_id:null,category:'Construction',description:'',amount:null,expense_date:new Date().toISOString().slice(0,10),payment_method:'cash',vendor_name:'',reference_number:'',notes:''}
+    form:{expense_account_id:null,cash_bank_account_id:null,project_id:null,property_id:null,category:'Construction',description:'',amount:null,expense_date:new Date().toISOString().slice(0,10),payment_method:'cash',vendor_name:'',reference_number:'',notes:''}
   }),
   computed:{
-    amountShown(){return this.items.reduce(function(n,x){return n+Number(x.amount||0)},0)},
-    monthAmountShown(){const month=new Date().toISOString().slice(0,7);return this.items.filter(function(x){return String(x.expense_date||'').slice(0,7)===month}).reduce(function(n,x){return n+Number(x.amount||0)},0)},
+    postedEditing(){return !!(this.editing && (this.editing.journal_entry || this.editing.expense_account_id || this.editing.cash_bank_account_id))},
+    amountShown(){return this.items.filter(x=>!x.reversed_at).reduce(function(n,x){return n+Number(x.amount||0)},0)},
+    monthAmountShown(){const month=new Date().toISOString().slice(0,7);return this.items.filter(function(x){return !x.reversed_at && String(x.expense_date||'').slice(0,7)===month}).reduce(function(n,x){return n+Number(x.amount||0)},0)},
     categoryCount(){return new Set(this.items.map(function(x){return x.category}).filter(Boolean)).size}
   },
   watch:{options:{deep:true,handler(){this.load()}}},
   mounted(){this.load();this.loadProjects()},
   methods:{
+    errorText(e,fallback){const d=e.response&&e.response.data;if(d&&d.errors){const k=Object.keys(d.errors)[0];if(k)return d.errors[k][0]}return d&&d.message||fallback},
+    paymentMethodChanged(){if(this.editing)return;const cash=this.cashAccounts.find(a=>a.code==='1101');this.form.cash_bank_account_id=this.form.payment_method==='cash'&&cash?cash.id:null},
+    async loadPostingAccounts(){this.accountsLoading=true;try{const r=await api.get('/expenses/posting-accounts');const debit=r.data.expense_accounts||[],credit=r.data.cash_bank_accounts||[];if(this.editing){const a=this.editing.expense_account,b=this.editing.cash_bank_account;if(a&&!debit.some(x=>x.id===a.id))debit.push(a);if(b&&!credit.some(x=>x.id===b.id))credit.push(b)}const label=a=>({...a,label:a.code+' — '+a.name});this.expenseAccounts=debit.map(label);this.cashAccounts=credit.map(label);if(!this.editing&&!this.form.cash_bank_account_id)this.paymentMethodChanged()}catch(e){this.$root.$emit('show-error',this.errorText(e,'Unable to load posting accounts.'))}finally{this.accountsLoading=false}},
     dateOnly(v){return v?String(v).slice(0,10):'—'},
     formatText(v){return v?String(v).replace(/_/g,' ').replace(/\b\w/g,function(x){return x.toUpperCase()}):'—'},
     openDocuments(item){this.documentEntity=item;this.documentsDialog=true},
@@ -137,13 +151,13 @@ export default {
     async loadProjects(){try{const r=await api.get('/projects',{params:{per_page:100}});this.projects=r.data.data||r.data||[]}catch(e){this.projects=[]}},
     async loadProperties(projectId){this.properties=[];if(!projectId)return;this.loadingProperties=true;try{const r=await api.get('/properties',{params:{project_id:projectId,per_page:100}});this.properties=r.data.data||[]}catch(e){this.properties=[]}finally{this.loadingProperties=false}},
     async formProjectChanged(id){this.form.property_id=null;await this.loadProperties(id)},
-    openCreate(){this.editing=null;this.reset();this.properties=[];this.dialog=true},
-    reset(){this.form={project_id:null,property_id:null,category:'Construction',description:'',amount:null,expense_date:new Date().toISOString().slice(0,10),payment_method:'cash',vendor_name:'',reference_number:'',notes:''}},
-    async edit(item){this.editing=item;this.form={project_id:item.project_id||(item.project&&item.project.id)||null,property_id:item.property_id||(item.property&&item.property.id)||null,category:item.category,description:item.description,amount:item.amount,expense_date:String(item.expense_date).slice(0,10),payment_method:item.payment_method,vendor_name:item.vendor_name||'',reference_number:item.reference_number||'',notes:item.notes||''};if(this.form.project_id)await this.loadProperties(this.form.project_id);this.dialog=true},
-    async save(addDocument){if(!this.form.category||!this.form.description||!Number(this.form.amount)){this.$root.$emit('show-error','Category, description and amount are required.');return}this.saving=true;try{let r;if(this.editing)r=await api.put('/expenses/'+this.editing.id,this.form);else r=await api.post('/expenses',this.form);const saved=(r.data&&r.data.expense)||this.editing;this.dialog=false;await this.load();this.$root.$emit('show-success',(r.data&&r.data.message)||'Expense saved successfully.');if(addDocument&&saved){this.documentEntity=saved;this.documentsDialog=true}this.editing=null}catch(e){this.$root.$emit('show-error',(e.response&&e.response.data&&e.response.data.message)||'Unable to save expense.')}finally{this.saving=false}},
-    openDelete(item){if(!this.$can('expenses.delete'))return;this.deleteItem=item;this.deleteDialog=true},
-    async confirmDelete(){if(!this.deleteItem)return;this.deleting=true;try{await api.delete('/expenses/'+this.deleteItem.id);this.deleteDialog=false;this.deleteItem=null;await this.load();this.$root.$emit('show-success','Expense deleted successfully.')}catch(e){this.$root.$emit('show-error',(e.response&&e.response.data&&e.response.data.message)||'Unable to delete expense.')}finally{this.deleting=false}},
-    money(v){return new Intl.NumberFormat('en-PK',{maximumFractionDigits:0}).format(Number(v||0))}
+    openCreate(){this.editing=null;this.reset();this.properties=[];this.dialog=true;this.loadPostingAccounts()},
+    reset(){this.form={expense_account_id:null,cash_bank_account_id:null,project_id:null,property_id:null,category:'Construction',description:'',amount:null,expense_date:new Date().toISOString().slice(0,10),payment_method:'cash',vendor_name:'',reference_number:'',notes:''}},
+    async edit(item){this.editing=item;this.form={expense_account_id:item.expense_account_id||null,cash_bank_account_id:item.cash_bank_account_id||null,project_id:item.project_id||(item.project&&item.project.id)||null,property_id:item.property_id||(item.property&&item.property.id)||null,category:item.category,description:item.description,amount:item.amount,expense_date:String(item.expense_date).slice(0,10),payment_method:item.payment_method,vendor_name:item.vendor_name||'',reference_number:item.reference_number||'',notes:item.notes||''};if(this.form.project_id)await this.loadProperties(this.form.project_id);this.dialog=true;if(this.postedEditing)this.loadPostingAccounts()},
+    async save(addDocument){if(this.saving)return;if(!this.editing && (!this.form.expense_account_id || !this.form.cash_bank_account_id)){this.$root.$emit('show-error','Select expense and cash/bank accounts.');return}if(!this.form.category||!this.form.description||!Number(this.form.amount)){this.$root.$emit('show-error','Category, description and amount are required.');return}this.saving=true;try{let r;if(this.editing)r=await api.put('/expenses/'+this.editing.id,this.form);else r=await api.post('/expenses',this.form);const saved=(r.data&&r.data.expense)||this.editing;this.dialog=false;await this.load();this.$root.$emit('show-success',(r.data&&r.data.message)||'Expense saved successfully.');if(addDocument&&saved){this.documentEntity=saved;this.documentsDialog=true}this.editing=null}catch(e){this.$root.$emit('show-error',this.errorText(e, 'Unable to save expense.'))}finally{this.saving=false}},
+    openDelete(item){if(!this.$can('expenses.delete'))return;this.deleteItem=item;this.reversalDate=new Date().toISOString().slice(0,10);this.reversalReason='';this.deleteDialog=true},
+    async confirmDelete(){if(this.deleting||!this.deleteItem||!this.reversalReason.trim()||!this.reversalDate)return;this.deleting=true;try{await api.post('/expenses/'+this.deleteItem.id+'/reverse',{reason:this.reversalReason.trim(),reversal_date:this.reversalDate});this.deleteDialog=false;this.deleteItem=null;await this.load();this.$root.$emit('show-success','Expense reversed successfully.')}catch(e){this.$root.$emit('show-error',this.errorText(e, 'Unable to reverse expense.'))}finally{this.deleting=false}},
+    money(v){return new Intl.NumberFormat('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0))}
   }
 }
 </script>

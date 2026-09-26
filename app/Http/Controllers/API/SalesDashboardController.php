@@ -22,6 +22,7 @@ class SalesDashboardController extends Controller
     private function branch($q,$relation='property.project'){if(!$this->canAccessAllBranches())$q->whereHas($relation,function($x){$x->where('branch_id',auth()->user()->branch_id);});return $q;}
     private function branchExpenses($q)
     {
+        $q->unreversed();
         if (!$this->canAccessAllBranches()) {
             $branchId = auth()->user()->branch_id;
             $q->where(function ($x) use ($branchId) {

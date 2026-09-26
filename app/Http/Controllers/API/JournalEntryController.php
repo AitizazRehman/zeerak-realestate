@@ -92,7 +92,7 @@ class JournalEntryController extends Controller
         $reversal = DB::transaction(function () use ($journalEntry, $data, $request, $periods) {
             $original = JournalEntry::whereKey($journalEntry->id)->lockForUpdate()->firstOrFail();
             if ($original->source_type) {
-                throw ValidationException::withMessages(['status' => ['Reverse this entry through its source payment workflow.']]);
+                throw ValidationException::withMessages(['status' => ['Reverse this entry through its source transaction workflow.']]);
             }
             if ($original->status !== 'posted' || $original->reversal()->exists()) {
                 throw ValidationException::withMessages(['status' => ['Only an unreversed posted entry can be reversed.']]);

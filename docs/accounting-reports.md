@@ -1,9 +1,9 @@
 # Accounting reports
 
 The Accounting menu includes General Ledger and Trial Balance. Both require
-`accounting.view` and read only posted journal entries. New payments and their
-reversals post automatically after payment accounting setup. Historical payments,
-expenses, commissions and bookings are not yet migrated into journals.
+`accounting.view` and read only posted journal entries. New payments, expenses and
+their reversals post automatically after accounting setup. Historical payments
+and expenses, commissions and bookings are not yet migrated into journals.
 
 ## Balances
 
