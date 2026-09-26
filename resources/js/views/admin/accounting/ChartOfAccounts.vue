@@ -287,6 +287,7 @@
               <v-col cols="12" md="4">
                 <v-switch
                   v-model="form.is_control_account"
+                  :disabled="!!(editing && editing.is_system)"
                   color="#165134"
                   label="Control Account"
                   hide-details
@@ -296,6 +297,7 @@
               <v-col cols="12" md="4">
                 <v-switch
                   v-model="form.allow_manual_posting"
+                  :disabled="!!(editing && editing.is_system)"
                   color="#165134"
                   label="Allow Manual Posting"
                   hide-details
