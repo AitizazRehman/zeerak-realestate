@@ -13,7 +13,7 @@ class RolesAndPermissionsSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $modules = ['dashboard','users','roles','properties','projects','customers','leads','site_visits','sales','installments','payments','expenses','commissions','construction','materials','vendors','contractors','documents','complaints','reports','settings'];
+        $modules = ['dashboard','users','roles','properties','projects','customers','leads','site_visits','sales','installments','payments','expenses','commissions','construction','materials','vendors','contractors','documents','complaints','reports','settings','accounting'];
         $actions = ['view','create','edit','delete'];
 
         foreach ($modules as $module) {
@@ -51,6 +51,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'documents.view','documents.create','documents.edit',
                 'complaints.view','complaints.create','complaints.edit',
                 'reports.view','settings.view','settings.edit',
+                'accounting.view','accounting.create','accounting.edit','accounting.delete',
             ],
             'Manager' => [
                 'dashboard.view','properties.view','properties.create','properties.edit',
@@ -67,7 +68,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'contractors.view','contractors.create','contractors.edit',
                 'documents.view','documents.create','documents.edit',
                 'complaints.view','complaints.create','complaints.edit',
-                'reports.view',
+                'reports.view','accounting.view',
             ],
             'Sales Agent' => [
                 'dashboard.view','properties.view','projects.view',
@@ -85,6 +86,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'commissions.view','commissions.edit',
                 'expenses.view','expenses.create','expenses.edit',
                 'reports.view','documents.view',
+                'accounting.view','accounting.create','accounting.edit','accounting.delete',
             ],
             'Construction Manager' => [
                 'dashboard.view','projects.view','projects.create','projects.edit',
