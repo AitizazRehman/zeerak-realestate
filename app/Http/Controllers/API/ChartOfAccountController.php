@@ -39,6 +39,10 @@ class ChartOfAccountController extends Controller
         $data['name'] = trim($data['name']);
         $data['normal_balance'] = $this->normalBalanceForType($data['account_type']);
 
+        if (!empty($data['is_control_account'])) {
+            $data['allow_manual_posting'] = false;
+        }
+
         if (!empty($data['parent_id'])) {
             if ($account && (int) $data['parent_id'] === (int) $account->id) {
                 abort(422, 'An account cannot be its own parent.');
@@ -133,6 +137,8 @@ class ChartOfAccountController extends Controller
             $data['account_type'] = $chartOfAccount->account_type;
             $data['normal_balance'] = $chartOfAccount->normal_balance;
             $data['parent_id'] = $chartOfAccount->parent_id;
+            $data['is_control_account'] = $chartOfAccount->is_control_account;
+            $data['allow_manual_posting'] = $chartOfAccount->allow_manual_posting;
         }
 
         $chartOfAccount->update($data);
