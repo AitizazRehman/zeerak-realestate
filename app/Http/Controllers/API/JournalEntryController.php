@@ -48,7 +48,7 @@ class JournalEntryController extends Controller
 
         $entry = DB::transaction(function () use ($data, $request) {
             $entry = JournalEntry::create([
-                'entry_number' => 'TEMP-'.(string) \Illuminate\Support\Str::uuid(),
+                'entry_number' => 'TMP-'.(string) \Illuminate\Support\Str::uuid(),
                 'entry_date' => $data['entry_date'],
                 'description' => $data['description'],
                 'status' => 'draft',
@@ -91,6 +91,9 @@ class JournalEntryController extends Controller
 
         $reversal = DB::transaction(function () use ($journalEntry, $data, $request, $periods) {
             $original = JournalEntry::whereKey($journalEntry->id)->lockForUpdate()->firstOrFail();
+            if ($original->source_type) {
+                throw ValidationException::withMessages(['status' => ['Reverse this entry through its source payment workflow.']]);
+            }
             if ($original->status !== 'posted' || $original->reversal()->exists()) {
                 throw ValidationException::withMessages(['status' => ['Only an unreversed posted entry can be reversed.']]);
             }
@@ -99,7 +102,7 @@ class JournalEntryController extends Controller
             }
             $period = $periods->requireOpen($data['entry_date']);
             $reversal = JournalEntry::create([
-                'entry_number' => 'TEMP-'.(string) \Illuminate\Support\Str::uuid(),
+                'entry_number' => 'TMP-'.(string) \Illuminate\Support\Str::uuid(),
                 'entry_date' => $data['entry_date'], 'description' => $data['reason'],
                 'status' => 'posted', 'accounting_period_id' => $period->id,
                 'reverses_entry_id' => $original->id, 'created_by' => $request->user()->id,

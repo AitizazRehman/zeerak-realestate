@@ -13,7 +13,7 @@ class Payment extends Model
         'receipt_number', 'booking_id', 'installment_id', 'customer_id', 'amount',
         'payment_date', 'payment_method', 'reference_number', 'bank_name',
         'cheque_number', 'status', 'received_by', 'notes', 'reversed_at',
-        'reversed_by', 'reversal_reason'
+        'reversed_by', 'reversal_reason', 'cash_bank_account_id'
     ];
 
     protected $casts = [
@@ -23,6 +23,9 @@ class Payment extends Model
     ];
 
     public function booking() { return $this->belongsTo(Booking::class); }
+    public function cashBankAccount() { return $this->belongsTo(ChartOfAccount::class, 'cash_bank_account_id')->withTrashed(); }
+    public function journalEntry() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'payment'); }
+    public function reversalJournal() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'payment_reversal'); }
     public function installment() { return $this->belongsTo(Installment::class); }
     public function customer() { return $this->belongsTo(Customer::class); }
     public function receivedBy() { return $this->belongsTo(User::class, 'received_by'); }

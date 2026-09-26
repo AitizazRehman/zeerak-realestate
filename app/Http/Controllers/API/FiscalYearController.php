@@ -21,8 +21,8 @@ class FiscalYearController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:100|unique:fiscal_years,name',
-            'starts_on' => 'required|date',
-            'ends_on' => 'required|date|after_or_equal:starts_on',
+            'starts_on' => 'required|date_format:Y-m-d',
+            'ends_on' => 'required|date_format:Y-m-d|after_or_equal:starts_on',
         ]);
 
         $start = Carbon::parse($data['starts_on'])->startOfDay();

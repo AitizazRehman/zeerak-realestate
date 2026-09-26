@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\{Payment, Booking, Installment, InstallmentPlan, PropertyStatusHistory, FinancialAudit};
 use App\Models\Property;
+use App\Services\PaymentAccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -29,7 +30,8 @@ class PaymentController extends Controller
     public function index(Request $r)
     {
         $q = $this->applyBranchScope(Payment::with([
-            'customer', 'booking.property', 'installment', 'receivedBy:id,name', 'reversedBy:id,name'
+            'customer', 'booking.property', 'installment', 'receivedBy:id,name', 'reversedBy:id,name',
+            'cashBankAccount:id,code,name', 'journalEntry:id,source_id,source_type,entry_number', 'reversalJournal:id,source_id,source_type,entry_number'
         ])->withCount('financialDocuments'));
 
         foreach (['booking_id','customer_id','installment_id','payment_method','status'] as $f) {
@@ -42,13 +44,21 @@ class PaymentController extends Controller
         return response()->json($q->latest('payment_date')->latest('id')->paginate($perPage));
     }
 
+    public function postingAccounts(PaymentAccountingService $accounting)
+    {
+        return response()->json(['data' => $accounting->accounts()->map(function ($account) {
+            return $account->only(['id', 'code', 'name']);
+        })]);
+    }
+
     public function store(Request $r)
     {
         $d = $r->validate([
             'booking_id'=>'required|exists:bookings,id',
             'installment_id'=>'nullable|exists:installments,id',
             'customer_id'=>'required|exists:customers,id',
-            'amount'=>'required|numeric|min:0.01',
+            'amount'=>['required','numeric','min:0.01','regex:/^\d{1,13}(\.\d{1,2})?$/'],
+            'cash_bank_account_id'=>'required|integer|exists:chart_of_accounts,id',
             'payment_date'=>'required|date|before_or_equal:today',
             'payment_method'=>'required|in:cash,bank_transfer,cheque,online,other',
             'reference_number'=>'nullable|string|max:100',
@@ -111,6 +121,7 @@ class PaymentController extends Controller
                 'status'=>'verified'
             ]));
 
+            app(PaymentAccountingService::class)->post($payment, $r->user()->id);
             $this->recalculateBooking($b,$installment,$amount,true);
             FinancialAudit::create([
                 'entity_type'=>'payment','entity_id'=>$payment->id,'branch_id'=>$b->property->project->branch_id,'action'=>'created',
@@ -122,27 +133,27 @@ class PaymentController extends Controller
 
         return response()->json([
             'message'=>'Payment recorded successfully.',
-            'payment'=>$payment->load(['customer','booking.property','installment','receivedBy'])
+            'payment'=>$payment->load(['customer','booking.property','installment','receivedBy','cashBankAccount','journalEntry'])
         ],201);
     }
 
     public function show(Payment $payment)
     {
         $this->applyBranchScope(Payment::query())->findOrFail($payment->id);
-        return response()->json($payment->load(['customer','booking.property.project','booking.property.block','installment','receivedBy','reversedBy']));
+        return response()->json($payment->load(['customer','booking.property.project','booking.property.block','installment','receivedBy','reversedBy','cashBankAccount','journalEntry','reversalJournal']));
     }
 
     public function receipt(Payment $payment)
     {
         $this->applyBranchScope(Payment::query())->findOrFail($payment->id);
-        $payment->load(['customer','booking.property.project','booking.property.block','installment','receivedBy','reversedBy']);
+        $payment->load(['customer','booking.property.project','booking.property.block','installment','receivedBy','reversedBy','cashBankAccount','journalEntry','reversalJournal']);
         return Pdf::loadView('payments.receipt',['payment'=>$payment])->setPaper('a4')->stream($payment->receipt_number.'.pdf');
     }
 
     public function reverse(Request $r,Payment $payment)
     {
         $this->applyBranchScope(Payment::query())->findOrFail($payment->id);
-        $data=$r->validate(['reason'=>'required|string|max:1000']);
+        $data=$r->validate(['reason'=>'required|string|max:1000', 'reversal_date'=>'nullable|date_format:Y-m-d|before_or_equal:today']);
 
         $result=DB::transaction(function()use($payment,$data,$r){
             $p=Payment::lockForUpdate()->findOrFail($payment->id);
@@ -185,6 +196,7 @@ class PaymentController extends Controller
                 }
             }
 
+            app(PaymentAccountingService::class)->reverse($p, $r->user()->id, $data['reversal_date'] ?? now()->toDateString(), $data['reason']);
             $p->update(['status'=>'reversed','reversed_at'=>now(),'reversed_by'=>$r->user()->id,'reversal_reason'=>$data['reason']]);
 
             if($b->status==='completed'&&$b->remaining_amount>0){
@@ -208,7 +220,7 @@ class PaymentController extends Controller
             return $p;
         });
 
-        return response()->json(['message'=>'Payment reversed successfully.','payment'=>$result->load(['customer','booking.property','installment','receivedBy','reversedBy'])]);
+        return response()->json(['message'=>'Payment reversed successfully.','payment'=>$result->load(['customer','booking.property','installment','receivedBy','reversedBy','cashBankAccount','journalEntry','reversalJournal'])]);
     }
 
     private function recalculateBooking(Booking $b,$installment,float $amount,bool $completeWhenPaid)
