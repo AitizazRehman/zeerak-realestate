@@ -33,6 +33,7 @@ use App\Http\Controllers\API\FinancialDocumentController;
 use App\Http\Controllers\API\ChartOfAccountController;
 use App\Http\Controllers\API\FiscalYearController;
 use App\Http\Controllers\API\JournalEntryController;
+use App\Http\Controllers\API\AccountingReportController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -61,6 +62,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('financial-audits/export/{format}', [FinancialAuditController::class, 'export'])->middleware('permission:reports.view');
     Route::get('financial-audits', [FinancialAuditController::class, 'index'])->middleware('permission:reports.view');
 
+    Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
+    Route::get('accounting/trial-balance', [AccountingReportController::class, 'trialBalance'])->middleware('permission:accounting.view');
     Route::get('accounting/chart-of-accounts', [ChartOfAccountController::class, 'index'])->middleware('permission:accounting.view');
     Route::get('accounting/fiscal-years', [FiscalYearController::class, 'index'])->middleware('permission:accounting.view');
     Route::post('accounting/fiscal-years', [FiscalYearController::class, 'store'])->middleware('permission:accounting.create');
