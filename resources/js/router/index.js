@@ -32,6 +32,7 @@ import Construction from '../views/admin/construction/Construction.vue'
 import Reports from '../views/admin/reports/Reports.vue'
 import FinancialAudit from '../views/admin/reports/FinancialAudit.vue'
 import Settings from '../views/admin/settings/Settings.vue'
+import ChartOfAccounts from '../views/admin/accounting/ChartOfAccounts.vue'
 
 Vue.use(VueRouter)
 
@@ -68,6 +69,7 @@ const routes = [
             { path: 'construction', name: 'construction', component: Construction, meta: { permission: 'construction.view' } },
             { path: 'reports', name: 'reports', component: Reports, meta: { permission: 'reports.view' } },
             { path: 'reports/financial-audit', name: 'financial-audit', component: FinancialAudit, meta: { permission: 'reports.view' } },
+            { path: 'accounting/chart-of-accounts', name: 'chart-of-accounts', component: ChartOfAccounts, meta: { permission: 'accounting.view' } },
             { path: 'settings', name: 'settings', component: Settings, meta: { permission: 'settings.view' } }
         ]
     },
