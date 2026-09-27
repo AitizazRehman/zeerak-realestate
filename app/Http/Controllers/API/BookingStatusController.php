@@ -9,6 +9,7 @@ use App\Models\Property;
 use App\Models\PropertyStatusHistory;
 use App\Models\Commission;
 use App\Models\FinancialAudit;
+use App\Services\CommissionAccountingService;
 use Illuminate\Support\Facades\DB;
 
 class BookingStatusController extends Controller
@@ -61,6 +62,7 @@ class BookingStatusController extends Controller
                 }
                 foreach ($commissions->whereIn('status', ['pending', 'approved']) as $commission) {
                     $before = $commission->toArray();
+                    app(CommissionAccountingService::class)->cancel($commission, now()->toDateString(), 'Booking cancelled', auth()->id());
                     $commission->update(['status' => 'cancelled', 'notes' => trim(($commission->notes ? $commission->notes."\n" : '').'Automatically cancelled because booking '.$b->booking_number.' was cancelled.')]);
                     FinancialAudit::create(['entity_type'=>'commission','entity_id'=>$commission->id,'branch_id'=>$p->project->branch_id,'action'=>'status_changed','user_id'=>auth()->id(),'before_data'=>$before,'after_data'=>$commission->fresh()->toArray(),'reason'=>'Booking cancelled']);
                 }

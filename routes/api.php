@@ -100,6 +100,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('export/{type}/{format}', [SalesReportController::class, 'export']);
     });
 
+    Route::get('commissions/posting-accounts', [CommissionController::class, 'postingAccounts'])->middleware('permission:commissions.edit|accounting.view');
+    Route::post('commissions/{commission}/recognize', [CommissionController::class, 'recognize'])->middleware('permission:commissions.edit');
     Route::get('commissions', [CommissionController::class, 'index'])->middleware('permission:commissions.view'); Route::post('commissions', [CommissionController::class, 'store'])->middleware('permission:commissions.create'); Route::post('commissions/{commission}/reverse', [CommissionController::class, 'reverse'])->middleware('permission:commissions.edit'); Route::put('commissions/{commission}', [CommissionController::class, 'update'])->middleware('permission:commissions.edit'); Route::patch('commissions/{commission}', [CommissionController::class, 'update'])->middleware('permission:commissions.edit');
     Route::get('expenses/posting-accounts', [ExpenseController::class, 'postingAccounts'])->middleware('permission:expenses.create|expenses.edit|accounting.view');
     Route::post('expenses/{expense}/reverse', [ExpenseController::class, 'reverse'])->middleware('permission:expenses.delete');
