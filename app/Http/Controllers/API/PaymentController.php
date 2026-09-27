@@ -156,8 +156,8 @@ class PaymentController extends Controller
         $data=$r->validate(['reason'=>'required|string|max:1000', 'reversal_date'=>'nullable|date_format:Y-m-d|before_or_equal:today']);
 
         $result=DB::transaction(function()use($payment,$data,$r){
+            $b=Booking::lockForUpdate()->findOrFail($payment->booking_id);
             $p=Payment::lockForUpdate()->findOrFail($payment->id);
-            $b=Booking::lockForUpdate()->findOrFail($p->booking_id);
             $this->ensureBranchAccess($b->property->project->branch_id);
 
             if($p->status==='reversed'||$p->reversed_at)abort(422,'This payment has already been reversed.');

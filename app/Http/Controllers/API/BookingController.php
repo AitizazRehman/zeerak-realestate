@@ -82,6 +82,7 @@ class BookingController extends Controller
             'customer',
             'property.project',
             'property.block',
+            'revenueJournal', 'revenueCancellationJournal',
             'salesAgent:id,name'
         ]));
 
@@ -203,6 +204,15 @@ class BookingController extends Controller
                 abort(422, 'This booking can no longer be edited.');
             }
 
+            if ($booking->revenueJournal()->exists()) {
+                foreach (['discount', 'booking_date'] as $field) {
+                    if (!array_key_exists($field, $data)) continue;
+                    $changed = $field === 'discount' ? round((float) $data[$field], 2) !== round((float) $booking->$field, 2) : \Carbon\Carbon::parse($data[$field])->toDateString() !== $booking->booking_date->toDateString();
+                    if ($changed) abort(422, 'Recognized booking price and date are locked. Use the cancellation workflow for corrections.');
+                    unset($data[$field]);
+                }
+            }
+
             $branchId = $booking->property->project->branch_id;
             $this->ensureSalesAgentAccess($data['sales_agent_id'] ?? $booking->sales_agent_id, $branchId);
 
@@ -239,6 +249,7 @@ class BookingController extends Controller
             if ((float) $booking->paid_amount > 0 || $booking->payments()->where('status', 'verified')->exists()) {
                 abort(422, 'Bookings with payments cannot be deleted. Reverse the payments first.');
             }
+            if ($booking->revenueJournal()->exists()) abort(422, 'Bookings with revenue journals cannot be deleted. Use the cancellation workflow.');
             if ($booking->payments()->exists()) {
                 abort(422, 'Bookings with payment history cannot be deleted. Keep the booking for financial audit history.');
             }

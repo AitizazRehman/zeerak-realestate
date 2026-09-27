@@ -3,8 +3,9 @@
 The Accounting menu includes General Ledger and Trial Balance. Both require
 `accounting.view` and read only posted journal entries. New payments, expenses,
 commission approvals/payouts, and their reversals post automatically after accounting
-setup. Historical payments and expenses and booking revenue/receivables are not yet
-migrated into journals. Existing approved commissions can be explicitly recognized
+setup. Booking revenue/receivables use explicit recognition and automatic receipt
+allocation; see [Booking accounting](booking-accounting.md). Historical payments
+and expenses are not automatically migrated into journals. Existing approved commissions can be explicitly recognized
 through the commission screen; see [Commission accounting](commission-accounting.md).
 
 ## Balances

@@ -34,6 +34,7 @@ class PaymentAccountingService
     public function post(Payment $payment, $userId)
     {
         return DB::transaction(function () use ($payment, $userId) {
+            \App\Models\Booking::whereKey($payment->booking_id)->lockForUpdate()->firstOrFail();
             $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             if ($payment->status !== 'verified') $this->fail('Only verified payments can be posted.');
             $existing = $payment->journalEntry()->first();
@@ -61,6 +62,7 @@ class PaymentAccountingService
             ];
             $entry->lines()->create($dimensions + ['chart_of_account_id' => $account->id, 'debit' => $payment->amount, 'credit' => '0.00']);
             $entry->lines()->create($dimensions + ['chart_of_account_id' => $advance->id, 'debit' => '0.00', 'credit' => $payment->amount]);
+            app(BookingAccountingService::class)->applyReceipt($payment, $userId);
             return $entry;
         });
     }
@@ -68,6 +70,7 @@ class PaymentAccountingService
     public function reverse(Payment $payment, $userId, $date, $reason)
     {
         return DB::transaction(function () use ($payment, $userId, $date, $reason) {
+            \App\Models\Booking::whereKey($payment->booking_id)->lockForUpdate()->firstOrFail();
             $payment = Payment::whereKey($payment->id)->lockForUpdate()->firstOrFail();
             $original = $payment->journalEntry()->lockForUpdate()->first();
             if (!$original) {
@@ -79,6 +82,7 @@ class PaymentAccountingService
             if ($existing) return $existing;
             if ($original->status !== 'posted') $this->fail('The original payment journal must be posted.');
             if ($date < $original->entry_date->toDateString()) $this->fail('The reversal date cannot precede the payment.');
+            app(BookingAccountingService::class)->reverseReceipt($payment, $date, $reason, $userId);
             $period = app(AccountingPeriodService::class)->requireOpen($date);
             $entry = $this->entry([
                 'entry_date' => $date, 'description' => Str::limit('Reversal '.$payment->receipt_number.': '.$reason, 500, ''),

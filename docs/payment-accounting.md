@@ -62,3 +62,9 @@ php artisan test --filter=AccountingReportTest
 Tests use isolated in-memory SQLite. They cover balanced postings, project/customer
 dimensions, idempotency, closed-period rollback of receipts and reversals, account
 and amount validation, prevention of manual reversal bypass, and legacy handling.
+
+## Recognized booking receipts
+
+For bookings with explicitly recognized revenue, each receipt also posts an
+advance-to-receivable allocation. Reversal undoes that allocation and the collection
+together. See [Booking accounting](booking-accounting.md) for dates and controls.

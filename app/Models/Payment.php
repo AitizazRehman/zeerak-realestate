@@ -26,6 +26,8 @@ class Payment extends Model
     public function cashBankAccount() { return $this->belongsTo(ChartOfAccount::class, 'cash_bank_account_id')->withTrashed(); }
     public function journalEntry() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'payment'); }
     public function reversalJournal() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'payment_reversal'); }
+    public function applicationJournal() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'booking_receipt'); }
+    public function applicationReversalJournal() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'booking_receipt_reverse'); }
     public function installment() { return $this->belongsTo(Installment::class); }
     public function customer() { return $this->belongsTo(Customer::class); }
     public function receivedBy() { return $this->belongsTo(User::class, 'received_by'); }

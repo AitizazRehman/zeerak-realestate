@@ -68,6 +68,15 @@ class BookingStatusController extends Controller
                 }
             }
 
+            if ($bookingStatus === 'cancelled') {
+                $reversal = app(\App\Services\BookingAccountingService::class)->cancel($b, now()->toDateString(), auth()->id());
+                if ($reversal) FinancialAudit::create([
+                    'entity_type'=>'booking', 'entity_id'=>$b->id, 'branch_id'=>$p->project->branch_id,
+                    'action'=>'revenue_reversed', 'user_id'=>auth()->id(), 'reason'=>'Booking cancelled',
+                    'after_data'=>['journal_entry_id'=>$reversal->id, 'accounting_date'=>$reversal->entry_date->toDateString()],
+                ]);
+            }
+
             $p->update(['status' => $propertyStatus]);
             $b->update(['status' => $bookingStatus]);
 
