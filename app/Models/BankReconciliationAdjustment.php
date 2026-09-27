@@ -11,6 +11,7 @@ class BankReconciliationAdjustment extends Model
         'bank_reconciliation_id',
         'offset_account_id',
         'journal_entry_id',
+        'reversal_journal_entry_id',
         'adjustment_type',
         'amount',
         'direction',
@@ -18,10 +19,14 @@ class BankReconciliationAdjustment extends Model
         'project_id',
         'customer_id',
         'created_by',
+        'reversed_by',
+        'reversed_at',
+        'reversal_reason',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
+        'reversed_at' => 'datetime',
     ];
 
     public function bankTransaction()
@@ -44,6 +49,11 @@ class BankReconciliationAdjustment extends Model
         return $this->belongsTo(JournalEntry::class);
     }
 
+    public function reversalJournalEntry()
+    {
+        return $this->belongsTo(JournalEntry::class, 'reversal_journal_entry_id');
+    }
+
     public function project()
     {
         return $this->belongsTo(Project::class);
@@ -57,5 +67,10 @@ class BankReconciliationAdjustment extends Model
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function reversedBy()
+    {
+        return $this->belongsTo(User::class, 'reversed_by');
     }
 }
