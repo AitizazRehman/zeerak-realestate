@@ -211,6 +211,15 @@
               <div class="caption grey--text transaction-description">
                 {{ matchedEntry(item).description || 'Posted GL movement' }}
               </div>
+              <v-chip
+                v-if="item.reconciliation_adjustment && !item.reconciliation_adjustment.reversed_at"
+                x-small
+                outlined
+                color="deep-purple"
+                class="mt-1 mr-1"
+              >
+                ERP adjustment · {{ adjustmentTypeLabel(item.reconciliation_adjustment.adjustment_type) }}
+              </v-chip>
               <v-chip x-small outlined :color="item.reconciliation_match.match_method === 'automatic' ? 'info' : 'primary'" class="mt-1">
                 {{ item.reconciliation_match.match_method }}
                 <span v-if="item.reconciliation_match.confidence_score !== null"> · {{ item.reconciliation_match.confidence_score }}%</span>
@@ -259,7 +268,27 @@
                   <v-icon small>mdi-magnify</v-icon>
                 </v-btn>
                 <v-btn
-                  v-if="item.reconciliation_match"
+                  v-if="!item.reconciliation_match"
+                  icon
+                  small
+                  color="deep-purple"
+                  title="Create missing journal adjustment"
+                  @click="openAdjustment(item)"
+                >
+                  <v-icon small>mdi-book-plus-outline</v-icon>
+                </v-btn>
+                <v-btn
+                  v-if="item.reconciliation_match && item.reconciliation_adjustment && !item.reconciliation_adjustment.reversed_at"
+                  icon
+                  small
+                  color="warning"
+                  title="Reverse ERP adjustment"
+                  @click="openAdjustmentReverse(item)"
+                >
+                  <v-icon small>mdi-book-arrow-left-outline</v-icon>
+                </v-btn>
+                <v-btn
+                  v-else-if="item.reconciliation_match"
                   icon
                   small
                   color="error"
@@ -409,6 +438,141 @@
       </v-card>
     </v-dialog>
 
+
+    <v-dialog v-model="adjustmentDialog" max-width="820" persistent>
+      <v-card>
+        <v-card-title>
+          <div>
+            <div class="text-h6 font-weight-bold">Create Reconciliation Adjustment</div>
+            <div v-if="adjustmentTransaction" class="caption grey--text">
+              {{ dateLabel(adjustmentTransaction.transaction_date) }} ·
+              {{ adjustmentTransaction.transaction_type === 'deposit' ? 'Deposit / Money In' : 'Withdrawal / Money Out' }} ·
+              PKR {{ money(adjustmentTransaction.amount) }}
+            </div>
+          </div>
+          <v-spacer/>
+          <v-btn icon @click="adjustmentDialog=false"><v-icon>mdi-close</v-icon></v-btn>
+        </v-card-title>
+        <v-divider/>
+        <v-card-text class="pt-5">
+          <v-alert type="info" text dense>
+            This creates and immediately posts a balanced journal entry for the exact bank-statement amount, then matches its bank line to this statement row.
+          </v-alert>
+          <v-row>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="adjustmentForm.adjustment_type"
+                :items="adjustmentTypes"
+                item-text="text"
+                item-value="value"
+                outlined dense
+                label="Adjustment Type *"
+                :error-messages="adjustmentErrors.adjustment_type"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-autocomplete
+                v-model="adjustmentForm.offset_account_id"
+                :items="offsetAccounts"
+                item-text="display"
+                item-value="id"
+                outlined dense
+                label="Offset GL Account *"
+                :error-messages="adjustmentErrors.offset_account_id"
+              >
+                <template v-slot:item="{item}">
+                  <v-list-item-content>
+                    <v-list-item-title>{{ item.display }}</v-list-item-title>
+                    <v-list-item-subtitle>{{ accountTypeLabel(item.account_type) }}</v-list-item-subtitle>
+                  </v-list-item-content>
+                </template>
+              </v-autocomplete>
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-autocomplete
+                v-model="adjustmentForm.project_id"
+                :items="adjustmentProjects"
+                item-text="display"
+                item-value="id"
+                outlined dense clearable
+                label="Project"
+                :error-messages="adjustmentErrors.project_id"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-autocomplete
+                v-model="adjustmentForm.customer_id"
+                :items="adjustmentCustomers"
+                item-text="display"
+                item-value="id"
+                outlined dense clearable
+                label="Customer"
+                :error-messages="adjustmentErrors.customer_id"
+              />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea
+                v-model="adjustmentForm.description"
+                outlined dense rows="2"
+                label="Journal Description *"
+                :error-messages="adjustmentErrors.description"
+              />
+            </v-col>
+          </v-row>
+
+          <v-card v-if="adjustmentTransaction && selectedOffsetAccount" flat class="journal-preview pa-4">
+            <div class="subtitle-2 font-weight-bold mb-3">Journal Preview</div>
+            <div class="d-flex justify-space-between mb-2">
+              <span>{{ adjustmentTransaction.transaction_type === 'deposit' ? bankAccountName : selectedOffsetAccount.display }}</span>
+              <strong>{{ adjustmentTransaction.transaction_type === 'deposit' ? 'Dr' : 'Dr' }} PKR {{ money(adjustmentTransaction.amount) }}</strong>
+            </div>
+            <div class="d-flex justify-space-between">
+              <span>{{ adjustmentTransaction.transaction_type === 'deposit' ? selectedOffsetAccount.display : bankAccountName }}</span>
+              <strong>Cr PKR {{ money(adjustmentTransaction.amount) }}</strong>
+            </div>
+          </v-card>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer/>
+          <v-btn text @click="adjustmentDialog=false">Cancel</v-btn>
+          <v-btn color="deep-purple" dark depressed :loading="adjustmentSaving" @click="createAdjustment">
+            Post & Match
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <v-dialog v-model="adjustmentReverseDialog" max-width="580" persistent>
+      <v-card>
+        <v-card-title>Reverse Reconciliation Adjustment</v-card-title>
+        <v-card-text>
+          <v-alert type="warning" text dense>
+            This posts a formal reversing journal entry and returns the statement row to Unmatched. The original adjustment remains in the audit trail.
+          </v-alert>
+          <v-text-field
+            v-model="adjustmentReverseForm.entry_date"
+            type="date"
+            outlined dense
+            label="Reversal Date *"
+            :error-messages="adjustmentReverseErrors.entry_date"
+          />
+          <v-textarea
+            v-model="adjustmentReverseForm.reason"
+            outlined rows="3"
+            label="Reason *"
+            :error-messages="adjustmentReverseErrors.reason"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer/>
+          <v-btn text @click="adjustmentReverseDialog=false">Cancel</v-btn>
+          <v-btn color="warning" dark depressed :loading="adjustmentReversing" @click="reverseAdjustment">
+            Reverse Adjustment
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <v-dialog v-model="reopenDialog" max-width="560" persistent>
       <v-card>
         <v-card-title>Reopen Reconciliation</v-card-title>
@@ -456,6 +620,26 @@ export default {
       reopenDialog:false,
       reopenReason:'',
       reopening:false,
+      adjustmentDialog:false,
+      adjustmentTransaction:null,
+      adjustmentSaving:false,
+      adjustmentErrors:{},
+      adjustmentTypes:[],
+      offsetAccounts:[],
+      adjustmentProjects:[],
+      adjustmentCustomers:[],
+      adjustmentForm:{
+        adjustment_type:'custom',
+        offset_account_id:null,
+        project_id:null,
+        customer_id:null,
+        description:''
+      },
+      adjustmentReverseDialog:false,
+      adjustmentReverseItem:null,
+      adjustmentReversing:false,
+      adjustmentReverseErrors:{},
+      adjustmentReverseForm:{entry_date:'',reason:''},
       history:[],
       headers:[
         {text:'Statement Date / Ref',value:'transaction_date'},
@@ -511,6 +695,17 @@ export default {
       const imp=this.workspace.statement_import
       const account=imp.bank_account || {}
       return (account.bank_name ? account.bank_name+' · ' : '')+account.name+' · '+imp.original_filename
+    },
+
+    selectedOffsetAccount(){
+      const id=Number(this.adjustmentForm.offset_account_id || 0)
+      return this.offsetAccounts.find(function(account){return Number(account.id)===id}) || null
+    },
+
+    bankAccountName(){
+      if(!this.workspace || !this.workspace.statement_import || !this.workspace.statement_import.bank_account)return 'Bank Account'
+      const account=this.workspace.statement_import.bank_account
+      return account.name || 'Bank Account'
     }
   },
 
@@ -730,6 +925,126 @@ export default {
       }
     },
 
+
+    async openAdjustment(item){
+      this.adjustmentTransaction=item
+      this.adjustmentErrors={}
+      this.adjustmentDialog=true
+      this.adjustmentForm={
+        adjustment_type:'custom',
+        offset_account_id:null,
+        project_id:item.project_id || null,
+        customer_id:item.customer_id || null,
+        description:item.description || ('Bank reconciliation adjustment '+(item.reference_number || item.cheque_number || item.external_transaction_id || '#'+item.id))
+      }
+
+      try{
+        const response=await api.get(
+          '/accounting/bank-transactions/'+item.id+'/reconciliation-adjustment-options',
+          {skipGlobalLoader:true,skipGlobalError:true}
+        )
+        this.adjustmentTypes=response.data.adjustment_types || []
+        this.offsetAccounts=response.data.offset_accounts || []
+        this.adjustmentProjects=(response.data.projects || []).map(function(project){
+          return Object.assign({},project,{display:(project.code ? project.code+' · ' : '')+project.name})
+        })
+        this.adjustmentCustomers=(response.data.customers || []).map(function(customer){
+          return Object.assign({},customer,{display:(customer.customer_number ? customer.customer_number+' · ' : '')+customer.name})
+        })
+      }catch(error){
+        this.adjustmentDialog=false
+        this.$root.$emit('show-error',this.errorMessage(error,'Unable to load adjustment options.'))
+      }
+    },
+
+    async createAdjustment(){
+      if(!this.adjustmentTransaction)return
+      this.adjustmentErrors={}
+      this.adjustmentSaving=true
+
+      try{
+        await api.post(
+          '/accounting/bank-transactions/'+this.adjustmentTransaction.id+'/reconciliation-adjustment',
+          this.adjustmentForm,
+          {skipGlobalError:true}
+        )
+        this.adjustmentDialog=false
+        this.adjustmentTransaction=null
+        await this.loadWorkspace(true)
+      }catch(error){
+        if(error.response && error.response.status === 422){
+          this.adjustmentErrors=error.response.data.errors || {}
+          if(!Object.keys(this.adjustmentErrors).length){
+            this.$root.$emit('show-error',this.errorMessage(error,'Unable to post reconciliation adjustment.'))
+          }
+        }else{
+          this.$root.$emit('show-error',this.errorMessage(error,'Unable to post reconciliation adjustment.'))
+        }
+      }finally{
+        this.adjustmentSaving=false
+      }
+    },
+
+    openAdjustmentReverse(item){
+      this.adjustmentReverseItem=item
+      this.adjustmentReverseErrors={}
+      const original=item.reconciliation_adjustment && item.reconciliation_adjustment.journal_entry
+        ? this.rawDate(item.reconciliation_adjustment.journal_entry.entry_date)
+        : this.rawDate(item.transaction_date)
+      const today=this.today()
+      this.adjustmentReverseForm={
+        entry_date:today > original ? today : original,
+        reason:''
+      }
+      this.adjustmentReverseDialog=true
+    },
+
+    async reverseAdjustment(){
+      const adjustment=this.adjustmentReverseItem && this.adjustmentReverseItem.reconciliation_adjustment
+      if(!adjustment)return
+
+      this.adjustmentReversing=true
+      this.adjustmentReverseErrors={}
+
+      try{
+        await api.post(
+          '/accounting/bank-reconciliation-adjustments/'+adjustment.id+'/reverse',
+          this.adjustmentReverseForm,
+          {skipGlobalError:true}
+        )
+        this.adjustmentReverseDialog=false
+        this.adjustmentReverseItem=null
+        await this.loadWorkspace(true)
+      }catch(error){
+        if(error.response && error.response.status === 422){
+          this.adjustmentReverseErrors=error.response.data.errors || {}
+          if(!Object.keys(this.adjustmentReverseErrors).length){
+            this.$root.$emit('show-error',this.errorMessage(error,'Unable to reverse reconciliation adjustment.'))
+          }
+        }else{
+          this.$root.$emit('show-error',this.errorMessage(error,'Unable to reverse reconciliation adjustment.'))
+        }
+      }finally{
+        this.adjustmentReversing=false
+      }
+    },
+
+    adjustmentTypeLabel(value){
+      const item=this.adjustmentTypes.find(function(type){return type.value===value})
+      if(item)return item.text
+      return String(value || '').replace(/_/g,' ')
+    },
+
+    accountTypeLabel(value){
+      return String(value || '').replace(/_/g,' ').replace(/\b\w/g,function(letter){return letter.toUpperCase()})
+    },
+
+    today(){
+      const d=new Date()
+      const offset=d.getTimezoneOffset()
+      return new Date(d.getTime()-offset*60000).toISOString().slice(0,10)
+    },
+
     candidateAmount(candidate){
       const debit=Number(candidate.debit || 0)
       const credit=Number(candidate.credit || 0)
@@ -803,4 +1118,5 @@ export default {
 .balanced-card{border-color:rgba(76,175,80,.35)!important}
 .difference-card{border-color:rgba(244,67,54,.3)!important}
 .transaction-description{max-width:360px;white-space:normal;line-height:1.3}
+.journal-preview{border:1px dashed rgba(103,58,183,.35);border-radius:12px!important}
 </style>
