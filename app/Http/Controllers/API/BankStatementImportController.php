@@ -221,7 +221,8 @@ class BankStatementImportController extends Controller
         ]);
 
         $mapping = $data['mapping'];
-        $hasDebitCredit = array_key_exists('debit', $mapping) || array_key_exists('credit', $mapping);
+        $hasDebitCredit = (array_key_exists('debit', $mapping) && $mapping['debit'] !== null) ||
+            (array_key_exists('credit', $mapping) && $mapping['credit'] !== null);
         $hasAmount = array_key_exists('amount', $mapping) && $mapping['amount'] !== null;
 
         if (!$hasDebitCredit && !$hasAmount) {
@@ -575,7 +576,7 @@ class BankStatementImportController extends Controller
             return null;
         }
 
-        return mb_substr($value, 0, $limit);
+        return function_exists('mb_substr') ? mb_substr($value, 0, $limit) : substr($value, 0, $limit);
     }
 
     private function transactionHash(array $data)
