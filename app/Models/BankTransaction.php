@@ -26,6 +26,7 @@ class BankTransaction extends Model
         'project_id',
         'customer_id',
         'journal_entry_id',
+        'bank_statement_import_id',
         'reconciliation_status',
         'match_method',
         'reconciled_at',
@@ -71,6 +72,11 @@ class BankTransaction extends Model
     public function journalEntry()
     {
         return $this->belongsTo(JournalEntry::class);
+    }
+
+    public function statementImport()
+    {
+        return $this->belongsTo(BankStatementImport::class, 'bank_statement_import_id');
     }
 
     public function reconciledBy()
