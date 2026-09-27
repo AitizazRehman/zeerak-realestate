@@ -152,6 +152,9 @@ class BankReconciliationController extends Controller
         $transactions = BankTransaction::with([
                 'reconciliationMatch.journalLine.entry:id,entry_number,entry_date,description,status',
                 'reconciliationMatch.matchedBy:id,name',
+                'reconciliationAdjustment.offsetAccount:id,code,name,account_type',
+                'reconciliationAdjustment.journalEntry:id,entry_number,entry_date,status,description',
+                'reconciliationAdjustment.reversalJournalEntry:id,entry_number,entry_date,status,description',
                 'customer:id,name,customer_number',
                 'project:id,name,code',
             ])
@@ -446,6 +449,11 @@ class BankReconciliationController extends Controller
         $import = $this->accessibleImport($transaction->bank_statement_import_id);
         $this->assertReconciliationEditable($import);
 
+        if ($transaction->reconciliationAdjustment &&
+            !$transaction->reconciliationAdjustment->reversed_at) {
+            abort(422, 'This match was created by a reconciliation adjustment. Reverse the adjustment instead of unmatching it.');
+        }
+
         DB::transaction(function () use ($transaction) {
             $match = BankReconciliationMatch::where('bank_transaction_id', $transaction->id)
                 ->lockForUpdate()
@@ -542,6 +550,9 @@ class BankReconciliationController extends Controller
                 ->pluck('id');
 
             BankReconciliationMatch::whereIn('bank_transaction_id', $transactionIds)
+                ->update(['bank_reconciliation_id' => $reconciliation->id]);
+
+            \App\Models\BankReconciliationAdjustment::whereIn('bank_transaction_id', $transactionIds)
                 ->update(['bank_reconciliation_id' => $reconciliation->id]);
 
             BankTransaction::whereIn('id', $transactionIds)
