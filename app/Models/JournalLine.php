@@ -11,4 +11,5 @@ class JournalLine extends Model
 
     public function entry() { return $this->belongsTo(JournalEntry::class, 'journal_entry_id'); }
     public function account() { return $this->belongsTo(ChartOfAccount::class, 'chart_of_account_id'); }
+    public function reconciliationMatch() { return $this->hasOne(BankReconciliationMatch::class); }
 }
