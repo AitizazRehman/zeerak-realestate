@@ -37,6 +37,7 @@ use App\Http\Controllers\API\AccountingReportController;
 use App\Http\Controllers\API\BankAccountController;
 use App\Http\Controllers\API\BankTransactionController;
 use App\Http\Controllers\API\BankStatementImportController;
+use App\Http\Controllers\API\BankReconciliationController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -85,6 +86,16 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('accounting/bank-statement-imports/preview', [BankStatementImportController::class, 'preview'])->middleware('permission:accounting.create');
     Route::post('accounting/bank-statement-imports/{bankStatementImport}/preview', [BankStatementImportController::class, 'refreshPreview'])->middleware('permission:accounting.create');
     Route::post('accounting/bank-statement-imports/{bankStatementImport}/commit', [BankStatementImportController::class, 'commit'])->middleware('permission:accounting.create');
+
+    Route::get('accounting/bank-reconciliations/options', [BankReconciliationController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/bank-reconciliations/workspace', [BankReconciliationController::class, 'workspace'])->middleware('permission:accounting.view');
+    Route::get('accounting/bank-reconciliations', [BankReconciliationController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('accounting/bank-statement-imports/{bankStatementImport}/auto-match', [BankReconciliationController::class, 'autoMatch'])->middleware('permission:accounting.edit');
+    Route::get('accounting/bank-transactions/{bankTransaction}/reconciliation-candidates', [BankReconciliationController::class, 'candidates'])->middleware('permission:accounting.view');
+    Route::post('accounting/bank-transactions/{bankTransaction}/reconciliation-match', [BankReconciliationController::class, 'match'])->middleware('permission:accounting.edit');
+    Route::delete('accounting/bank-transactions/{bankTransaction}/reconciliation-match', [BankReconciliationController::class, 'unmatch'])->middleware('permission:accounting.edit');
+    Route::post('accounting/bank-reconciliations/finalize', [BankReconciliationController::class, 'finalize'])->middleware('permission:accounting.edit');
+    Route::post('accounting/bank-reconciliations/{bankReconciliation}/reopen', [BankReconciliationController::class, 'reopen'])->middleware('permission:accounting.edit');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
