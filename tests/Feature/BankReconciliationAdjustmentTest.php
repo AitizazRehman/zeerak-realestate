@@ -21,6 +21,8 @@ class BankReconciliationAdjustmentTest extends AccountingTestCase
 {
     private $user;
     private $controller;
+    private $expenseAccountId;
+    private $bankLedgerId;
 
     protected function setUp(): void
     {
