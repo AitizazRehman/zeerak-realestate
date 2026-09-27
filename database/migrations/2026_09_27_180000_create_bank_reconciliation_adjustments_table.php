@@ -14,7 +14,12 @@ return new class extends Migration
             $table->foreignId('bank_reconciliation_id')->nullable()->constrained('bank_reconciliations')->onDelete('restrict');
             $table->foreignId('offset_account_id')->constrained('chart_of_accounts')->onDelete('restrict');
             $table->foreignId('journal_entry_id')->unique()->constrained('journal_entries')->onDelete('restrict');
-            $table->foreignId('reversal_journal_entry_id')->nullable()->unique()->constrained('journal_entries')->onDelete('restrict');
+            $table->unsignedBigInteger('reversal_journal_entry_id')->nullable();
+            $table->unique('reversal_journal_entry_id', 'bank_recon_adj_reverse_je_uq');
+            $table->foreign('reversal_journal_entry_id', 'bank_recon_adj_reverse_je_fk')
+                ->references('id')
+                ->on('journal_entries')
+                ->onDelete('restrict');
             $table->string('adjustment_type', 50);
             $table->decimal('amount', 18, 2);
             $table->string('direction', 20);
