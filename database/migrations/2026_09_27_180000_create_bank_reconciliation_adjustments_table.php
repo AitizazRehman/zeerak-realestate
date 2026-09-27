@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('bank_reconciliation_adjustments', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('bank_transaction_id')->unique()->constrained('bank_transactions')->onDelete('restrict');
+            $table->foreignId('bank_transaction_id')->constrained('bank_transactions')->onDelete('restrict');
             $table->foreignId('bank_reconciliation_id')->nullable()->constrained('bank_reconciliations')->onDelete('restrict');
             $table->foreignId('offset_account_id')->constrained('chart_of_accounts')->onDelete('restrict');
             $table->foreignId('journal_entry_id')->unique()->constrained('journal_entries')->onDelete('restrict');
@@ -27,6 +27,7 @@ return new class extends Migration
             $table->text('reversal_reason')->nullable();
             $table->timestamps();
 
+            $table->index('bank_transaction_id', 'bank_recon_adj_transaction_idx');
             $table->index(['bank_reconciliation_id', 'adjustment_type'], 'bank_recon_adj_rec_type_idx');
             $table->index(['offset_account_id', 'created_at'], 'bank_recon_adj_offset_date_idx');
         });
