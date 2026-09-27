@@ -206,8 +206,8 @@ class BankStatementImportController extends Controller
             'mapping' => ['required','array'],
             'mapping.transaction_date' => ['required','integer','min:0'],
             'mapping.value_date' => ['nullable','integer','min:0'],
-            'mapping.debit' => ['nullable','integer','min:0'],
-            'mapping.credit' => ['nullable','integer','min:0'],
+            'mapping.deposit' => ['nullable','integer','min:0'],
+            'mapping.withdrawal' => ['nullable','integer','min:0'],
             'mapping.amount' => ['nullable','integer','min:0'],
             'mapping.running_balance' => ['nullable','integer','min:0'],
             'mapping.reference_number' => ['nullable','integer','min:0'],
@@ -221,13 +221,13 @@ class BankStatementImportController extends Controller
         ]);
 
         $mapping = $data['mapping'];
-        $hasDebitCredit = (array_key_exists('debit', $mapping) && $mapping['debit'] !== null) ||
-            (array_key_exists('credit', $mapping) && $mapping['credit'] !== null);
+        $hasDebitCredit = (array_key_exists('deposit', $mapping) && $mapping['deposit'] !== null) ||
+            (array_key_exists('withdrawal', $mapping) && $mapping['withdrawal'] !== null);
         $hasAmount = array_key_exists('amount', $mapping) && $mapping['amount'] !== null;
 
         if (!$hasDebitCredit && !$hasAmount) {
             throw ValidationException::withMessages([
-                'mapping' => ['Map Debit/Credit columns or map one signed Amount column.'],
+                'mapping' => ['Map Deposit/Withdrawal columns or map one signed Amount column.'],
             ]);
         }
 
@@ -416,12 +416,12 @@ class BankStatementImportController extends Controller
 
         $debit = 0.0;
         $credit = 0.0;
-        $hasDebit = array_key_exists('debit', $mapping) && $mapping['debit'] !== null;
-        $hasCredit = array_key_exists('credit', $mapping) && $mapping['credit'] !== null;
+        $hasDeposit = array_key_exists('deposit', $mapping) && $mapping['deposit'] !== null;
+        $hasWithdrawal = array_key_exists('withdrawal', $mapping) && $mapping['withdrawal'] !== null;
 
-        if ($hasDebit || $hasCredit) {
-            $debit = $hasDebit ? abs($this->parseMoney($this->mapped($row, $mapping, 'debit'))) : 0.0;
-            $credit = $hasCredit ? abs($this->parseMoney($this->mapped($row, $mapping, 'credit'))) : 0.0;
+        if ($hasDeposit || $hasWithdrawal) {
+            $debit = $hasDeposit ? abs($this->parseMoney($this->mapped($row, $mapping, 'deposit'))) : 0.0;
+            $credit = $hasWithdrawal ? abs($this->parseMoney($this->mapped($row, $mapping, 'withdrawal'))) : 0.0;
         } else {
             $amount = $this->parseMoney($this->mapped($row, $mapping, 'amount'));
 
@@ -598,8 +598,8 @@ class BankStatementImportController extends Controller
         return [
             ['key' => 'transaction_date', 'label' => 'Transaction Date', 'required' => true],
             ['key' => 'value_date', 'label' => 'Value Date', 'required' => false],
-            ['key' => 'debit', 'label' => 'Deposit / Debit', 'required' => false],
-            ['key' => 'credit', 'label' => 'Withdrawal / Credit', 'required' => false],
+            ['key' => 'deposit', 'label' => 'Deposit / Money In', 'required' => false],
+            ['key' => 'withdrawal', 'label' => 'Withdrawal / Money Out', 'required' => false],
             ['key' => 'amount', 'label' => 'Signed Amount', 'required' => false],
             ['key' => 'running_balance', 'label' => 'Running Balance', 'required' => false],
             ['key' => 'reference_number', 'label' => 'Reference Number', 'required' => false],
