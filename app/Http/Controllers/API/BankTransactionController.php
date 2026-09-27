@@ -50,7 +50,7 @@ class BankTransactionController extends Controller
         return $query->findOrFail($id);
     }
 
-    private function validateTransaction(Request $request)
+    private function validateTransaction(Request $request, $ignoreId = null)
     {
         $data = $request->validate([
             'bank_account_id' => ['required','integer','exists:bank_accounts,id'],
@@ -97,7 +97,7 @@ class BankTransactionController extends Controller
 
         $this->validateDimensions($data, $bankAccount);
         $this->validateJournalLink($data, $bankAccount);
-        $this->validateExternalId($data);
+        $this->validateExternalId($data, $ignoreId);
 
         $data['source'] = 'manual';
         $data['reconciliation_status'] = 'unmatched';
@@ -336,6 +336,10 @@ class BankTransactionController extends Controller
         if ($this->canAccessAllBranches() && $request->filled('branch_id')) {
             $branchId = (int) $request->branch_id;
         } elseif (!$this->canAccessAllBranches()) {
+            if (!auth()->user()->branch_id) {
+                abort(403, 'Your user account is not assigned to a branch.');
+            }
+
             $branchId = (int) auth()->user()->branch_id;
         }
 
@@ -419,8 +423,7 @@ class BankTransactionController extends Controller
             abort(422, 'Imported or system-generated bank transactions cannot be edited from the manual transaction screen.');
         }
 
-        $data = $this->validateTransaction($request);
-        $this->validateExternalId($data, $bankTransaction->id);
+        $data = $this->validateTransaction($request, $bankTransaction->id);
 
         $bankTransaction->update($data);
 
