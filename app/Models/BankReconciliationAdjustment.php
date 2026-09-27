@@ -25,6 +25,15 @@ class BankReconciliationAdjustment extends Model
     ];
 
     protected $casts = [
+        'bank_transaction_id' => 'integer',
+        'bank_reconciliation_id' => 'integer',
+        'offset_account_id' => 'integer',
+        'journal_entry_id' => 'integer',
+        'reversal_journal_entry_id' => 'integer',
+        'project_id' => 'integer',
+        'customer_id' => 'integer',
+        'created_by' => 'integer',
+        'reversed_by' => 'integer',
         'amount' => 'decimal:2',
         'reversed_at' => 'datetime',
     ];
