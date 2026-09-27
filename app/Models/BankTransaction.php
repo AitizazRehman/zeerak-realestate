@@ -79,6 +79,11 @@ class BankTransaction extends Model
         return $this->belongsTo(BankStatementImport::class, 'bank_statement_import_id');
     }
 
+    public function reconciliationMatch()
+    {
+        return $this->hasOne(BankReconciliationMatch::class);
+    }
+
     public function reconciledBy()
     {
         return $this->belongsTo(User::class, 'reconciled_by');
