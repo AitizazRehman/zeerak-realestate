@@ -210,8 +210,10 @@ class BankReconciliationAdjustmentController extends Controller
                 abort(422, 'Only an unmatched bank transaction can create a reconciliation adjustment.');
             }
 
-            if (BankReconciliationAdjustment::where('bank_transaction_id', $locked->id)->exists()) {
-                abort(422, 'An adjustment already exists for this bank transaction.');
+            if (BankReconciliationAdjustment::where('bank_transaction_id', $locked->id)
+                ->whereNull('reversed_at')
+                ->exists()) {
+                abort(422, 'An active adjustment already exists for this bank transaction.');
             }
 
             $period = $periods->requireOpen($locked->transaction_date);
