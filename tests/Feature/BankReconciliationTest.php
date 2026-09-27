@@ -163,6 +163,13 @@ class BankReconciliationTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('bank_reconciliation_adjustments', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('bank_transaction_id');
+            $table->unsignedBigInteger('bank_reconciliation_id')->nullable();
+            $table->timestamps();
+        });
+
         DB::table('users')->insert(['id' => 1, 'name' => 'Admin']);
         DB::table('bank_accounts')->insert([
             'id' => 1,
