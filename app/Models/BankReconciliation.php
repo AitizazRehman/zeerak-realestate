@@ -67,6 +67,11 @@ class BankReconciliation extends Model
         return $this->hasMany(BankReconciliationMatch::class);
     }
 
+    public function adjustments()
+    {
+        return $this->hasMany(BankReconciliationAdjustment::class);
+    }
+
     public function createdBy()
     {
         return $this->belongsTo(User::class, 'created_by');
