@@ -300,4 +300,56 @@ class BankReconciliationAdjustmentTest extends AccountingTestCase
         $this->assertSame($reversal->id, $fresh->reversal_journal_entry_id);
         $this->assertNotNull($fresh->reversed_at);
     }
+    public function test_reversed_adjustment_can_be_replaced_without_losing_history()
+    {
+        $this->controller->store(
+            $this->request([
+                'adjustment_type' => 'bank_charge',
+                'offset_account_id' => $this->expenseAccountId,
+                'description' => 'Original bank charge coding',
+            ]),
+            BankTransaction::findOrFail(1),
+            new AccountingPeriodService()
+        );
+
+        $first = BankReconciliationAdjustment::firstOrFail();
+
+        $this->controller->reverse(
+            $this->request([
+                'entry_date' => '2026-09-21',
+                'reason' => 'Correcting the adjustment coding',
+            ]),
+            $first,
+            new AccountingPeriodService()
+        );
+
+        $this->controller->store(
+            $this->request([
+                'adjustment_type' => 'bank_charge',
+                'offset_account_id' => $this->expenseAccountId,
+                'description' => 'Corrected bank charge coding',
+            ]),
+            BankTransaction::findOrFail(1),
+            new AccountingPeriodService()
+        );
+
+        $this->assertSame(2, BankReconciliationAdjustment::where('bank_transaction_id', 1)->count());
+        $this->assertSame(
+            1,
+            BankReconciliationAdjustment::where('bank_transaction_id', 1)
+                ->whereNotNull('reversed_at')
+                ->count()
+        );
+        $this->assertSame(
+            1,
+            BankReconciliationAdjustment::where('bank_transaction_id', 1)
+                ->whereNull('reversed_at')
+                ->count()
+        );
+        $this->assertDatabaseHas('bank_transactions', [
+            'id' => 1,
+            'reconciliation_status' => 'matched',
+        ]);
+    }
+
 }
