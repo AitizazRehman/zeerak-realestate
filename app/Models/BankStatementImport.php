@@ -54,4 +54,9 @@ class BankStatementImport extends Model
     {
         return $this->hasMany(BankTransaction::class);
     }
+
+    public function reconciliation()
+    {
+        return $this->hasOne(BankReconciliation::class);
+    }
 }
