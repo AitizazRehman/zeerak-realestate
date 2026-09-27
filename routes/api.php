@@ -34,6 +34,7 @@ use App\Http\Controllers\API\ChartOfAccountController;
 use App\Http\Controllers\API\FiscalYearController;
 use App\Http\Controllers\API\JournalEntryController;
 use App\Http\Controllers\API\AccountingReportController;
+use App\Http\Controllers\API\BankAccountController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -64,6 +65,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('payments', [PaymentController::class, 'index'])->middleware('permission:payments.view'); Route::post('payments', [PaymentController::class, 'store'])->middleware('permission:payments.create'); Route::get('payments/{payment}', [PaymentController::class, 'show'])->middleware('permission:payments.view'); Route::get('payments/{payment}/receipt', [PaymentController::class, 'receipt'])->middleware('permission:payments.view'); Route::post('payments/{payment}/reverse', [PaymentController::class, 'reverse'])->middleware('permission:payments.edit');
     Route::get('financial-audits/export/{format}', [FinancialAuditController::class, 'export'])->middleware('permission:reports.view');
     Route::get('financial-audits', [FinancialAuditController::class, 'index'])->middleware('permission:reports.view');
+
+    Route::get('accounting/bank-accounts/options', [BankAccountController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/bank-accounts', [BankAccountController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('accounting/bank-accounts', [BankAccountController::class, 'store'])->middleware('permission:accounting.create');
+    Route::put('accounting/bank-accounts/{bankAccount}', [BankAccountController::class, 'update'])->middleware('permission:accounting.edit');
+    Route::patch('accounting/bank-accounts/{bankAccount}', [BankAccountController::class, 'update'])->middleware('permission:accounting.edit');
+    Route::delete('accounting/bank-accounts/{bankAccount}', [BankAccountController::class, 'destroy'])->middleware('permission:accounting.delete');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
