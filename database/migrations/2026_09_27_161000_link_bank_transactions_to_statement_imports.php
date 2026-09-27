@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class LinkBankTransactionsToStatementImports20260927161000 extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -15,7 +15,10 @@ class LinkBankTransactionsToStatementImports20260927161000 extends Migration
                 ->constrained('bank_statement_imports')
                 ->onDelete('restrict');
 
-            $table->index(['bank_statement_import_id', 'transaction_date'], 'bank_tx_import_date_idx');
+            $table->index(
+                ['bank_statement_import_id', 'transaction_date'],
+                'bank_tx_import_date_idx'
+            );
         });
     }
 
@@ -27,4 +30,4 @@ class LinkBankTransactionsToStatementImports20260927161000 extends Migration
             $table->dropColumn('bank_statement_import_id');
         });
     }
-}
+};
