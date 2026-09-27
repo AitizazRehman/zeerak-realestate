@@ -10,6 +10,16 @@
         <v-spacer/>
         <v-btn
           v-if="$can('accounting.create')"
+          text
+          color="#165134"
+          class="mt-3 mt-md-0 mr-2"
+          to="/admin/accounting/bank-statement-imports"
+        >
+          <v-icon left>mdi-file-upload-outline</v-icon>
+          Import Statement
+        </v-btn>
+        <v-btn
+          v-if="$can('accounting.create')"
           color="#165134"
           dark
           depressed
