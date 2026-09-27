@@ -142,6 +142,7 @@ class BankReconciliationController extends Controller
     {
         $data = $request->validate([
             'bank_statement_import_id' => ['required','integer'],
+            'statement_closing_balance' => ['nullable','numeric'],
         ]);
 
         $import = $this->accessibleImport($data['bank_statement_import_id']);
@@ -177,7 +178,9 @@ class BankReconciliationController extends Controller
             return $item;
         })->values();
 
-        $closingBalance = $import->statement_closing_balance;
+        $closingBalance = array_key_exists('statement_closing_balance', $data) && $data['statement_closing_balance'] !== null
+            ? $data['statement_closing_balance']
+            : $import->statement_closing_balance;
 
         if ($closingBalance === null) {
             $latestBalance = $transactions
