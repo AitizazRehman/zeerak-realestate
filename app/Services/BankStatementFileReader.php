@@ -13,7 +13,7 @@ class BankStatementFileReader
 
     public function preview($path, $extension, $headerRow = 1, $limit = 12)
     {
-        $rows = $this->read($path, $extension, $headerRow + $limit);
+        $rows = $this->read($path, $extension);
 
         if (count($rows) < $headerRow) {
             throw new RuntimeException('The selected header row does not exist in this file.');
