@@ -8,6 +8,10 @@
           <div class="grey--text">Upload CSV/XLSX statements, map bank columns, and import only new transactions.</div>
         </div>
         <v-spacer/>
+        <v-btn text color="#165134" class="mr-2" to="/admin/accounting/bank-reconciliation">
+          <v-icon left>mdi-bank-check</v-icon>
+          Reconcile
+        </v-btn>
         <v-btn text color="#165134" to="/admin/accounting/bank-transactions">
           <v-icon left>mdi-bank-transfer</v-icon>
           Bank Transactions
