@@ -28,6 +28,7 @@ class AcceptanceCheck extends Command
         $this->checkCustomerIdentityIntegrity();
         $this->checkSalesIntegrity();
         $this->checkFinancialDocumentIntegrity();
+        $this->checkBankAccountIntegrity();
 
         $this->newLine();
         $this->info('Failures: '.$this->failures.' | Warnings: '.$this->warnings);
@@ -59,6 +60,7 @@ class AcceptanceCheck extends Command
             'expenses',
             'financial_documents',
             'financial_audits',
+            'bank_accounts',
             'chart_of_accounts',
         ];
 
@@ -414,6 +416,55 @@ class AcceptanceCheck extends Command
             $missingFiles.' active financial document(s) are missing their stored file',
             true
         );
+    }
+
+    private function checkBankAccountIntegrity()
+    {
+        if (!Schema::hasTable('bank_accounts') || !Schema::hasTable('chart_of_accounts')) {
+            return;
+        }
+
+        $invalidMappings = DB::table('bank_accounts as b')
+            ->join('chart_of_accounts as a', 'a.id', '=', 'b.chart_of_account_id')
+            ->whereNull('b.deleted_at')
+            ->where(function ($query) {
+                $query->where('a.account_type', '!=', 'asset')
+                    ->orWhere('a.is_control_account', true);
+            })
+            ->count();
+
+        $this->check(
+            $invalidMappings === 0,
+            'Bank accounts map only to posting-level Asset accounts',
+            $invalidMappings.' bank account(s) have an invalid GL mapping',
+            true
+        );
+
+        $duplicateMappings = DB::table('bank_accounts')
+            ->select('chart_of_account_id')
+            ->whereNull('deleted_at')
+            ->groupBy('chart_of_account_id')
+            ->havingRaw('COUNT(*) > 1')
+            ->count();
+
+        $this->check(
+            $duplicateMappings === 0,
+            'Each bank account has a dedicated GL account',
+            $duplicateMappings.' GL account mapping(s) are shared by multiple bank accounts',
+            true
+        );
+
+        $branchlessActive = DB::table('bank_accounts')
+            ->whereNull('deleted_at')
+            ->where('is_active', true)
+            ->whereNull('branch_id')
+            ->count();
+
+        if ($branchlessActive > 0) {
+            $this->warnCheck($branchlessActive.' active bank/cash account(s) are company-wide rather than branch-owned');
+        } else {
+            $this->pass('Active bank/cash accounts have explicit branch ownership');
+        }
     }
 
     private function check($condition, $success, $problem, $critical)
