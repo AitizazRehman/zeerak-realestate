@@ -36,6 +36,7 @@ import ChartOfAccounts from '../views/admin/accounting/ChartOfAccounts.vue'
 import FinancialStatement from '../views/admin/accounting/FinancialStatement.vue'
 import AccountingReport from '../views/admin/accounting/AccountingReport.vue'
 import FiscalYears from '../views/admin/accounting/FiscalYears.vue'
+import BankAccounts from '../views/admin/accounting/BankAccounts.vue'
 
 Vue.use(VueRouter)
 
@@ -73,6 +74,7 @@ const routes = [
             { path: 'reports', name: 'reports', component: Reports, meta: { permission: 'reports.view' } },
             { path: 'reports/financial-audit', name: 'financial-audit', component: FinancialAudit, meta: { permission: 'reports.view' } },
             { path: 'accounting/fiscal-years', name: 'fiscal-years', component: FiscalYears, meta: { permission: 'accounting.view' } },
+            { path: 'accounting/bank-accounts', name: 'bank-accounts', component: BankAccounts, meta: { permission: 'accounting.view' } },
             { path: 'accounting/general-ledger', name: 'general-ledger', component: AccountingReport, props: { report: 'ledger' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/customer-statement', name: 'customer-statement', component: FinancialStatement, props: { type: 'customer' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/project-statement', name: 'project-statement', component: FinancialStatement, props: { type: 'project' }, meta: { permission: 'accounting.view' } },
