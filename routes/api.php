@@ -35,6 +35,7 @@ use App\Http\Controllers\API\FiscalYearController;
 use App\Http\Controllers\API\JournalEntryController;
 use App\Http\Controllers\API\AccountingReportController;
 use App\Http\Controllers\API\BankAccountController;
+use App\Http\Controllers\API\BankTransactionController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -72,6 +73,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('accounting/bank-accounts/{bankAccount}', [BankAccountController::class, 'update'])->middleware('permission:accounting.edit');
     Route::patch('accounting/bank-accounts/{bankAccount}', [BankAccountController::class, 'update'])->middleware('permission:accounting.edit');
     Route::delete('accounting/bank-accounts/{bankAccount}', [BankAccountController::class, 'destroy'])->middleware('permission:accounting.delete');
+
+    Route::get('accounting/bank-transactions/options', [BankTransactionController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/bank-transactions', [BankTransactionController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('accounting/bank-transactions', [BankTransactionController::class, 'store'])->middleware('permission:accounting.create');
+    Route::put('accounting/bank-transactions/{bankTransaction}', [BankTransactionController::class, 'update'])->middleware('permission:accounting.edit');
+    Route::patch('accounting/bank-transactions/{bankTransaction}', [BankTransactionController::class, 'update'])->middleware('permission:accounting.edit');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
