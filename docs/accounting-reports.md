@@ -38,3 +38,10 @@ php artisan test --filter=AccountingReportTest
 The report test uses an isolated in-memory SQLite connection and requires the
 PHP SQLite extension. It covers opening balances, drafts/future exclusions,
 reversals, dimensions, pagination, empty results and invalid date ranges.
+
+## Consolidated statements
+
+Accounting also includes [Customer and Project Statements](financial-statements.md)
+with branch-scoped entity filters, account summaries, transaction history and full
+CSV export. Customer statements restrict activity to receivable and advance accounts;
+project statements include all project-tagged posted accounts.

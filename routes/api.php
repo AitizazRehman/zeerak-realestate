@@ -67,6 +67,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
+    Route::get('accounting/statement-options', [\App\Http\Controllers\API\FinancialStatementController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/statements/export', [\App\Http\Controllers\API\FinancialStatementController::class, 'export'])->middleware('permission:accounting.view');
+    Route::get('accounting/statements', [\App\Http\Controllers\API\FinancialStatementController::class, 'show'])->middleware('permission:accounting.view');
     Route::get('accounting/trial-balance', [AccountingReportController::class, 'trialBalance'])->middleware('permission:accounting.view');
     Route::get('accounting/chart-of-accounts', [ChartOfAccountController::class, 'index'])->middleware('permission:accounting.view');
     Route::get('accounting/fiscal-years', [FiscalYearController::class, 'index'])->middleware('permission:accounting.view');

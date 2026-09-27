@@ -33,6 +33,7 @@ import Reports from '../views/admin/reports/Reports.vue'
 import FinancialAudit from '../views/admin/reports/FinancialAudit.vue'
 import Settings from '../views/admin/settings/Settings.vue'
 import ChartOfAccounts from '../views/admin/accounting/ChartOfAccounts.vue'
+import FinancialStatement from '../views/admin/accounting/FinancialStatement.vue'
 import AccountingReport from '../views/admin/accounting/AccountingReport.vue'
 import FiscalYears from '../views/admin/accounting/FiscalYears.vue'
 
@@ -73,6 +74,8 @@ const routes = [
             { path: 'reports/financial-audit', name: 'financial-audit', component: FinancialAudit, meta: { permission: 'reports.view' } },
             { path: 'accounting/fiscal-years', name: 'fiscal-years', component: FiscalYears, meta: { permission: 'accounting.view' } },
             { path: 'accounting/general-ledger', name: 'general-ledger', component: AccountingReport, props: { report: 'ledger' }, meta: { permission: 'accounting.view' } },
+            { path: 'accounting/customer-statement', name: 'customer-statement', component: FinancialStatement, props: { type: 'customer' }, meta: { permission: 'accounting.view' } },
+            { path: 'accounting/project-statement', name: 'project-statement', component: FinancialStatement, props: { type: 'project' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/trial-balance', name: 'trial-balance', component: AccountingReport, props: { report: 'trial' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/chart-of-accounts', name: 'chart-of-accounts', component: ChartOfAccounts, meta: { permission: 'accounting.view' } },
             { path: 'settings', name: 'settings', component: Settings, meta: { permission: 'settings.view' } }
