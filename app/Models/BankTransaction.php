@@ -84,6 +84,11 @@ class BankTransaction extends Model
         return $this->hasOne(BankReconciliationMatch::class);
     }
 
+    public function reconciliationAdjustment()
+    {
+        return $this->hasOne(BankReconciliationAdjustment::class);
+    }
+
     public function reconciledBy()
     {
         return $this->belongsTo(User::class, 'reconciled_by');
