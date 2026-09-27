@@ -86,7 +86,15 @@ class BankTransaction extends Model
 
     public function reconciliationAdjustment()
     {
-        return $this->hasOne(BankReconciliationAdjustment::class);
+        return $this->hasOne(BankReconciliationAdjustment::class)
+            ->whereNull('reversed_at')
+            ->orderByDesc('id');
+    }
+
+    public function reconciliationAdjustments()
+    {
+        return $this->hasMany(BankReconciliationAdjustment::class)
+            ->orderByDesc('id');
     }
 
     public function reconciledBy()
