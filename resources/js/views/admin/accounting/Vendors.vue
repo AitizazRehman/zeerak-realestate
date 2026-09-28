@@ -8,7 +8,7 @@
           <div class="grey--text">Maintain approved suppliers used by Accounts Payable.</div>
         </div>
         <v-spacer/>
-        <v-btn v-if="$can('vendors.create')" color="#165134" dark depressed @click="openCreate">
+        <v-btn v-if="$can('vendors.create') || $can('accounting.create')" color="#165134" dark depressed @click="openCreate">
           <v-icon left>mdi-store-plus-outline</v-icon>
           Add Vendor
         </v-btn>
@@ -60,7 +60,7 @@
           <v-chip x-small :color="item.is_active ? 'success' : 'grey'" dark>{{ item.is_active ? 'Active' : 'Inactive' }}</v-chip>
         </template>
         <template v-slot:item.actions="{item}">
-          <v-btn v-if="$can('vendors.edit')" icon small @click="openEdit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
+          <v-btn v-if="$can('vendors.edit') || $can('accounting.edit')" icon small @click="openEdit(item)"><v-icon small>mdi-pencil-outline</v-icon></v-btn>
         </template>
       </v-data-table>
     </v-card>
