@@ -73,9 +73,9 @@ return new class extends Migration
             $table->text('reversal_reason')->nullable();
             $table->timestamps();
 
-            $table->unique(
+            $table->index(
                 ['fixed_asset_id','accounting_period_id'],
-                'fixed_asset_depr_asset_period_uq'
+                'fixed_asset_depr_asset_period_idx'
             );
             $table->index(['accounting_period_id','reversed_at'], 'fixed_asset_depr_period_reversed_idx');
         });
