@@ -179,8 +179,8 @@ class ExecutiveFinanceTest extends AccountingTestCase
         $this->assertSame('200.00', $result['control_balances']['customer_advances']);
         $this->assertSame('1400.00', $result['control_balances']['operating_liquidity_position']);
 
-        $this->assertSame(40.0, $result['kpis']['net_margin_percent']);
-        $this->assertSame(900.0, $result['kpis']['cash_plus_ar_to_ap_percent']);
+        $this->assertEquals(40.0, $result['kpis']['net_margin_percent']);
+        $this->assertEquals(900.0, $result['kpis']['cash_plus_ar_to_ap_percent']);
         $this->assertTrue($result['kpis']['trial_balance_balanced']);
         $this->assertTrue($result['kpis']['balance_sheet_balanced']);
 
@@ -188,7 +188,7 @@ class ExecutiveFinanceTest extends AccountingTestCase
         $this->assertSame('1000.00', $result['project_performance'][0]['revenue']);
         $this->assertSame('600.00', $result['project_performance'][0]['recorded_costs']);
         $this->assertSame('400.00', $result['project_performance'][0]['recorded_result']);
-        $this->assertSame(40.0, $result['project_performance'][0]['recorded_margin_percent']);
+        $this->assertEquals(40.0, $result['project_performance'][0]['recorded_margin_percent']);
     }
 
     public function test_project_filter_keeps_project_statement_balanced_and_limits_project_results()
