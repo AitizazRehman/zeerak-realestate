@@ -230,11 +230,25 @@ class TreasuryController extends Controller
             $periodInflows = round((float) $periodFlows->where('flow_type', 'inflow')->sum('forecast_amount'), 2);
             $periodOutflows = round((float) $periodFlows->where('flow_type', 'outflow')->sum('forecast_amount'), 2);
             $net = round($periodInflows - $periodOutflows, 2);
-            $running = round($running + $net, 2);
 
-            if ($running < $lowestBalance) {
-                $lowestBalance = $running;
-                $lowestPeriod = $period['label'];
+            $datedFlows = $periodFlows
+                ->sortBy(function ($flow) {
+                    return $flow['date'].'|'.($flow['flow_type'] === 'outflow' ? '0' : '1').'|'.$flow['source'].'|'.str_pad((string) $flow['source_id'], 12, '0', STR_PAD_LEFT);
+                })
+                ->values();
+
+            foreach ($datedFlows as $flow) {
+                $running = round(
+                    $running + ($flow['flow_type'] === 'inflow'
+                        ? (float) $flow['forecast_amount']
+                        : -(float) $flow['forecast_amount']),
+                    2
+                );
+
+                if ($running < $lowestBalance) {
+                    $lowestBalance = $running;
+                    $lowestPeriod = $period['label'].' · '.$flow['date'];
+                }
             }
 
             $period['opening_balance'] = $this->money($openingBalance);
@@ -403,8 +417,31 @@ class TreasuryController extends Controller
             ];
         });
 
-        $scheduledByBooking = $installments->groupBy('booking_id')->map(function ($rows) {
-            return round((float) $rows->sum('remaining_amount'), 2);
+        $scheduledQuery = Installment::query()
+            ->where('remaining_amount', '>', 0)
+            ->whereHas('plan', function ($plan) {
+                $plan->where('status', 'active');
+            })
+            ->whereHas('booking', function ($booking) {
+                $booking->whereNotIn('status', ['cancelled']);
+            })
+            ->when($branchId, function ($installment) use ($branchId) {
+                $installment->whereHas('booking.property.project', function ($project) use ($branchId) {
+                    $project->where('branch_id', $branchId);
+                });
+            })
+            ->when($projectId, function ($installment) use ($projectId) {
+                $installment->whereHas('booking.property', function ($property) use ($projectId) {
+                    $property->where('project_id', $projectId);
+                });
+            })
+            ->select('booking_id')
+            ->selectRaw('SUM(remaining_amount) as scheduled_balance')
+            ->groupBy('booking_id')
+            ->pluck('scheduled_balance', 'booking_id');
+
+        $scheduledByBooking = $scheduledQuery->map(function ($value) {
+            return round((float) $value, 2);
         });
 
         $bookings = Booking::with('property.project:id,branch_id')
