@@ -40,6 +40,8 @@ use App\Http\Controllers\API\BankStatementImportController;
 use App\Http\Controllers\API\BankReconciliationController;
 use App\Http\Controllers\API\BankReconciliationAdjustmentController;
 use App\Http\Controllers\API\AccountsReceivableController;
+use App\Http\Controllers\API\VendorController;
+use App\Http\Controllers\API\AccountsPayableController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -106,6 +108,19 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('accounting/accounts-receivable/options', [AccountsReceivableController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/accounts-receivable/aging', [AccountsReceivableController::class, 'aging'])->middleware('permission:accounting.view');
     Route::get('accounting/accounts-receivable/customers/{customer}', [AccountsReceivableController::class, 'customer'])->middleware('permission:accounting.view');
+
+    Route::get('vendors', [VendorController::class, 'index'])->middleware('permission:vendors.view');
+    Route::post('vendors', [VendorController::class, 'store'])->middleware('permission:vendors.create');
+    Route::put('vendors/{vendor}', [VendorController::class, 'update'])->middleware('permission:vendors.edit');
+    Route::patch('vendors/{vendor}', [VendorController::class, 'update'])->middleware('permission:vendors.edit');
+
+    Route::get('accounting/accounts-payable/options', [AccountsPayableController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/accounts-payable/aging', [AccountsPayableController::class, 'aging'])->middleware('permission:accounting.view');
+    Route::get('accounting/accounts-payable', [AccountsPayableController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('accounting/accounts-payable', [AccountsPayableController::class, 'store'])->middleware('permission:accounting.create');
+    Route::post('accounting/accounts-payable/{vendorBill}/payments', [AccountsPayableController::class, 'pay'])->middleware('permission:accounting.edit');
+    Route::post('accounting/accounts-payable/payments/{vendorBillPayment}/reverse', [AccountsPayableController::class, 'reversePayment'])->middleware('permission:accounting.edit');
+    Route::post('accounting/accounts-payable/{vendorBill}/cancel', [AccountsPayableController::class, 'cancel'])->middleware('permission:accounting.edit');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
