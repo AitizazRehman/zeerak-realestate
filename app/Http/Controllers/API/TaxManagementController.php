@@ -96,10 +96,18 @@ class TaxManagementController extends Controller
         $data = $this->codeData($request, $taxCode);
         $this->validateAccountMapping($data['tax_type'], $data['chart_of_account_id']);
 
-        if ($taxCode->transactions()->exists() && $data['tax_type'] !== $taxCode->tax_type) {
-            throw ValidationException::withMessages([
-                'tax_type' => ['Tax type cannot be changed after transactions exist. Create a new tax code instead.'],
-            ]);
+        if ($taxCode->transactions()->exists()) {
+            if ($data['tax_type'] !== $taxCode->tax_type) {
+                throw ValidationException::withMessages([
+                    'tax_type' => ['Tax type cannot be changed after transactions exist. Create a new tax code instead.'],
+                ]);
+            }
+
+            if ((int) $data['chart_of_account_id'] !== (int) $taxCode->chart_of_account_id) {
+                throw ValidationException::withMessages([
+                    'chart_of_account_id' => ['GL account mapping cannot be changed after transactions exist. Create a new tax code instead.'],
+                ]);
+            }
         }
 
         $taxCode->update($data);
