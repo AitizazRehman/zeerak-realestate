@@ -61,7 +61,7 @@ class ExecutiveFinanceController extends Controller
         $profitLoss = $this->profitLoss($period);
         $balanceSheet = $this->balanceSheet($base);
         $controls = $this->controlBalances($base, $branchId, $projectId);
-        $projects = $this->projectPerformance($filters['from'], $filters['to'], $branchId);
+        $projects = $this->projectPerformance($filters['from'], $filters['to'], $branchId, $projectId);
         $trial = $this->trialControl($base);
 
         $operatingLiquidity = round(
@@ -323,7 +323,7 @@ class ExecutiveFinanceController extends Controller
         return round((float) $row->balance, 2);
     }
 
-    private function projectPerformance($from, $to, $branchId)
+    private function projectPerformance($from, $to, $branchId, $projectId = null)
     {
         $query = DB::table('journal_lines as l')
             ->join('journal_entries as e', 'e.id', '=', 'l.journal_entry_id')
@@ -335,6 +335,9 @@ class ExecutiveFinanceController extends Controller
             ->whereIn('a.account_type', ['revenue','cost_of_sales','expense'])
             ->when($branchId, function ($query) use ($branchId) {
                 $query->where('p.branch_id', $branchId);
+            })
+            ->when($projectId, function ($query) use ($projectId) {
+                $query->where('p.id', $projectId);
             })
             ->select('p.id','p.name','p.code')
             ->selectRaw("COALESCE(SUM(CASE WHEN a.account_type = 'revenue' THEN l.credit - l.debit ELSE 0 END),0) as revenue")
