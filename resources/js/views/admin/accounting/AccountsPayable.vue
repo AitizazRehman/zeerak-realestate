@@ -132,10 +132,10 @@
             </template>
             <template v-slot:item.total="{item}"><strong>PKR {{money(item.total)}}</strong></template>
             <template v-slot:item.current="{item}">PKR {{money(item.current)}}</template>
-            <template v-slot:item.1_30="{item}">PKR {{money(item['1_30'])}}</template>
-            <template v-slot:item.31_60="{item}">PKR {{money(item['31_60'])}}</template>
-            <template v-slot:item.61_90="{item}">PKR {{money(item['61_90'])}}</template>
-            <template v-slot:item.90_plus="{item}"><span :class="Number(item['90_plus'])>0?'error--text font-weight-bold':''">PKR {{money(item['90_plus'])}}</span></template>
+            <template v-slot:[`item.1_30`]="{item}">PKR {{money(item['1_30'])}}</template>
+            <template v-slot:[`item.31_60`]="{item}">PKR {{money(item['31_60'])}}</template>
+            <template v-slot:[`item.61_90`]="{item}">PKR {{money(item['61_90'])}}</template>
+            <template v-slot:[`item.90_plus`]="{item}"><span :class="Number(item['90_plus'])>0?'error--text font-weight-bold':''">PKR {{money(item['90_plus'])}}</span></template>
             <template v-slot:item.max_days_overdue="{item}">{{item.max_days_overdue || '—'}}</template>
           </v-data-table>
         </v-tab-item>
