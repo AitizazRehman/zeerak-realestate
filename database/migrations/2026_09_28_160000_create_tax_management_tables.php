@@ -54,7 +54,7 @@ return new class extends Migration
             $table->decimal('tax_amount', 18, 2);
             $table->decimal('net_amount', 18, 2);
             $table->enum('status', ['active','reversed'])->default('active');
-            $table->enum('certificate_status', ['not_required','pending','issued'])->default('not_required');
+            $table->enum('certificate_status', ['not_required','pending','issued','voided'])->default('not_required');
             $table->string('certificate_number', 100)->nullable()->unique();
             $table->date('certificate_date')->nullable();
             $table->unsignedBigInteger('certificate_issued_by')->nullable();
