@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\ChecksBranchAccess;
 use App\Models\Branch;
 use App\Models\Project;
+use App\Models\TaxCode;
 use App\Models\Vendor;
 use App\Models\VendorBill;
 use App\Models\VendorBillPayment;
@@ -64,12 +65,22 @@ class AccountsPayableController extends Controller
             ? Branch::where('is_active', true)->orderBy('name')->get(['id','name','code'])
             : collect();
 
+        $withholdingTaxCodes = TaxCode::with('account:id,code,name,account_type,normal_balance')
+            ->where('tax_type', 'withholding_payable')
+            ->where('is_active', true)
+            ->orderBy('code')
+            ->get([
+                'id','code','name','tax_type','rate_percent','chart_of_account_id',
+                'effective_from','effective_to','certificate_required'
+            ]);
+
         return response()->json([
             'vendors' => $vendors,
             'projects' => $projects,
             'branches' => $branches,
             'debit_accounts' => $accounting->debitAccounts()->map->only(['id','code','name','account_type'])->values(),
             'cash_accounts' => $payments->accounts()->map->only(['id','code','name'])->values(),
+            'withholding_tax_codes' => $withholdingTaxCodes,
         ]);
     }
 
@@ -96,6 +107,8 @@ class AccountsPayableController extends Controller
                     $q->latest('payment_date')->latest('id');
                 },
                 'payments.cashBankAccount:id,code,name',
+                'payments.taxTransactions.taxCode:id,code,name,tax_type,rate_percent',
+                'payments.taxTransactions.account:id,code,name',
                 'journalEntry:id,source_id,entry_number,status',
             ])
         );
@@ -371,6 +384,9 @@ class AccountsPayableController extends Controller
             'cheque_number' => ['nullable','string','max:100'],
             'notes' => ['nullable','string','max:5000'],
             'request_key' => ['required','string','max:100'],
+            'withholdings' => ['nullable','array','max:10'],
+            'withholdings.*.tax_code_id' => ['required','integer','exists:tax_codes,id'],
+            'withholdings.*.taxable_amount' => ['nullable','numeric','min:0.01'],
         ]);
 
         $payment = $accounting->payBill($bill, $data, $request->user()->id);
@@ -381,6 +397,9 @@ class AccountsPayableController extends Controller
                 'cashBankAccount:id,code,name',
                 'journalEntry:id,entry_number,status',
                 'paidBy:id,name',
+                'taxTransactions.taxCode:id,code,name,tax_type,rate_percent',
+                'taxTransactions.account:id,code,name',
+                'taxTransactions.allocations.project:id,name,code',
             ]),
             'bill' => $bill->fresh(),
         ], 201);
