@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
+use App\Models\TaxCode;
+use App\Models\TaxTransaction;
 use App\Models\VendorBill;
 use App\Models\VendorBillPayment;
 use Illuminate\Support\Facades\DB;
@@ -97,7 +99,7 @@ class VendorPayableAccountingService
     public function payBill(VendorBill $bill, array $data, $userId)
     {
         return DB::transaction(function () use ($bill, $data, $userId) {
-            $bill = VendorBill::with(['lines','payments.allocations'])
+            $bill = VendorBill::with(['lines','payments.allocations','payments.taxTransactions'])
                 ->whereKey($bill->id)
                 ->lockForUpdate()
                 ->firstOrFail();
@@ -112,6 +114,13 @@ class VendorPayableAccountingService
             }
 
             $requestKey = trim((string) $data['request_key']);
+            $amount = round((float) $data['amount'], 2);
+            $preparedTaxes = $this->prepareWithholdings(
+                $data['withholdings'] ?? [],
+                $data['payment_date'],
+                $amount
+            );
+
             $existing = VendorBillPayment::where('request_key', $requestKey)->first();
 
             if ($existing) {
@@ -119,16 +128,16 @@ class VendorPayableAccountingService
                     $this->fail('This payment request key has already been used.');
                 }
 
-                if (round((float) $existing->amount, 2) !== round((float) $data['amount'], 2) ||
+                if (round((float) $existing->amount, 2) !== $amount ||
                     (int) $existing->cash_bank_account_id !== (int) $data['cash_bank_account_id'] ||
-                    $existing->payment_date->toDateString() !== $data['payment_date']) {
-                    $this->fail('A payment retry must keep the original amount, date, and cash/bank account.');
+                    $existing->payment_date->toDateString() !== $data['payment_date'] ||
+                    !$this->sameWithholdings($existing, $preparedTaxes)) {
+                    $this->fail('A payment retry must keep the original amount, date, cash/bank account, and withholding taxes.');
                 }
 
                 return $existing;
             }
 
-            $amount = round((float) $data['amount'], 2);
 
             if ($amount <= 0 || $amount > round((float) $bill->remaining_amount, 2)) {
                 $this->fail('Payment must be positive and cannot exceed the bill remaining amount.');
@@ -167,8 +176,15 @@ class VendorPayableAccountingService
             ], $userId);
 
             $allocations = $this->allocatePayment($bill, $amount);
+            $taxesByAllocation = $this->recordWithholdings(
+                $payment,
+                $bill,
+                $preparedTaxes,
+                $allocations,
+                $amount
+            );
 
-            foreach ($allocations as $allocation) {
+            foreach ($allocations as $index => $allocation) {
                 $payment->allocations()->create([
                     'project_id' => $allocation['project_id'],
                     'amount' => $allocation['amount'],
@@ -186,11 +202,31 @@ class VendorPayableAccountingService
                     'credit' => '0.00',
                 ]);
 
-                $entry->lines()->create($dimensions + [
-                    'chart_of_account_id' => $cash->id,
-                    'debit' => '0.00',
-                    'credit' => $allocation['amount'],
-                ]);
+                $taxTotal = 0.0;
+
+                foreach ($taxesByAllocation[$index] ?? [] as $taxLine) {
+                    $taxTotal = round($taxTotal + (float) $taxLine['tax_amount'], 2);
+
+                    $entry->lines()->create($dimensions + [
+                        'chart_of_account_id' => $taxLine['chart_of_account_id'],
+                        'debit' => '0.00',
+                        'credit' => $taxLine['tax_amount'],
+                    ]);
+                }
+
+                $netCash = round((float) $allocation['amount'] - $taxTotal, 2);
+
+                if ($netCash < -0.009) {
+                    $this->fail('Withholding tax allocation exceeds the vendor payment allocation.');
+                }
+
+                if ($netCash > 0.009) {
+                    $entry->lines()->create($dimensions + [
+                        'chart_of_account_id' => $cash->id,
+                        'debit' => '0.00',
+                        'credit' => number_format($netCash, 2, '.', ''),
+                    ]);
+                }
             }
 
             $this->refreshBillBalance($bill);
@@ -251,6 +287,16 @@ class VendorPayableAccountingService
                 'reversed_by' => $userId,
                 'reversal_reason' => $reason,
             ]);
+
+            $payment->taxTransactions()
+                ->where('status', 'active')
+                ->update([
+                    'status' => 'reversed',
+                    'reversed_by' => $userId,
+                    'reversed_at' => now(),
+                    'reversal_reason' => $reason,
+                    'updated_at' => now(),
+                ]);
 
             $this->refreshBillBalance($bill);
 
@@ -420,6 +466,171 @@ class VendorPayableAccountingService
         }
 
         return $allocations;
+    }
+
+    private function prepareWithholdings(array $items, $paymentDate, $grossAmount)
+    {
+        if (!count($items)) return [];
+
+        $seen = [];
+        $prepared = [];
+        $totalTax = 0.0;
+        $paymentDate = \Carbon\Carbon::parse($paymentDate)->toDateString();
+
+        foreach ($items as $index => $item) {
+            $taxCodeId = (int) ($item['tax_code_id'] ?? 0);
+
+            if (!$taxCodeId || isset($seen[$taxCodeId])) {
+                $this->fail('Each withholding tax code may appear only once per vendor payment.');
+            }
+
+            $seen[$taxCodeId] = true;
+
+            $code = TaxCode::with('account')->whereKey($taxCodeId)
+                ->where('tax_type', 'withholding_payable')
+                ->where('is_active', true)
+                ->first();
+
+            if (!$code) {
+                $this->fail('Choose an active withholding tax code.');
+            }
+
+            if ($code->effective_from && $paymentDate < $code->effective_from->toDateString()) {
+                $this->fail('Withholding tax code '.$code->code.' is not yet effective on the payment date.');
+            }
+
+            if ($code->effective_to && $paymentDate > $code->effective_to->toDateString()) {
+                $this->fail('Withholding tax code '.$code->code.' has expired for the payment date.');
+            }
+
+            if (!$code->account ||
+                !$code->account->is_active ||
+                $code->account->account_type !== 'liability' ||
+                $code->account->normal_balance !== 'credit') {
+                $this->fail('Withholding tax code '.$code->code.' must map to an active credit-normal liability account.');
+            }
+
+            $taxable = array_key_exists('taxable_amount', $item) && $item['taxable_amount'] !== null
+                ? round((float) $item['taxable_amount'], 2)
+                : round((float) $grossAmount, 2);
+
+            if ($taxable <= 0 || $taxable > round((float) $grossAmount, 2)) {
+                $this->fail('Each withholding taxable amount must be positive and cannot exceed the gross vendor settlement.');
+            }
+
+            $rate = round((float) $code->rate_percent, 4);
+            $taxAmount = round($taxable * $rate / 100, 2);
+
+            if ($taxAmount <= 0) {
+                $this->fail('Withholding tax code '.$code->code.' produces a zero tax amount.');
+            }
+
+            $totalTax = round($totalTax + $taxAmount, 2);
+
+            $prepared[] = [
+                'code' => $code,
+                'taxable_amount' => $taxable,
+                'rate_percent' => $rate,
+                'tax_amount' => $taxAmount,
+            ];
+        }
+
+        if ($totalTax >= round((float) $grossAmount, 2)) {
+            $this->fail('Total withholding tax must be less than the gross vendor settlement amount.');
+        }
+
+        return $prepared;
+    }
+
+    private function sameWithholdings(VendorBillPayment $payment, array $prepared)
+    {
+        $existing = $payment->taxTransactions()
+            ->where('status', 'active')
+            ->get()
+            ->keyBy('tax_code_id');
+
+        if ($existing->count() !== count($prepared)) return false;
+
+        foreach ($prepared as $item) {
+            $row = $existing->get($item['code']->id);
+
+            if (!$row ||
+                round((float) $row->taxable_amount, 2) !== round((float) $item['taxable_amount'], 2) ||
+                round((float) $row->tax_rate_percent, 4) !== round((float) $item['rate_percent'], 4) ||
+                round((float) $row->tax_amount, 2) !== round((float) $item['tax_amount'], 2)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function recordWithholdings(
+        VendorBillPayment $payment,
+        VendorBill $bill,
+        array $prepared,
+        array $allocations,
+        $grossAmount
+    ) {
+        $byAllocation = [];
+
+        foreach ($prepared as $tax) {
+            $code = $tax['code'];
+            $transaction = TaxTransaction::create([
+                'tax_code_id' => $code->id,
+                'branch_id' => $bill->branch_id,
+                'vendor_id' => $bill->vendor_id,
+                'vendor_bill_id' => $bill->id,
+                'vendor_bill_payment_id' => $payment->id,
+                'source_type' => 'vendor_payment_withholding',
+                'source_id' => $payment->id,
+                'transaction_date' => $payment->payment_date->toDateString(),
+                'tax_period' => $payment->payment_date->format('Y-m'),
+                'taxable_amount' => number_format($tax['taxable_amount'], 2, '.', ''),
+                'tax_rate_percent' => number_format($tax['rate_percent'], 4, '.', ''),
+                'tax_amount' => number_format($tax['tax_amount'], 2, '.', ''),
+                'net_amount' => number_format($tax['taxable_amount'] - $tax['tax_amount'], 2, '.', ''),
+                'status' => 'active',
+                'certificate_status' => $code->certificate_required ? 'pending' : 'not_required',
+            ]);
+
+            $remainingTaxable = round((float) $tax['taxable_amount'], 2);
+            $remainingTax = round((float) $tax['tax_amount'], 2);
+
+            foreach ($allocations as $index => $allocation) {
+                $isLast = $index === count($allocations) - 1;
+                $ratio = (float) $grossAmount > 0
+                    ? (float) $allocation['amount'] / (float) $grossAmount
+                    : 0;
+
+                $taxableShare = $isLast
+                    ? $remainingTaxable
+                    : min($remainingTaxable, round((float) $tax['taxable_amount'] * $ratio, 2));
+
+                $taxShare = $isLast
+                    ? $remainingTax
+                    : min($remainingTax, round((float) $tax['tax_amount'] * $ratio, 2));
+
+                $remainingTaxable = round($remainingTaxable - $taxableShare, 2);
+                $remainingTax = round($remainingTax - $taxShare, 2);
+
+                $transaction->allocations()->create([
+                    'project_id' => $allocation['project_id'],
+                    'taxable_amount' => number_format($taxableShare, 2, '.', ''),
+                    'tax_amount' => number_format($taxShare, 2, '.', ''),
+                    'net_amount' => number_format($taxableShare - $taxShare, 2, '.', ''),
+                ]);
+
+                if ($taxShare > 0.009) {
+                    $byAllocation[$index][] = [
+                        'chart_of_account_id' => $code->chart_of_account_id,
+                        'tax_amount' => number_format($taxShare, 2, '.', ''),
+                    ];
+                }
+            }
+        }
+
+        return $byAllocation;
     }
 
     private function refreshBillBalance(VendorBill $bill)
