@@ -195,10 +195,10 @@
               <div class="caption grey--text">{{ item.booking_count }} booking(s) · {{ item.project_count }} project(s)</div>
             </template>
             <template v-slot:item.current="{item}">PKR {{ money(item.current) }}</template>
-            <template v-slot:item.1_30="{item}">PKR {{ money(item['1_30']) }}</template>
-            <template v-slot:item.31_60="{item}">PKR {{ money(item['31_60']) }}</template>
-            <template v-slot:item.61_90="{item}">PKR {{ money(item['61_90']) }}</template>
-            <template v-slot:item.90_plus="{item}">
+            <template v-slot:[`item.1_30`]="{item}">PKR {{ money(item['1_30']) }}</template>
+            <template v-slot:[`item.31_60`]="{item}">PKR {{ money(item['31_60']) }}</template>
+            <template v-slot:[`item.61_90`]="{item}">PKR {{ money(item['61_90']) }}</template>
+            <template v-slot:[`item.90_plus`]="{item}">
               <span :class="Number(item['90_plus']) > 0 ? 'error--text font-weight-bold' : ''">
                 PKR {{ money(item['90_plus']) }}
               </span>
@@ -247,10 +247,10 @@
               <div class="caption grey--text">{{ item.customer_count }} customers · {{ item.booking_count }} bookings</div>
             </template>
             <template v-slot:item.current="{item}">PKR {{ money(item.current) }}</template>
-            <template v-slot:item.1_30="{item}">PKR {{ money(item['1_30']) }}</template>
-            <template v-slot:item.31_60="{item}">PKR {{ money(item['31_60']) }}</template>
-            <template v-slot:item.61_90="{item}">PKR {{ money(item['61_90']) }}</template>
-            <template v-slot:item.90_plus="{item}">
+            <template v-slot:[`item.1_30`]="{item}">PKR {{ money(item['1_30']) }}</template>
+            <template v-slot:[`item.31_60`]="{item}">PKR {{ money(item['31_60']) }}</template>
+            <template v-slot:[`item.61_90`]="{item}">PKR {{ money(item['61_90']) }}</template>
+            <template v-slot:[`item.90_plus`]="{item}">
               <span :class="Number(item['90_plus']) > 0 ? 'error--text font-weight-bold' : ''">
                 PKR {{ money(item['90_plus']) }}
               </span>
