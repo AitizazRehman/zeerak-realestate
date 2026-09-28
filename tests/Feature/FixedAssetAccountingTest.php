@@ -215,7 +215,7 @@ class FixedAssetAccountingTest extends AccountingTestCase
         $this->service->postDepreciation($asset, $period, 1);
 
         $result = $this->service->dispose($asset, [
-            'disposed_on' => '2026-10-01',
+            'disposed_on' => '2026-09-30',
             'disposal_proceeds' => 1000,
             'disposal_cash_bank_account_id' => $this->cashId,
             'disposal_reason' => 'Sold as part of equipment refresh',
