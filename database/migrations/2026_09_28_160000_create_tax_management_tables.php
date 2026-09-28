@@ -35,6 +35,12 @@ return new class extends Migration
         Schema::create('tax_transactions', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('tax_code_id');
+            $table->enum('tax_type', [
+                'withholding_payable',
+                'input_tax_receivable',
+                'output_tax_payable',
+            ]);
+            $table->unsignedBigInteger('chart_of_account_id');
             $table->unsignedBigInteger('branch_id')->nullable();
             $table->unsignedBigInteger('vendor_id')->nullable();
             $table->unsignedBigInteger('vendor_bill_id')->nullable();
@@ -61,6 +67,8 @@ return new class extends Migration
 
             $table->foreign('tax_code_id', 'tax_tx_code_fk')
                 ->references('id')->on('tax_codes')->onDelete('restrict');
+            $table->foreign('chart_of_account_id', 'tax_tx_account_fk')
+                ->references('id')->on('chart_of_accounts')->onDelete('restrict');
             $table->foreign('branch_id', 'tax_tx_branch_fk')
                 ->references('id')->on('branches')->onDelete('restrict');
             $table->foreign('vendor_id', 'tax_tx_vendor_fk')
@@ -82,6 +90,7 @@ return new class extends Migration
             $table->index(['branch_id','transaction_date'], 'tax_tx_branch_date_idx');
             $table->index(['vendor_id','transaction_date'], 'tax_tx_vendor_date_idx');
             $table->index(['tax_code_id','transaction_date'], 'tax_tx_code_date_idx');
+            $table->index(['chart_of_account_id','transaction_date'], 'tax_tx_account_date_idx');
         });
 
         Schema::create('tax_transaction_allocations', function (Blueprint $table) {
