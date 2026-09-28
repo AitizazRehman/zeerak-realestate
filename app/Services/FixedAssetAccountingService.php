@@ -121,7 +121,7 @@ class FixedAssetAccountingService
                 'accounting_period_id' => $period->id,
                 'depreciation_date' => $period->ends_on->toDateString(),
                 'amount' => $amount,
-                'journal_entry_id' => 0,
+                'journal_entry_id' => null,
                 'posted_by' => $userId,
             ]);
 
