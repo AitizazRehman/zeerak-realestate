@@ -126,9 +126,14 @@ class VendorController extends Controller
     private function validated(Request $request, $partial = false)
     {
         $required = $partial ? 'sometimes' : 'required';
+        $branchRule = $partial
+            ? ['sometimes','nullable','integer','exists:branches,id']
+            : ($this->canAccessAllBranches()
+                ? ['required','integer','exists:branches,id']
+                : ['nullable','integer','exists:branches,id']);
 
         return $request->validate([
-            'branch_id' => [$required,'integer','exists:branches,id'],
+            'branch_id' => $branchRule,
             'name' => [$required,'string','max:255'],
             'contact_person' => ['nullable','string','max:255'],
             'phone' => ['nullable','string','max:50'],
