@@ -42,6 +42,7 @@ use App\Http\Controllers\API\BankReconciliationAdjustmentController;
 use App\Http\Controllers\API\AccountsReceivableController;
 use App\Http\Controllers\API\VendorController;
 use App\Http\Controllers\API\AccountsPayableController;
+use App\Http\Controllers\API\AccountsPayableReportController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -121,6 +122,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('accounting/accounts-payable/{vendorBill}/payments', [AccountsPayableController::class, 'pay'])->middleware('permission:accounting.edit');
     Route::post('accounting/accounts-payable/payments/{vendorBillPayment}/reverse', [AccountsPayableController::class, 'reversePayment'])->middleware('permission:accounting.edit');
     Route::post('accounting/accounts-payable/{vendorBill}/cancel', [AccountsPayableController::class, 'cancel'])->middleware('permission:accounting.edit');
+
+    Route::get('accounting/accounts-payable-control/reconciliation', [AccountsPayableReportController::class, 'reconciliation'])->middleware('permission:accounting.view');
+    Route::get('accounting/accounts-payable-control/forecast', [AccountsPayableReportController::class, 'forecast'])->middleware('permission:accounting.view');
+    Route::get('accounting/accounts-payable-control/vendor-statement', [AccountsPayableReportController::class, 'statement'])->middleware('permission:accounting.view');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
