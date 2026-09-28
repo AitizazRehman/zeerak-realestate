@@ -240,8 +240,21 @@ class AccountsReceivableController extends Controller
             ->orderBy('id')
             ->get();
 
-        if (!$bookings->count()) {
-            $this->selectedBranchId($filters);
+        $branchId = $this->selectedBranchId($filters);
+
+        $customerAccess = Customer::whereKey($customer->id)
+            ->when($branchId, function ($query) use ($branchId) {
+                $query->where(function ($customerQuery) use ($branchId) {
+                    $customerQuery->where('branch_id', $branchId)
+                        ->orWhereHas('bookings.property.project', function ($project) use ($branchId) {
+                            $project->where('branch_id', $branchId);
+                        });
+                });
+            })
+            ->exists();
+
+        if (!$customerAccess) {
+            abort(404);
         }
 
         $rows = $bookings->map(function ($booking) use ($asOf) {
