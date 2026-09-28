@@ -109,10 +109,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('accounting/accounts-receivable/aging', [AccountsReceivableController::class, 'aging'])->middleware('permission:accounting.view');
     Route::get('accounting/accounts-receivable/customers/{customer}', [AccountsReceivableController::class, 'customer'])->middleware('permission:accounting.view');
 
-    Route::get('vendors', [VendorController::class, 'index'])->middleware('permission:vendors.view');
-    Route::post('vendors', [VendorController::class, 'store'])->middleware('permission:vendors.create');
-    Route::put('vendors/{vendor}', [VendorController::class, 'update'])->middleware('permission:vendors.edit');
-    Route::patch('vendors/{vendor}', [VendorController::class, 'update'])->middleware('permission:vendors.edit');
+    Route::get('vendors', [VendorController::class, 'index'])->middleware('permission:vendors.view|accounting.view');
+    Route::post('vendors', [VendorController::class, 'store'])->middleware('permission:vendors.create|accounting.create');
+    Route::put('vendors/{vendor}', [VendorController::class, 'update'])->middleware('permission:vendors.edit|accounting.edit');
+    Route::patch('vendors/{vendor}', [VendorController::class, 'update'])->middleware('permission:vendors.edit|accounting.edit');
 
     Route::get('accounting/accounts-payable/options', [AccountsPayableController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/accounts-payable/aging', [AccountsPayableController::class, 'aging'])->middleware('permission:accounting.view');
