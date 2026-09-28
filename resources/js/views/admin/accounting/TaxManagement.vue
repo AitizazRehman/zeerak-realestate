@@ -32,7 +32,7 @@
     <v-row class="mb-2">
       <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Taxable Amount</div><div class="text-h6 font-weight-bold">PKR {{money(summary.taxable_amount)}}</div></v-card></v-col>
       <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Tax Amount</div><div class="text-h6 font-weight-bold">PKR {{money(summary.tax_amount)}}</div></v-card></v-col>
-      <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Net Amount</div><div class="text-h6 font-weight-bold">PKR {{money(summary.net_amount)}}</div></v-card></v-col>
+      <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Transactions</div><div class="text-h6 font-weight-bold">{{summary.transactions || 0}}</div></v-card></v-col>
       <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Active</div><div class="text-h6 font-weight-bold">{{summary.active_transactions || 0}}</div></v-card></v-col>
       <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Pending Certificates</div><div class="text-h6 font-weight-bold warning--text">{{summary.pending_certificates || 0}}</div></v-card></v-col>
       <v-col cols="6" md="2"><v-card flat class="summary-card pa-4"><div class="caption grey--text">Issued Certificates</div><div class="text-h6 font-weight-bold success--text">{{summary.issued_certificates || 0}}</div></v-card></v-col>
@@ -74,7 +74,6 @@
             <template v-slot:item.taxable_amount="{item}">PKR {{money(item.taxable_amount)}}</template>
             <template v-slot:item.tax_rate_percent="{item}">{{Number(item.tax_rate_percent||0)}}%</template>
             <template v-slot:item.tax_amount="{item}"><strong>PKR {{money(item.tax_amount)}}</strong></template>
-            <template v-slot:item.net_amount="{item}">PKR {{money(item.net_amount)}}</template>
             <template v-slot:item.status="{item}"><v-chip x-small :color="item.status==='active'?'success':'grey'" dark>{{item.status}}</v-chip></template>
             <template v-slot:item.certificate="{item}">
               <div v-if="item.certificate_status==='issued'">
@@ -177,7 +176,7 @@ export default {
       registerHeaders:[
         {text:'Date',value:'transaction_date'},{text:'Tax / Source',value:'reference'},{text:'Vendor',value:'vendor'},{text:'Projects',value:'projects'},
         {text:'Taxable',value:'taxable_amount',align:'right'},{text:'Rate',value:'tax_rate_percent',align:'right'},{text:'Tax',value:'tax_amount',align:'right'},
-        {text:'Net',value:'net_amount',align:'right'},{text:'Status',value:'status'},{text:'Certificate',value:'certificate'},{text:'',value:'actions',sortable:false}
+        {text:'Status',value:'status'},{text:'Certificate',value:'certificate'},{text:'',value:'actions',sortable:false}
       ],
       ledgerHeaders:[
         {text:'Tax Code',value:'code'},{text:'Mapped Account',value:'account'},{text:'Register',value:'register_amount',align:'right'},
