@@ -260,17 +260,30 @@ class AccountingBudgetController extends Controller
             ->whereIn('accounting_period_id', $periodIds)
             ->values();
 
+        $budgetByAccount = $lines->groupBy('chart_of_account_id');
         $actuals = $this->actuals(
             $budget,
             $periods->first()->starts_on,
-            $periodEnd,
-            $lines->pluck('chart_of_account_id')->unique()->values()
+            $periodEnd
         );
 
-        $rows = $lines->groupBy('chart_of_account_id')->map(function ($accountLines) use ($actuals) {
-            $account = $accountLines->first()->account;
-            $budgetAmount = round((float) $accountLines->sum('amount'), 2);
-            $actual = round((float) ($actuals[$account->id] ?? 0), 2);
+        $accountIds = $budgetByAccount->keys()
+            ->merge($actuals->keys())
+            ->map(function ($id) { return (int) $id; })
+            ->unique()
+            ->values();
+
+        $accounts = ChartOfAccount::withTrashed()
+            ->whereIn('id', $accountIds)
+            ->get()
+            ->keyBy('id');
+
+        $rows = $accountIds->map(function ($accountId) use ($accounts, $budgetByAccount, $actuals) {
+            $account = $accounts->get($accountId);
+            if (!$account) return null;
+
+            $budgetAmount = round((float) optional($budgetByAccount->get($accountId))->sum('amount'), 2);
+            $actual = round((float) ($actuals[$accountId] ?? 0), 2);
 
             $variance = $account->account_type === 'revenue'
                 ? round($actual - $budgetAmount, 2)
@@ -291,7 +304,7 @@ class AccountingBudgetController extends Controller
                 'variance_percent' => $variancePercent,
                 'favorable' => $variance >= -0.009,
             ];
-        })->sortBy('code')->values();
+        })->filter()->sortBy('code')->values();
 
         $monthly = $periods->map(function ($period) use ($lines, $budget) {
             $periodLines = $lines->where('accounting_period_id', $period->id);
@@ -350,12 +363,10 @@ class AccountingBudgetController extends Controller
         ]);
     }
 
-    private function actuals(AccountingBudget $budget, $from, $to, $accountIds)
+    private function actuals(AccountingBudget $budget, $from, $to)
     {
-        if (!$accountIds->count()) return collect();
-
         $query = $this->actualBase($budget, $from, $to)
-            ->whereIn('l.chart_of_account_id', $accountIds)
+            ->whereIn('a.account_type', ['revenue','cost_of_sales','expense'])
             ->select('l.chart_of_account_id','a.account_type')
             ->selectRaw("COALESCE(SUM(CASE WHEN a.account_type = 'revenue' THEN l.credit - l.debit ELSE l.debit - l.credit END),0) as actual")
             ->groupBy('l.chart_of_account_id','a.account_type')
