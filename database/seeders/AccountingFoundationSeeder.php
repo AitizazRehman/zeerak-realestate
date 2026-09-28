@@ -44,11 +44,16 @@ class AccountingFoundationSeeder extends Seeder
             ['code'=>'1400','name'=>'Fixed Assets','type'=>'asset','parent'=>'1000','control'=>true,'manual'=>false],
             ['code'=>'1410','name'=>'Furniture & Equipment','type'=>'asset','parent'=>'1400','control'=>false,'manual'=>true],
             ['code'=>'1490','name'=>'Accumulated Depreciation','type'=>'asset','parent'=>'1400','control'=>true,'manual'=>false,'normal'=>'credit'],
+            ['code'=>'1500','name'=>'Tax Receivables','type'=>'asset','parent'=>'1000','control'=>true,'manual'=>false],
+            ['code'=>'1510','name'=>'Input Tax Receivable','type'=>'asset','parent'=>'1500','control'=>true,'manual'=>false],
 
             ['code'=>'2000','name'=>'Liabilities','type'=>'liability','parent'=>null,'control'=>false,'manual'=>false],
             ['code'=>'2100','name'=>'Accounts Payable','type'=>'liability','parent'=>'2000','control'=>true,'manual'=>false],
             ['code'=>'2200','name'=>'Commission Payable','type'=>'liability','parent'=>'2000','control'=>true,'manual'=>false],
             ['code'=>'2300','name'=>'Customer Advances','type'=>'liability','parent'=>'2000','control'=>true,'manual'=>false],
+            ['code'=>'2400','name'=>'Taxes Payable','type'=>'liability','parent'=>'2000','control'=>true,'manual'=>false],
+            ['code'=>'2410','name'=>'Withholding Tax Payable','type'=>'liability','parent'=>'2400','control'=>true,'manual'=>false],
+            ['code'=>'2420','name'=>'Output Tax Payable','type'=>'liability','parent'=>'2400','control'=>true,'manual'=>false],
 
             ['code'=>'3000','name'=>'Equity','type'=>'equity','parent'=>null,'control'=>false,'manual'=>false],
             ['code'=>'3100','name'=>'Capital','type'=>'equity','parent'=>'3000','control'=>false,'manual'=>true],
