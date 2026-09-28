@@ -65,7 +65,7 @@ return new class extends Migration
             $table->foreignId('accounting_period_id')->constrained('accounting_periods')->onDelete('restrict');
             $table->date('depreciation_date');
             $table->decimal('amount', 18, 2);
-            $table->foreignId('journal_entry_id')->unique()->constrained('journal_entries')->onDelete('restrict');
+            $table->foreignId('journal_entry_id')->nullable()->unique()->constrained('journal_entries')->onDelete('restrict');
             $table->foreignId('reversal_journal_entry_id')->nullable()->unique()->constrained('journal_entries')->onDelete('restrict');
             $table->foreignId('posted_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('reversed_by')->nullable()->constrained('users')->nullOnDelete();
