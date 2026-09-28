@@ -30,4 +30,5 @@ class VendorBillPayment extends Model
     public function journalEntry() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'vendor_bill_payment'); }
     public function reversalJournal() { return $this->hasOne(JournalEntry::class, 'source_id')->where('source_type', 'vendor_bill_payment_reverse'); }
     public function allocations() { return $this->hasMany(VendorBillPaymentAllocation::class); }
+    public function taxTransactions() { return $this->hasMany(TaxTransaction::class); }
 }
