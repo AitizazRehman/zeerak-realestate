@@ -135,6 +135,16 @@ class ExecutiveFinanceTest extends AccountingTestCase
         return $entry;
     }
 
+    private function controller()
+    {
+        return new class extends ExecutiveFinanceController {
+            protected function canAccessAllBranches()
+            {
+                return true;
+            }
+        };
+    }
+
     private function dashboard(array $filters = [])
     {
         $request = Request::create('/api/accounting/executive-finance/dashboard', 'GET', array_merge([
@@ -142,7 +152,7 @@ class ExecutiveFinanceTest extends AccountingTestCase
             'to' => '2026-09-30',
         ], $filters));
 
-        return (new ExecutiveFinanceController())->dashboard($request)->getData(true);
+        return $this->controller()->dashboard($request)->getData(true);
     }
 
     public function test_company_dashboard_reconciles_profit_balance_sheet_and_control_accounts()
