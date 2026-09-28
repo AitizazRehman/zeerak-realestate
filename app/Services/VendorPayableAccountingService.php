@@ -79,14 +79,16 @@ class VendorPayableAccountingService
                 ]);
             }
 
-            $entry->lines()->create([
-                'chart_of_account_id' => $payable->id,
-                'debit' => '0.00',
-                'credit' => $bill->total_amount,
-                'project_id' => $bill->project_id,
-                'customer_id' => null,
-                'description' => $bill->bill_number.' / Vendor #'.$bill->vendor_id,
-            ]);
+            foreach ($this->projectTotals($bill) as $projectTotal) {
+                $entry->lines()->create([
+                    'chart_of_account_id' => $payable->id,
+                    'debit' => '0.00',
+                    'credit' => $projectTotal['amount'],
+                    'project_id' => $projectTotal['project_id'],
+                    'customer_id' => null,
+                    'description' => $bill->bill_number.' / Vendor #'.$bill->vendor_id,
+                ]);
+            }
 
             return $entry;
         });
@@ -95,7 +97,10 @@ class VendorPayableAccountingService
     public function payBill(VendorBill $bill, array $data, $userId)
     {
         return DB::transaction(function () use ($bill, $data, $userId) {
-            $bill = VendorBill::whereKey($bill->id)->lockForUpdate()->firstOrFail();
+            $bill = VendorBill::with(['lines','payments.allocations'])
+                ->whereKey($bill->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
             if ($bill->status === 'cancelled') {
                 $this->fail('Cancelled vendor bills cannot be paid.');
@@ -161,23 +166,32 @@ class VendorPayableAccountingService
                 'source_id' => $payment->id,
             ], $userId);
 
-            $dimensions = [
-                'project_id' => $bill->project_id,
-                'customer_id' => null,
-                'description' => $bill->bill_number.' / Vendor #'.$bill->vendor_id,
-            ];
+            $allocations = $this->allocatePayment($bill, $amount);
 
-            $entry->lines()->create($dimensions + [
-                'chart_of_account_id' => $payable->id,
-                'debit' => $amount,
-                'credit' => '0.00',
-            ]);
+            foreach ($allocations as $allocation) {
+                $payment->allocations()->create([
+                    'project_id' => $allocation['project_id'],
+                    'amount' => $allocation['amount'],
+                ]);
 
-            $entry->lines()->create($dimensions + [
-                'chart_of_account_id' => $cash->id,
-                'debit' => '0.00',
-                'credit' => $amount,
-            ]);
+                $dimensions = [
+                    'project_id' => $allocation['project_id'],
+                    'customer_id' => null,
+                    'description' => $bill->bill_number.' / Vendor #'.$bill->vendor_id,
+                ];
+
+                $entry->lines()->create($dimensions + [
+                    'chart_of_account_id' => $payable->id,
+                    'debit' => $allocation['amount'],
+                    'credit' => '0.00',
+                ]);
+
+                $entry->lines()->create($dimensions + [
+                    'chart_of_account_id' => $cash->id,
+                    'debit' => '0.00',
+                    'credit' => $allocation['amount'],
+                ]);
+            }
 
             $this->refreshBillBalance($bill);
 
@@ -302,6 +316,110 @@ class VendorPayableAccountingService
 
             return $entry;
         });
+    }
+
+
+    private function projectTotals(VendorBill $bill)
+    {
+        $totals = [];
+
+        foreach ($bill->lines as $line) {
+            $projectId = $line->project_id ?: $bill->project_id;
+            $key = $projectId === null ? 'general' : 'project_'.$projectId;
+
+            if (!isset($totals[$key])) {
+                $totals[$key] = [
+                    'project_id' => $projectId ? (int) $projectId : null,
+                    'amount' => 0.0,
+                ];
+            }
+
+            $totals[$key]['amount'] = round(
+                $totals[$key]['amount'] + (float) $line->amount,
+                2
+            );
+        }
+
+        return array_values($totals);
+    }
+
+    private function allocatePayment(VendorBill $bill, $amount)
+    {
+        $totals = collect($this->projectTotals($bill));
+
+        $alreadyAllocated = DB::table('vendor_bill_payment_allocations as a')
+            ->join('vendor_bill_payments as p', 'p.id', '=', 'a.vendor_bill_payment_id')
+            ->where('p.vendor_bill_id', $bill->id)
+            ->whereNull('p.reversed_at')
+            ->select('a.project_id')
+            ->selectRaw('COALESCE(SUM(a.amount), 0) as allocated')
+            ->groupBy('a.project_id')
+            ->get();
+
+        $allocatedByProject = [];
+
+        foreach ($alreadyAllocated as $row) {
+            $key = $row->project_id === null ? 'general' : 'project_'.(int) $row->project_id;
+            $allocatedByProject[$key] = round((float) $row->allocated, 2);
+        }
+
+        $outstanding = $totals->map(function ($row) use ($allocatedByProject) {
+            $key = $row['project_id'] === null ? 'general' : 'project_'.$row['project_id'];
+            $used = $allocatedByProject[$key] ?? 0.0;
+
+            return [
+                'project_id' => $row['project_id'],
+                'balance' => max(0, round((float) $row['amount'] - $used, 2)),
+            ];
+        })->filter(function ($row) {
+            return $row['balance'] > 0.009;
+        })->values();
+
+        $totalOutstanding = round((float) $outstanding->sum('balance'), 2);
+
+        if ($totalOutstanding + 0.01 < $amount) {
+            $this->fail('Payment exceeds the project-allocated outstanding balance.');
+        }
+
+        $remainingPayment = round((float) $amount, 2);
+        $allocations = [];
+
+        foreach ($outstanding as $index => $row) {
+            if ($remainingPayment <= 0) break;
+
+            $isLast = $index === $outstanding->count() - 1;
+            $share = $isLast
+                ? $remainingPayment
+                : round($amount * ($row['balance'] / $totalOutstanding), 2);
+
+            $share = min($share, $row['balance'], $remainingPayment);
+
+            if ($share <= 0) continue;
+
+            $allocations[] = [
+                'project_id' => $row['project_id'],
+                'amount' => number_format($share, 2, '.', ''),
+            ];
+
+            $remainingPayment = round($remainingPayment - $share, 2);
+        }
+
+        if ($remainingPayment > 0.009 && count($allocations)) {
+            $last = count($allocations) - 1;
+            $allocations[$last]['amount'] = number_format(
+                (float) $allocations[$last]['amount'] + $remainingPayment,
+                2,
+                '.',
+                ''
+            );
+            $remainingPayment = 0.0;
+        }
+
+        if ($remainingPayment > 0.009 || !count($allocations)) {
+            $this->fail('Unable to allocate the vendor payment across project balances.');
+        }
+
+        return $allocations;
     }
 
     private function refreshBillBalance(VendorBill $bill)
