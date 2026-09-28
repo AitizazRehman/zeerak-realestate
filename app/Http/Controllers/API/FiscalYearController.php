@@ -5,6 +5,7 @@ namespace App\Http\Controllers\API;
 use App\Http\Controllers\Controller;
 use App\Models\AccountingPeriod;
 use App\Models\FiscalYear;
+use App\Services\FiscalCloseService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -62,27 +63,41 @@ class FiscalYearController extends Controller
     {
         $data = $request->validate(['status' => 'required|in:open,closed']);
 
-        DB::transaction(function () use ($fiscalYear, $data) {
-            $year = FiscalYear::whereKey($fiscalYear->id)->lockForUpdate()->firstOrFail();
-            if ($data['status'] === 'closed' && $year->periods()->where('status', 'open')->exists()) {
-                throw ValidationException::withMessages(['status' => ['Close all accounting periods before closing the fiscal year.']]);
-            }
-            $year->update($data);
-        });
+        if ($data['status'] === 'closed') {
+            throw ValidationException::withMessages([
+                'status' => ['Use the Year-End Close workflow so P&L balances are transferred to Retained Earnings and the close is audited.'],
+            ]);
+        }
 
-        return response()->json(['data' => $fiscalYear->fresh()->load('periods')]);
+        throw ValidationException::withMessages([
+            'status' => ['Use the formal Reopen Year workflow so the closing journal is reversed and the reason is recorded.'],
+        ]);
     }
 
-    public function periodStatus(Request $request, AccountingPeriod $accountingPeriod)
+    public function periodStatus(Request $request, AccountingPeriod $accountingPeriod, FiscalCloseService $closeService)
     {
         $data = $request->validate(['status' => 'required|in:open,closed']);
 
-        DB::transaction(function () use ($accountingPeriod, $data) {
+        DB::transaction(function () use ($accountingPeriod, $data, $closeService) {
             $year = FiscalYear::whereKey($accountingPeriod->fiscal_year_id)->lockForUpdate()->firstOrFail();
             $period = AccountingPeriod::whereKey($accountingPeriod->id)->lockForUpdate()->firstOrFail();
+
             if ($data['status'] === 'open' && $year->status !== 'open') {
-                throw ValidationException::withMessages(['status' => ['Reopen the fiscal year before reopening a period.']]);
+                throw ValidationException::withMessages([
+                    'status' => ['Reopen the fiscal year through the formal year-end workflow before reopening a period.'],
+                ]);
             }
+
+            if ($data['status'] === 'closed') {
+                $readiness = $closeService->periodReadiness($period);
+
+                if (!$readiness['ready']) {
+                    throw ValidationException::withMessages([
+                        'status' => [$readiness['blockers'][0] ?? 'The accounting period is not ready to close.'],
+                    ]);
+                }
+            }
+
             $period->update($data);
         });
 
