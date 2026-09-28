@@ -14,8 +14,8 @@ class AccountingPeriodService
     {
         $date = Carbon::parse($date)->toDateString();
         $match = AccountingPeriod::query()
-            ->where('starts_on', '<=', $date)
-            ->where('ends_on', '>=', $date)
+            ->whereDate('starts_on', '<=', $date)
+            ->whereDate('ends_on', '>=', $date)
             ->first();
 
         if (!$match) {
