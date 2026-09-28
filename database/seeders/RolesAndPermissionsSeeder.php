@@ -85,6 +85,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 'payments.view','payments.create',
                 'commissions.view','commissions.edit',
                 'expenses.view','expenses.create','expenses.edit',
+                'vendors.view','vendors.create','vendors.edit',
                 'reports.view','documents.view',
                 'accounting.view','accounting.create','accounting.edit','accounting.delete',
             ],
