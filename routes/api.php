@@ -43,6 +43,7 @@ use App\Http\Controllers\API\AccountsReceivableController;
 use App\Http\Controllers\API\VendorController;
 use App\Http\Controllers\API\AccountsPayableController;
 use App\Http\Controllers\API\AccountsPayableReportController;
+use App\Http\Controllers\API\TreasuryController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -126,6 +127,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('accounting/accounts-payable-control/reconciliation', [AccountsPayableReportController::class, 'reconciliation'])->middleware('permission:accounting.view');
     Route::get('accounting/accounts-payable-control/forecast', [AccountsPayableReportController::class, 'forecast'])->middleware('permission:accounting.view');
     Route::get('accounting/accounts-payable-control/vendor-statement', [AccountsPayableReportController::class, 'statement'])->middleware('permission:accounting.view');
+
+    Route::get('accounting/treasury/options', [TreasuryController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/treasury/forecast', [TreasuryController::class, 'forecast'])->middleware('permission:accounting.view');
+    Route::get('accounting/treasury/commitments', [TreasuryController::class, 'commitments'])->middleware('permission:accounting.view');
+    Route::post('accounting/treasury/commitments', [TreasuryController::class, 'storeCommitment'])->middleware('permission:accounting.create');
+    Route::put('accounting/treasury/commitments/{treasuryCommitment}', [TreasuryController::class, 'updateCommitment'])->middleware('permission:accounting.edit');
+    Route::patch('accounting/treasury/commitments/{treasuryCommitment}', [TreasuryController::class, 'updateCommitment'])->middleware('permission:accounting.edit');
+    Route::patch('accounting/treasury/commitments/{treasuryCommitment}/status', [TreasuryController::class, 'changeCommitmentStatus'])->middleware('permission:accounting.edit');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
