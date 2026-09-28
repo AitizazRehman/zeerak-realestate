@@ -333,9 +333,8 @@ class TreasuryController extends Controller
                 ->whereDate('e.entry_date', '<=', $asOf->toDateString())
                 ->whereIn('l.chart_of_account_id', $ids)
                 ->groupBy('l.chart_of_account_id')
-                ->select('l.chart_of_account_id')
-                ->selectRaw('COALESCE(SUM(l.debit - l.credit), 0) as balance')
-                ->pluck('balance', 'l.chart_of_account_id')
+                ->selectRaw('l.chart_of_account_id as account_id, COALESCE(SUM(l.debit - l.credit), 0) as balance')
+                ->pluck('balance', 'account_id')
             : collect();
 
         $rows = $accounts->map(function ($account) use ($balances) {
