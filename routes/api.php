@@ -39,6 +39,7 @@ use App\Http\Controllers\API\BankTransactionController;
 use App\Http\Controllers\API\BankStatementImportController;
 use App\Http\Controllers\API\BankReconciliationController;
 use App\Http\Controllers\API\BankReconciliationAdjustmentController;
+use App\Http\Controllers\API\AccountsReceivableController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -101,6 +102,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('accounting/bank-transactions/{bankTransaction}/reconciliation-adjustment-options', [BankReconciliationAdjustmentController::class, 'options'])->middleware('permission:accounting.view');
     Route::post('accounting/bank-transactions/{bankTransaction}/reconciliation-adjustment', [BankReconciliationAdjustmentController::class, 'store'])->middleware('permission:accounting.edit');
     Route::post('accounting/bank-reconciliation-adjustments/{bankReconciliationAdjustment}/reverse', [BankReconciliationAdjustmentController::class, 'reverse'])->middleware('permission:accounting.edit');
+
+    Route::get('accounting/accounts-receivable/options', [AccountsReceivableController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/accounts-receivable/aging', [AccountsReceivableController::class, 'aging'])->middleware('permission:accounting.view');
+    Route::get('accounting/accounts-receivable/customers/{customer}', [AccountsReceivableController::class, 'customer'])->middleware('permission:accounting.view');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
