@@ -87,7 +87,7 @@ class FixedAssetAccountingService
                 $this->fail('Depreciation can only be posted into an open accounting period.');
             }
 
-            if ($asset->status === 'disposed' && $asset->disposed_on && $period->starts_on->gt($asset->disposed_on)) {
+            if ($asset->status === 'disposed') {
                 $this->fail('Depreciation cannot be posted after asset disposal.');
             }
 
@@ -361,9 +361,11 @@ class FixedAssetAccountingService
             'remaining_depreciable' => $asset->status === 'disposed'
                 ? 0.0
                 : max(0, round($cost - $residual - $accumulated, 2)),
-            'monthly_depreciation' => $asset->useful_life_months > 0
-                ? round(($cost - $residual) / $asset->useful_life_months, 2)
-                : 0.0,
+            'monthly_depreciation' => $asset->status === 'disposed'
+                ? 0.0
+                : ($asset->useful_life_months > 0
+                    ? round(($cost - $residual) / $asset->useful_life_months, 2)
+                    : 0.0),
         ];
     }
 
