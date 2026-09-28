@@ -172,7 +172,7 @@ export default {
       branches:[],vendors:[],projects:[],accounts:[],taxTypes:[],taxCodes:[],taxCodesRaw:[],
       transactions:[],transactionTotal:0,ledgerPositions:[],byVendor:[],summary:{},page:1,perPage:25,
       filters:{from:today.slice(0,8)+'01',to:today,branch_id:null,vendor_id:null,project_id:null,tax_code_id:null,tax_type:null,status:null,certificate_status:null},
-      certificateStatuses:[{text:'Not Required',value:'not_required'},{text:'Pending',value:'pending'},{text:'Issued',value:'issued'}],
+      certificateStatuses:[{text:'Not Required',value:'not_required'},{text:'Pending',value:'pending'},{text:'Issued',value:'issued'},{text:'Voided',value:'voided'}],
       codeForm:{},
       registerHeaders:[
         {text:'Date',value:'transaction_date'},{text:'Tax / Source',value:'reference'},{text:'Vendor',value:'vendor'},{text:'Projects',value:'projects'},
