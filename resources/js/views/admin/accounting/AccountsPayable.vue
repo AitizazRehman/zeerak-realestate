@@ -8,6 +8,9 @@
           <div class="grey--text">Vendor bills, partial settlements, reversals, and payable aging tied to 2100 Accounts Payable.</div>
         </div>
         <v-spacer/>
+        <v-btn text color="#165134" class="mr-2" to="/admin/accounting/accounts-payable-control">
+          <v-icon left>mdi-chart-timeline-variant</v-icon>AP Control
+        </v-btn>
         <v-btn text color="#165134" class="mr-2" to="/admin/accounting/vendors">
           <v-icon left>mdi-store-outline</v-icon>Vendors
         </v-btn>
