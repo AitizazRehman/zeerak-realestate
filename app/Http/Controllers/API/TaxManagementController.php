@@ -121,7 +121,7 @@ class TaxManagementController extends Controller
             'tax_code_id' => ['nullable','integer','exists:tax_codes,id'],
             'tax_type' => ['nullable','in:withholding_payable,input_tax_receivable,output_tax_payable'],
             'status' => ['nullable','in:active,reversed'],
-            'certificate_status' => ['nullable','in:not_required,pending,issued'],
+            'certificate_status' => ['nullable','in:not_required,pending,issued,voided'],
             'per_page' => ['nullable','integer','min:1','max:100'],
         ]);
 
@@ -154,6 +154,7 @@ class TaxManagementController extends Controller
         if (!empty($filters['tax_code_id'])) $base->where('tax_code_id', (int) $filters['tax_code_id']);
         if (!empty($filters['tax_type'])) $base->where('tax_type', $filters['tax_type']);
         if (!empty($filters['status'])) $base->where('status', $filters['status']);
+        else $base->where('status', 'active');
         if (!empty($filters['certificate_status'])) $base->where('certificate_status', $filters['certificate_status']);
         if ($projectId) {
             $base->whereHas('allocations', function ($query) use ($projectId) {
@@ -162,20 +163,18 @@ class TaxManagementController extends Controller
         }
 
         $summaryRows = (clone $base)->get();
-        $activeRows = $summaryRows->where('status', 'active');
-
         $summary = [
             'transactions' => $summaryRows->count(),
-            'active_transactions' => $activeRows->count(),
+            'active_transactions' => $summaryRows->where('status', 'active')->count(),
             'reversed_transactions' => $summaryRows->where('status', 'reversed')->count(),
-            'taxable_amount' => $this->money($activeRows->sum('taxable_amount')),
-            'tax_amount' => $this->money($activeRows->sum('tax_amount')),
-            'net_amount' => $this->money($activeRows->sum('net_amount')),
-            'pending_certificates' => $activeRows->where('certificate_status', 'pending')->count(),
-            'issued_certificates' => $activeRows->where('certificate_status', 'issued')->count(),
+            'taxable_amount' => $this->money($summaryRows->sum('taxable_amount')),
+            'tax_amount' => $this->money($summaryRows->sum('tax_amount')),
+            'net_amount' => $this->money($summaryRows->sum('net_amount')),
+            'pending_certificates' => $summaryRows->where('certificate_status', 'pending')->count(),
+            'issued_certificates' => $summaryRows->where('certificate_status', 'issued')->count(),
         ];
 
-        $byCode = $activeRows->groupBy('tax_code_id')->map(function ($rows) {
+        $byCode = $summaryRows->groupBy('tax_code_id')->map(function ($rows) {
             $first = $rows->first();
 
             return [
@@ -189,7 +188,7 @@ class TaxManagementController extends Controller
             ];
         })->sortBy('code')->values();
 
-        $byVendor = $activeRows->whereNotNull('vendor_id')
+        $byVendor = $summaryRows->whereNotNull('vendor_id')
             ->groupBy('vendor_id')
             ->map(function ($rows) {
                 $first = $rows->first();
