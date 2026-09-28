@@ -144,6 +144,10 @@ class ExecutiveFinanceController extends Controller
     private function profitLoss($period)
     {
         $rows = (clone $period)
+            ->where(function ($query) {
+                $query->whereNull('e.source_type')
+                    ->orWhereNotIn('e.source_type', ['fiscal_year_close','fiscal_year_reopen']);
+            })
             ->whereIn('a.account_type', ['revenue','cost_of_sales','expense'])
             ->select('a.id','a.code','a.name','a.account_type')
             ->selectRaw('COALESCE(SUM(l.debit),0) as debit')
