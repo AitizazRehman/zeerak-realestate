@@ -59,67 +59,33 @@ class TreasuryForecastTest extends AccountingTestCase
             $table->softDeletes();
         });
 
-        Schema::create('customers', function (Blueprint $table) {
-            $table->id();
+        Schema::table('customers', function (Blueprint $table) {
             $table->unsignedBigInteger('branch_id')->nullable();
             $table->string('customer_number')->nullable();
-            $table->string('name');
-            $table->timestamps();
-            $table->softDeletes();
         });
 
-        Schema::create('properties', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('project_id');
+        Schema::table('properties', function (Blueprint $table) {
             $table->string('property_number')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
         });
 
-        Schema::create('bookings', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('customer_id');
-            $table->unsignedBigInteger('property_id');
-            $table->unsignedBigInteger('sales_agent_id')->nullable();
-            $table->string('booking_number');
-            $table->string('status');
-            $table->decimal('property_price', 15, 2)->default(0);
-            $table->decimal('discount', 15, 2)->default(0);
-            $table->decimal('final_price', 15, 2)->default(0);
-            $table->decimal('paid_amount', 15, 2)->default(0);
-            $table->decimal('remaining_amount', 15, 2)->default(0);
-            $table->date('booking_date');
-            $table->text('notes')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        Schema::create('installment_plans', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('booking_id');
-            $table->string('plan_name');
+        Schema::table('installment_plans', function (Blueprint $table) {
+            $table->string('plan_name')->nullable();
             $table->string('frequency')->default('monthly');
-            $table->decimal('total_amount', 15, 2);
+            $table->decimal('total_amount', 15, 2)->nullable();
             $table->decimal('down_payment', 15, 2)->default(0);
-            $table->decimal('installment_amount', 15, 2);
-            $table->unsignedInteger('number_of_installments');
-            $table->date('start_date');
+            $table->decimal('installment_amount', 15, 2)->nullable();
+            $table->unsignedInteger('number_of_installments')->nullable();
+            $table->date('start_date')->nullable();
             $table->date('end_date')->nullable();
-            $table->string('status')->default('active');
             $table->text('notes')->nullable();
             $table->timestamps();
-            $table->softDeletes();
         });
 
-        Schema::create('installments', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('installment_plan_id');
-            $table->unsignedBigInteger('booking_id');
-            $table->unsignedInteger('installment_number');
-            $table->date('due_date');
-            $table->decimal('amount', 15, 2);
+        Schema::table('installments', function (Blueprint $table) {
+            $table->unsignedInteger('installment_number')->nullable();
+            $table->date('due_date')->nullable();
+            $table->decimal('amount', 15, 2)->default(0);
             $table->decimal('paid_amount', 15, 2)->default(0);
-            $table->decimal('remaining_amount', 15, 2);
             $table->string('status')->default('pending');
             $table->date('paid_date')->nullable();
             $table->text('notes')->nullable();
@@ -232,25 +198,18 @@ class TreasuryForecastTest extends AccountingTestCase
             'description' => 'Opening cash',
         ]);
 
-        DB::table('customers')->insert([
-            'id' => 1,
+        DB::table('customers')->where('id', 1)->update([
             'branch_id' => 1,
             'customer_number' => 'CUS-001',
             'name' => 'Test Customer',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
-        DB::table('properties')->insert([
-            'id' => 1,
+        DB::table('properties')->where('id', 1)->update([
             'project_id' => 1,
             'property_number' => 'A-01',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
-        DB::table('bookings')->insert([
-            'id' => 1,
+        DB::table('bookings')->where('id', 1)->update([
             'customer_id' => 1,
             'property_id' => 1,
             'booking_number' => 'BKG-001',
@@ -259,8 +218,6 @@ class TreasuryForecastTest extends AccountingTestCase
             'paid_amount' => 0,
             'remaining_amount' => 1200,
             'booking_date' => '2026-09-01',
-            'created_at' => now(),
-            'updated_at' => now(),
         ]);
 
         DB::table('installment_plans')->insert([
