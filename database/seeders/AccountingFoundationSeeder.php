@@ -57,6 +57,7 @@ class AccountingFoundationSeeder extends Seeder
             ['code'=>'4000','name'=>'Revenue','type'=>'revenue','parent'=>null,'control'=>false,'manual'=>false],
             ['code'=>'4100','name'=>'Property Sales','type'=>'revenue','parent'=>'4000','control'=>false,'manual'=>true],
             ['code'=>'4200','name'=>'Other Income','type'=>'revenue','parent'=>'4000','control'=>false,'manual'=>true],
+            ['code'=>'4210','name'=>'Gain on Asset Disposal','type'=>'revenue','parent'=>'4000','control'=>false,'manual'=>true],
 
             ['code'=>'5000','name'=>'Cost of Sales','type'=>'cost_of_sales','parent'=>null,'control'=>false,'manual'=>false],
             ['code'=>'5100','name'=>'Land Cost','type'=>'cost_of_sales','parent'=>'5000','control'=>false,'manual'=>true],
@@ -70,6 +71,7 @@ class AccountingFoundationSeeder extends Seeder
             ['code'=>'6500','name'=>'Sales Commission Expense','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
             ['code'=>'6600','name'=>'Bank Charges','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
             ['code'=>'6700','name'=>'Depreciation Expense','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
+            ['code'=>'6800','name'=>'Loss on Asset Disposal','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
         ];
 
         $ids = [];
