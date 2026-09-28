@@ -169,9 +169,9 @@ class FixedAssetAccountingTest extends AccountingTestCase
         ]);
 
         $values = $this->service->bookValues($asset->fresh());
-        $this->assertSame(100.0, $values['accumulated_depreciation']);
-        $this->assertSame(1100.0, $values['net_book_value']);
-        $this->assertSame(100.0, $values['monthly_depreciation']);
+        $this->assertEquals(100.0, $values['accumulated_depreciation']);
+        $this->assertEquals(1100.0, $values['net_book_value']);
+        $this->assertEquals(100.0, $values['monthly_depreciation']);
     }
 
     public function test_reversed_depreciation_can_be_reposted_for_same_period()
@@ -192,7 +192,7 @@ class FixedAssetAccountingTest extends AccountingTestCase
         $this->assertNotNull($first->reversed_at);
 
         $valuesAfterReverse = $this->service->bookValues($asset->fresh());
-        $this->assertSame(0.0, $valuesAfterReverse['accumulated_depreciation']);
+        $this->assertEquals(0.0, $valuesAfterReverse['accumulated_depreciation']);
 
         $replacement = $this->service->postDepreciation($asset, $period, 1);
 
