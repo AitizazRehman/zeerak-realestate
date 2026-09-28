@@ -235,8 +235,9 @@ export default {
   async mounted(){await this.loadOptions();await Promise.all([this.loadBills(),this.loadAging()])},
   methods:{
     today(){const d=new Date(),o=d.getTimezoneOffset();return new Date(d.getTime()-o*60000).toISOString().slice(0,10)},
-    async loadOptions(){
-      const r=await api.get('/accounting/accounts-payable/options',{params:{branch_id:this.filters.branch_id||undefined},skipGlobalLoader:true})
+    async loadOptions(branchId){
+      const selectedBranch=branchId===undefined ? this.filters.branch_id : branchId
+      const r=await api.get('/accounting/accounts-payable/options',{params:{branch_id:selectedBranch||undefined},skipGlobalLoader:true})
       this.branches=r.data.branches||this.branches
       this.vendors=(r.data.vendors||[]).map(x=>Object.assign({},x,{display:x.vendor_number+' · '+x.name}))
       this.projects=(r.data.projects||[]).map(x=>Object.assign({},x,{display:(x.code?x.code+' · ':'')+x.name}))
@@ -259,7 +260,12 @@ export default {
     perPageChanged(v){this.perPage=Number(v||25);this.page=1;this.loadBills()},
     blankLine(){return{chart_of_account_id:null,project_id:null,description:'',amount:null}},
     openBill(){this.billErrors={};this.billForm={branch_id:this.filters.branch_id||null,vendor_id:null,project_id:null,vendor_invoice_number:'',bill_date:this.today(),due_date:this.today(),description:'',notes:'',lines:[this.blankLine()]};this.billDialog=true},
-    async billBranchChanged(){await this.loadOptions()},
+    async billBranchChanged(){
+      this.billForm.vendor_id=null
+      this.billForm.project_id=null
+      this.billForm.lines=(this.billForm.lines||[]).map(line=>Object.assign({},line,{project_id:null}))
+      await this.loadOptions(this.billForm.branch_id)
+    },
     vendorChanged(id){
       const v=this.vendors.find(x=>Number(x.id)===Number(id));if(!v)return
       const d=new Date(this.billForm.bill_date+'T00:00:00');d.setDate(d.getDate()+Number(v.payment_terms_days||0))
