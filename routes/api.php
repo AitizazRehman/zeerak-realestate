@@ -44,6 +44,7 @@ use App\Http\Controllers\API\VendorController;
 use App\Http\Controllers\API\AccountsPayableController;
 use App\Http\Controllers\API\AccountsPayableReportController;
 use App\Http\Controllers\API\TreasuryController;
+use App\Http\Controllers\API\ExecutiveFinanceController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -135,6 +136,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('accounting/treasury/commitments/{treasuryCommitment}', [TreasuryController::class, 'updateCommitment'])->middleware('permission:accounting.edit');
     Route::patch('accounting/treasury/commitments/{treasuryCommitment}', [TreasuryController::class, 'updateCommitment'])->middleware('permission:accounting.edit');
     Route::patch('accounting/treasury/commitments/{treasuryCommitment}/status', [TreasuryController::class, 'changeCommitmentStatus'])->middleware('permission:accounting.edit');
+
+    Route::get('accounting/executive-finance/options', [ExecutiveFinanceController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/executive-finance/dashboard', [ExecutiveFinanceController::class, 'dashboard'])->middleware('permission:accounting.view');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
