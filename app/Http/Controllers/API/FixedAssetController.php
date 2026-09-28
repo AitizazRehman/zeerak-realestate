@@ -16,6 +16,7 @@ use App\Services\PaymentAccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class FixedAssetController extends Controller
@@ -472,8 +473,18 @@ class FixedAssetController extends Controller
 
     private function categoryData(Request $request)
     {
+        $routeCategory = $request->route('fixedAssetCategory');
+        $categoryId = $routeCategory instanceof FixedAssetCategory
+            ? $routeCategory->id
+            : (is_numeric($routeCategory) ? (int) $routeCategory : null);
+
         return $request->validate([
-            'name' => ['required','string','max:150','unique:fixed_asset_categories,name'.($request->route('fixedAssetCategory') ? ','.$request->route('fixedAssetCategory')->id : '')],
+            'name' => [
+                'required',
+                'string',
+                'max:150',
+                Rule::unique('fixed_asset_categories', 'name')->ignore($categoryId),
+            ],
             'asset_account_id' => ['required','integer','exists:chart_of_accounts,id'],
             'accumulated_depreciation_account_id' => ['required','integer','exists:chart_of_accounts,id','different:asset_account_id'],
             'depreciation_expense_account_id' => ['required','integer','exists:chart_of_accounts,id'],
