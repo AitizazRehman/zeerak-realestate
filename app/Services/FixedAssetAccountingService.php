@@ -97,14 +97,12 @@ class FixedAssetAccountingService
 
             $existing = FixedAssetDepreciation::where('fixed_asset_id', $asset->id)
                 ->where('accounting_period_id', $period->id)
+                ->whereNull('reversed_at')
+                ->latest('id')
                 ->first();
 
-            if ($existing && !$existing->reversed_at) {
+            if ($existing) {
                 return $existing;
-            }
-
-            if ($existing && $existing->reversed_at) {
-                $this->fail('A reversed depreciation record already exists for this asset and period.');
             }
 
             $amount = $this->depreciationAmount($asset);
