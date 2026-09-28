@@ -40,4 +40,5 @@ class TaxTransaction extends Model
     public function vendorBillPayment() { return $this->belongsTo(VendorBillPayment::class); }
     public function certificateIssuedBy() { return $this->belongsTo(User::class, 'certificate_issued_by'); }
     public function reversedBy() { return $this->belongsTo(User::class, 'reversed_by'); }
+    public function allocations() { return $this->hasMany(TaxTransactionAllocation::class); }
 }
