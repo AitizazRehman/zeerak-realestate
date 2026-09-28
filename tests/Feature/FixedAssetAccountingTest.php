@@ -223,11 +223,11 @@ class FixedAssetAccountingTest extends AccountingTestCase
 
         $entry = $result['entry'];
 
-        $this->assertSame(100.0, $result['accumulated_depreciation']);
-        $this->assertSame(1100.0, $result['net_book_value']);
-        $this->assertSame(1000.0, $result['proceeds']);
-        $this->assertSame(0.0, $result['gain']);
-        $this->assertSame(100.0, $result['loss']);
+        $this->assertEquals(100.0, $result['accumulated_depreciation']);
+        $this->assertEquals(1100.0, $result['net_book_value']);
+        $this->assertEquals(1000.0, $result['proceeds']);
+        $this->assertEquals(0.0, $result['gain']);
+        $this->assertEquals(100.0, $result['loss']);
 
         $this->assertDatabaseHas('journal_lines', [
             'journal_entry_id' => $entry->id,
@@ -257,7 +257,7 @@ class FixedAssetAccountingTest extends AccountingTestCase
         $asset->refresh();
         $this->assertSame('disposed', $asset->status);
         $values = $this->service->bookValues($asset);
-        $this->assertSame(0.0, $values['net_book_value']);
-        $this->assertSame(0.0, $values['remaining_depreciable']);
+        $this->assertEquals(0.0, $values['net_book_value']);
+        $this->assertEquals(0.0, $values['remaining_depreciable']);
     }
 }
