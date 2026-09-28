@@ -41,6 +41,8 @@ import BankTransactions from '../views/admin/accounting/BankTransactions.vue'
 import BankStatementImports from '../views/admin/accounting/BankStatementImports.vue'
 import BankReconciliation from '../views/admin/accounting/BankReconciliation.vue'
 import AccountsReceivable from '../views/admin/accounting/AccountsReceivable.vue'
+import Vendors from '../views/admin/accounting/Vendors.vue'
+import AccountsPayable from '../views/admin/accounting/AccountsPayable.vue'
 
 Vue.use(VueRouter)
 
@@ -83,6 +85,8 @@ const routes = [
             { path: 'accounting/bank-statement-imports', name: 'bank-statement-imports', component: BankStatementImports, meta: { permission: 'accounting.view' } },
             { path: 'accounting/bank-reconciliation', name: 'bank-reconciliation', component: BankReconciliation, meta: { permission: 'accounting.view' } },
             { path: 'accounting/accounts-receivable', name: 'accounts-receivable', component: AccountsReceivable, meta: { permission: 'accounting.view' } },
+            { path: 'accounting/vendors', name: 'vendors', component: Vendors, meta: { permission: 'vendors.view' } },
+            { path: 'accounting/accounts-payable', name: 'accounts-payable', component: AccountsPayable, meta: { permission: 'accounting.view' } },
             { path: 'accounting/general-ledger', name: 'general-ledger', component: AccountingReport, props: { report: 'ledger' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/customer-statement', name: 'customer-statement', component: FinancialStatement, props: { type: 'customer' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/project-statement', name: 'project-statement', component: FinancialStatement, props: { type: 'project' }, meta: { permission: 'accounting.view' } },
