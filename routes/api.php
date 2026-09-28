@@ -48,6 +48,7 @@ use App\Http\Controllers\API\TreasuryController;
 use App\Http\Controllers\API\ExecutiveFinanceController;
 use App\Http\Controllers\API\AccountingBudgetController;
 use App\Http\Controllers\API\FixedAssetController;
+use App\Http\Controllers\API\TaxManagementController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -163,6 +164,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::post('accounting/fixed-assets/depreciation/run', [FixedAssetController::class, 'postPeriodDepreciation'])->middleware('permission:accounting.edit');
     Route::post('accounting/fixed-assets/depreciations/{fixedAssetDepreciation}/reverse', [FixedAssetController::class, 'reverseDepreciation'])->middleware('permission:accounting.edit');
     Route::post('accounting/fixed-assets/{fixedAsset}/dispose', [FixedAssetController::class, 'dispose'])->middleware('permission:accounting.edit');
+
+    Route::get('accounting/taxes/options', [TaxManagementController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/taxes/codes', [TaxManagementController::class, 'codes'])->middleware('permission:accounting.view');
+    Route::post('accounting/taxes/codes', [TaxManagementController::class, 'storeCode'])->middleware('permission:accounting.create');
+    Route::put('accounting/taxes/codes/{taxCode}', [TaxManagementController::class, 'updateCode'])->middleware('permission:accounting.edit');
+    Route::get('accounting/taxes/register', [TaxManagementController::class, 'register'])->middleware('permission:accounting.view');
+    Route::post('accounting/taxes/transactions/{taxTransaction}/certificate', [TaxManagementController::class, 'issueCertificate'])->middleware('permission:accounting.edit');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
