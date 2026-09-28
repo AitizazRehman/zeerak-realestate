@@ -47,6 +47,7 @@ import AccountsPayableControl from '../views/admin/accounting/AccountsPayableCon
 import Treasury from '../views/admin/accounting/Treasury.vue'
 import ExecutiveFinance from '../views/admin/accounting/ExecutiveFinance.vue'
 import AccountingBudgets from '../views/admin/accounting/AccountingBudgets.vue'
+import FixedAssets from '../views/admin/accounting/FixedAssets.vue'
 
 Vue.use(VueRouter)
 
@@ -95,6 +96,7 @@ const routes = [
             { path: 'accounting/treasury', name: 'treasury', component: Treasury, meta: { permission: 'accounting.view' } },
             { path: 'accounting/executive-finance', name: 'executive-finance', component: ExecutiveFinance, meta: { permission: 'accounting.view' } },
             { path: 'accounting/budgets', name: 'accounting-budgets', component: AccountingBudgets, meta: { permission: 'accounting.view' } },
+            { path: 'accounting/fixed-assets', name: 'fixed-assets', component: FixedAssets, meta: { permission: 'accounting.view' } },
             { path: 'accounting/general-ledger', name: 'general-ledger', component: AccountingReport, props: { report: 'ledger' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/customer-statement', name: 'customer-statement', component: FinancialStatement, props: { type: 'customer' }, meta: { permission: 'accounting.view' } },
             { path: 'accounting/project-statement', name: 'project-statement', component: FinancialStatement, props: { type: 'project' }, meta: { permission: 'accounting.view' } },
