@@ -356,9 +356,13 @@ class FixedAssetAccountingService
         return [
             'cost' => $cost,
             'accumulated_depreciation' => $accumulated,
-            'net_book_value' => max($residual, round($cost - $accumulated, 2)),
+            'net_book_value' => $asset->status === 'disposed'
+                ? 0.0
+                : max($residual, round($cost - $accumulated, 2)),
             'depreciable_amount' => max(0, round($cost - $residual, 2)),
-            'remaining_depreciable' => max(0, round($cost - $residual - $accumulated, 2)),
+            'remaining_depreciable' => $asset->status === 'disposed'
+                ? 0.0
+                : max(0, round($cost - $residual - $accumulated, 2)),
             'monthly_depreciation' => $asset->useful_life_months > 0
                 ? round(($cost - $residual) / $asset->useful_life_months, 2)
                 : 0.0,
