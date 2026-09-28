@@ -88,13 +88,34 @@
           <div class="pa-4">
             <v-row>
               <v-col cols="12" md="4">
-                <statement-section title="Revenue" :items="plAccounts.revenue || []" :total="pl.revenue"/>
+                <v-card flat outlined class="statement-section pa-3">
+                  <div class="subtitle-2 font-weight-bold mb-2">Revenue</div>
+                  <div v-if="!(plAccounts.revenue || []).length" class="caption grey--text">No posted balance.</div>
+                  <div v-for="item in plAccounts.revenue || []" :key="item.id" class="d-flex justify-space-between py-1">
+                    <span class="mr-3">{{item.code}} · {{item.name}}</span><span>PKR {{money(item.amount)}}</span>
+                  </div>
+                  <v-divider class="my-2"/><div class="d-flex justify-space-between font-weight-bold"><span>Total</span><span>PKR {{money(pl.revenue)}}</span></div>
+                </v-card>
               </v-col>
               <v-col cols="12" md="4">
-                <statement-section title="Cost of Sales" :items="plAccounts.cost_of_sales || []" :total="pl.cost_of_sales"/>
+                <v-card flat outlined class="statement-section pa-3">
+                  <div class="subtitle-2 font-weight-bold mb-2">Cost of Sales</div>
+                  <div v-if="!(plAccounts.cost_of_sales || []).length" class="caption grey--text">No posted balance.</div>
+                  <div v-for="item in plAccounts.cost_of_sales || []" :key="item.id" class="d-flex justify-space-between py-1">
+                    <span class="mr-3">{{item.code}} · {{item.name}}</span><span>PKR {{money(item.amount)}}</span>
+                  </div>
+                  <v-divider class="my-2"/><div class="d-flex justify-space-between font-weight-bold"><span>Total</span><span>PKR {{money(pl.cost_of_sales)}}</span></div>
+                </v-card>
               </v-col>
               <v-col cols="12" md="4">
-                <statement-section title="Operating Expenses" :items="plAccounts.expense || []" :total="pl.operating_expenses"/>
+                <v-card flat outlined class="statement-section pa-3">
+                  <div class="subtitle-2 font-weight-bold mb-2">Operating Expenses</div>
+                  <div v-if="!(plAccounts.expense || []).length" class="caption grey--text">No posted balance.</div>
+                  <div v-for="item in plAccounts.expense || []" :key="item.id" class="d-flex justify-space-between py-1">
+                    <span class="mr-3">{{item.code}} · {{item.name}}</span><span>PKR {{money(item.amount)}}</span>
+                  </div>
+                  <v-divider class="my-2"/><div class="d-flex justify-space-between font-weight-bold"><span>Total</span><span>PKR {{money(pl.operating_expenses)}}</span></div>
+                </v-card>
               </v-col>
             </v-row>
 
@@ -114,13 +135,34 @@
           <div class="pa-4">
             <v-row>
               <v-col cols="12" md="4">
-                <statement-section title="Assets" :items="bsAccounts.asset || []" :total="bs.assets"/>
+                <v-card flat outlined class="statement-section pa-3">
+                  <div class="subtitle-2 font-weight-bold mb-2">Assets</div>
+                  <div v-if="!(bsAccounts.asset || []).length" class="caption grey--text">No posted balance.</div>
+                  <div v-for="item in bsAccounts.asset || []" :key="item.id" class="d-flex justify-space-between py-1">
+                    <span class="mr-3">{{item.code}} · {{item.name}}</span><span>PKR {{money(item.amount)}}</span>
+                  </div>
+                  <v-divider class="my-2"/><div class="d-flex justify-space-between font-weight-bold"><span>Total</span><span>PKR {{money(bs.assets)}}</span></div>
+                </v-card>
               </v-col>
               <v-col cols="12" md="4">
-                <statement-section title="Liabilities" :items="bsAccounts.liability || []" :total="bs.liabilities"/>
+                <v-card flat outlined class="statement-section pa-3">
+                  <div class="subtitle-2 font-weight-bold mb-2">Liabilities</div>
+                  <div v-if="!(bsAccounts.liability || []).length" class="caption grey--text">No posted balance.</div>
+                  <div v-for="item in bsAccounts.liability || []" :key="item.id" class="d-flex justify-space-between py-1">
+                    <span class="mr-3">{{item.code}} · {{item.name}}</span><span>PKR {{money(item.amount)}}</span>
+                  </div>
+                  <v-divider class="my-2"/><div class="d-flex justify-space-between font-weight-bold"><span>Total</span><span>PKR {{money(bs.liabilities)}}</span></div>
+                </v-card>
               </v-col>
               <v-col cols="12" md="4">
-                <statement-section title="Equity" :items="bsAccounts.equity || []" :total="bs.equity_before_unclosed_earnings"/>
+                <v-card flat outlined class="statement-section pa-3">
+                  <div class="subtitle-2 font-weight-bold mb-2">Equity</div>
+                  <div v-if="!(bsAccounts.equity || []).length" class="caption grey--text">No posted balance.</div>
+                  <div v-for="item in bsAccounts.equity || []" :key="item.id" class="d-flex justify-space-between py-1">
+                    <span class="mr-3">{{item.code}} · {{item.name}}</span><span>PKR {{money(item.amount)}}</span>
+                  </div>
+                  <v-divider class="my-2"/><div class="d-flex justify-space-between font-weight-bold"><span>Total</span><span>PKR {{money(bs.equity_before_unclosed_earnings)}}</span></div>
+                </v-card>
                 <v-card flat outlined class="pa-3 mt-3">
                   <div class="d-flex justify-space-between">
                     <span>Unclosed Earnings</span>
@@ -170,30 +212,8 @@
 <script>
 import api from '../../../services/api'
 
-const StatementSection={
-  props:['title','items','total'],
-  methods:{
-    money(v){return new Intl.NumberFormat('en-PK',{minimumFractionDigits:2,maximumFractionDigits:2}).format(Number(v||0))}
-  },
-  template:`
-    <v-card flat outlined class="statement-section pa-3">
-      <div class="subtitle-2 font-weight-bold mb-2">{{title}}</div>
-      <div v-if="!items.length" class="caption grey--text">No posted balance.</div>
-      <div v-for="item in items" :key="item.id" class="d-flex justify-space-between py-1">
-        <span class="mr-3">{{item.code}} · {{item.name}}</span>
-        <span>PKR {{money(item.amount)}}</span>
-      </div>
-      <v-divider class="my-2"/>
-      <div class="d-flex justify-space-between font-weight-bold">
-        <span>Total</span><span>PKR {{money(total)}}</span>
-      </div>
-    </v-card>
-  `
-}
-
 export default {
   name:'ExecutiveFinance',
-  components:{StatementSection},
   data(){
     const now=new Date(),offset=now.getTimezoneOffset(),today=new Date(now.getTime()-offset*60000).toISOString().slice(0,10)
     return{
