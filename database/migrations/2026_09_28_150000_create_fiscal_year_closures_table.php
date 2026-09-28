@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('fiscal_year_closures', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('fiscal_year_id')->unique()->constrained('fiscal_years')->onDelete('restrict');
+            $table->foreignId('fiscal_year_id')->constrained('fiscal_years')->onDelete('restrict');
             $table->unsignedBigInteger('closing_journal_entry_id')->nullable();
             $table->unsignedBigInteger('reversal_journal_entry_id')->nullable();
             $table->decimal('net_result', 18, 2)->default(0);
@@ -29,6 +29,7 @@ return new class extends Migration
                 ->references('id')->on('journal_entries')->onDelete('restrict');
             $table->unique('closing_journal_entry_id', 'fy_close_journal_uq');
             $table->unique('reversal_journal_entry_id', 'fy_reversal_journal_uq');
+            $table->index(['fiscal_year_id','status'], 'fy_close_year_status_idx');
             $table->index(['status','closed_at'], 'fy_close_status_date_idx');
         });
     }
