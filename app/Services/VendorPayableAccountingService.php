@@ -290,6 +290,14 @@ class VendorPayableAccountingService
 
             $payment->taxTransactions()
                 ->where('status', 'active')
+                ->whereIn('certificate_status', ['pending','issued'])
+                ->update([
+                    'certificate_status' => 'voided',
+                    'updated_at' => now(),
+                ]);
+
+            $payment->taxTransactions()
+                ->where('status', 'active')
                 ->update([
                     'status' => 'reversed',
                     'reversed_by' => $userId,
