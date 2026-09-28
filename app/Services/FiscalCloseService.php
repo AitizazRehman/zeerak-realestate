@@ -183,6 +183,19 @@ class FiscalCloseService
             }
         }
 
+        if (Schema::hasTable('tax_transactions')) {
+            $pendingTaxCertificates = DB::table('tax_transactions')
+                ->where('status', 'active')
+                ->where('certificate_status', 'pending')
+                ->whereDate('transaction_date', '>=', $year->starts_on->toDateString())
+                ->whereDate('transaction_date', '<=', $year->ends_on->toDateString())
+                ->count();
+
+            if ($pendingTaxCertificates > 0) {
+                $warnings[] = $pendingTaxCertificates.' withholding certificate(s) are still pending for the fiscal year.';
+            }
+        }
+
         if (Schema::hasTable('fixed_assets') && Schema::hasTable('fixed_asset_depreciations')) {
             $pendingDepreciation = DB::table('fixed_assets as fa')
                 ->where('fa.status', 'active')
