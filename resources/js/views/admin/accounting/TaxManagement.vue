@@ -249,7 +249,7 @@ export default {
     },
     async issueCertificate(item){
       try{
-        await api.post('/accounting/taxes/transactions/'+item.id+'/certificate',{certificate_date:this.filters.to},{skipGlobalError:true})
+        await api.post('/accounting/taxes/transactions/'+item.id+'/certificate',{}, {skipGlobalError:true})
         await this.loadRegister()
       }catch(e){this.$root.$emit('show-error',this.errorText(e,'Unable to issue withholding certificate.'))}
     },
