@@ -41,6 +41,9 @@ class AccountingFoundationSeeder extends Seeder
             ['code'=>'1100','name'=>'Cash & Bank','type'=>'asset','parent'=>'1000','control'=>true,'manual'=>false],
             ['code'=>'1200','name'=>'Accounts Receivable','type'=>'asset','parent'=>'1000','control'=>true,'manual'=>false],
             ['code'=>'1300','name'=>'Property Inventory','type'=>'asset','parent'=>'1000','control'=>true,'manual'=>false],
+            ['code'=>'1400','name'=>'Fixed Assets','type'=>'asset','parent'=>'1000','control'=>true,'manual'=>false],
+            ['code'=>'1410','name'=>'Furniture & Equipment','type'=>'asset','parent'=>'1400','control'=>false,'manual'=>true],
+            ['code'=>'1490','name'=>'Accumulated Depreciation','type'=>'asset','parent'=>'1400','control'=>true,'manual'=>false,'normal'=>'credit'],
 
             ['code'=>'2000','name'=>'Liabilities','type'=>'liability','parent'=>null,'control'=>false,'manual'=>false],
             ['code'=>'2100','name'=>'Accounts Payable','type'=>'liability','parent'=>'2000','control'=>true,'manual'=>false],
@@ -66,6 +69,7 @@ class AccountingFoundationSeeder extends Seeder
             ['code'=>'6400','name'=>'Office Expense','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
             ['code'=>'6500','name'=>'Sales Commission Expense','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
             ['code'=>'6600','name'=>'Bank Charges','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
+            ['code'=>'6700','name'=>'Depreciation Expense','type'=>'expense','parent'=>'6000','control'=>false,'manual'=>true],
         ];
 
         $ids = [];
@@ -75,9 +79,11 @@ class AccountingFoundationSeeder extends Seeder
                 ? $ids[$definition['parent']]
                 : null;
 
-            $normalBalance = in_array($definition['type'], ['asset','cost_of_sales','expense'], true)
-                ? 'debit'
-                : 'credit';
+            $normalBalance = $definition['normal'] ?? (
+                in_array($definition['type'], ['asset','cost_of_sales','expense'], true)
+                    ? 'debit'
+                    : 'credit'
+            );
 
             $account = ChartOfAccount::withTrashed()->firstOrNew(['code' => $definition['code']]);
 
