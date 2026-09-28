@@ -192,13 +192,16 @@ class AccountsReceivableController extends Controller
         if (!empty($filters['bucket'])) {
             $bucket = $filters['bucket'];
 
-            $customerRows = $customerRows->filter(function ($row) use ($bucket) {
+            $bucketFilter = function ($row) use ($bucket) {
                 if ($bucket === 'overdue') {
                     return (float) $row['overdue'] > 0;
                 }
 
                 return (float) $row[$bucket] > 0;
-            })->values();
+            };
+
+            $customerRows = $customerRows->filter($bucketFilter)->values();
+            $projectRows = $projectRows->filter($bucketFilter)->values();
         }
 
         $page = max((int) ($filters['page'] ?? 1), 1);
