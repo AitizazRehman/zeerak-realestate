@@ -202,7 +202,7 @@ class FiscalCloseTest extends AccountingTestCase
 
         $reopened = $this->service->reopen(
             $year,
-            '2026-09-30',
+            '2026-12-31',
             'Correction required after management review',
             1
         );
