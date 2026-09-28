@@ -8,6 +8,7 @@ use App\Models\FiscalYear;
 use App\Models\FiscalYearClosure;
 use App\Models\JournalEntry;
 use App\Services\FiscalCloseService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\AccountingTestCase;
 
@@ -53,6 +54,19 @@ class FiscalCloseTest extends AccountingTestCase
         );
 
         $this->service = new FiscalCloseService();
+
+        $year = FiscalYear::firstOrFail();
+        $year->periods()->delete();
+
+        for ($month = 1; $month <= 12; $month++) {
+            $start = Carbon::create(2026, $month, 1)->startOfMonth();
+            $year->periods()->create([
+                'name' => $start->format('F Y'),
+                'starts_on' => $start->toDateString(),
+                'ends_on' => $start->copy()->endOfMonth()->toDateString(),
+                'status' => $month === 12 ? 'open' : 'closed',
+            ]);
+        }
 
         $this->postedJournal('2026-09-10', [
             [$this->cashId, 1000, 0],
@@ -100,7 +114,9 @@ class FiscalCloseTest extends AccountingTestCase
         $entry = JournalEntry::create([
             'entry_number' => 'JE-CLOSE-'.str_pad((string) (JournalEntry::count() + 1), 3, '0', STR_PAD_LEFT),
             'entry_date' => $date,
-            'accounting_period_id' => AccountingPeriod::first()->id,
+            'accounting_period_id' => AccountingPeriod::whereDate('starts_on', '<=', $date)
+                ->whereDate('ends_on', '>=', $date)
+                ->firstOrFail()->id,
             'description' => $description,
             'status' => 'posted',
             'created_by' => 1,
@@ -140,7 +156,7 @@ class FiscalCloseTest extends AccountingTestCase
 
         $year->refresh();
         $this->assertSame('closed', $year->status);
-        $this->assertSame('closed', AccountingPeriod::first()->status);
+        $this->assertSame('closed', AccountingPeriod::whereDate('ends_on', '2026-12-31')->firstOrFail()->status);
 
         $entry = $closure->closingJournal()->firstOrFail();
 
@@ -195,7 +211,7 @@ class FiscalCloseTest extends AccountingTestCase
         $this->assertSame('reopened', $reopened->status);
         $this->assertNotNull($reopened->reversal_journal_entry_id);
         $this->assertSame('open', FiscalYear::first()->status);
-        $this->assertSame('open', AccountingPeriod::first()->status);
+        $this->assertSame('open', AccountingPeriod::whereDate('ends_on', '2026-12-31')->firstOrFail()->status);
 
         $reversal = $reopened->reversalJournal()->firstOrFail();
         $this->assertSame($firstClosure->closing_journal_entry_id, $reversal->reverses_entry_id);
@@ -216,7 +232,9 @@ class FiscalCloseTest extends AccountingTestCase
         JournalEntry::create([
             'entry_number' => 'JE-DRAFT-CLOSE',
             'entry_date' => '2026-09-20',
-            'accounting_period_id' => AccountingPeriod::first()->id,
+            'accounting_period_id' => AccountingPeriod::whereDate('starts_on', '<=', '2026-09-20')
+                ->whereDate('ends_on', '>=', '2026-09-20')
+                ->firstOrFail()->id,
             'description' => 'Unfinished adjustment',
             'status' => 'draft',
             'created_by' => 1,
