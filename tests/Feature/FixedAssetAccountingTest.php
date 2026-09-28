@@ -148,7 +148,7 @@ class FixedAssetAccountingTest extends AccountingTestCase
             'project_id' => 1,
         ]);
 
-        $period = AccountingPeriod::where('starts_on', '2026-09-01')->firstOrFail();
+        $period = AccountingPeriod::whereDate('starts_on', '2026-09-01')->firstOrFail();
         $depreciation = $this->service->postDepreciation($asset, $period, 1);
 
         $this->assertSame('100.00', $depreciation->amount);
@@ -177,7 +177,7 @@ class FixedAssetAccountingTest extends AccountingTestCase
     public function test_reversed_depreciation_can_be_reposted_for_same_period()
     {
         $asset = $this->createAsset('existing_gl');
-        $period = AccountingPeriod::where('starts_on', '2026-09-01')->firstOrFail();
+        $period = AccountingPeriod::whereDate('starts_on', '2026-09-01')->firstOrFail();
 
         $first = $this->service->postDepreciation($asset, $period, 1);
         $reversal = $this->service->reverseDepreciation(
@@ -211,7 +211,7 @@ class FixedAssetAccountingTest extends AccountingTestCase
     public function test_disposal_removes_cost_and_posts_loss_against_net_book_value()
     {
         $asset = $this->createAsset('existing_gl');
-        $period = AccountingPeriod::where('starts_on', '2026-09-01')->firstOrFail();
+        $period = AccountingPeriod::whereDate('starts_on', '2026-09-01')->firstOrFail();
         $this->service->postDepreciation($asset, $period, 1);
 
         $result = $this->service->dispose($asset, [
