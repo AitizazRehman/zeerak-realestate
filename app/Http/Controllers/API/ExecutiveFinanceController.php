@@ -352,7 +352,7 @@ class ExecutiveFinanceController extends Controller
             $margin = abs($revenue) > 0.009 ? round(($result / $revenue) * 100, 1) : null;
 
             return [
-                'project_id' => $row->id,
+                'project_id' => (int) $row->id,
                 'project_name' => $row->name,
                 'project_code' => $row->code,
                 'revenue' => $this->money($revenue),
