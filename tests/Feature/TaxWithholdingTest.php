@@ -278,6 +278,7 @@ class TaxWithholdingTest extends AccountingTestCase
 
         $transaction = TaxTransaction::firstOrFail();
         $this->assertSame('reversed', $transaction->status);
+        $this->assertSame('voided', $transaction->certificate_status);
         $this->assertNotNull($transaction->reversed_at);
 
         $this->assertDatabaseHas('journal_lines', [
