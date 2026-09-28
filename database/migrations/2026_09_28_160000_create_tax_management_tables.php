@@ -83,10 +83,28 @@ return new class extends Migration
             $table->index(['vendor_id','transaction_date'], 'tax_tx_vendor_date_idx');
             $table->index(['tax_code_id','transaction_date'], 'tax_tx_code_date_idx');
         });
+
+        Schema::create('tax_transaction_allocations', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('tax_transaction_id');
+            $table->unsignedBigInteger('project_id')->nullable();
+            $table->decimal('taxable_amount', 18, 2);
+            $table->decimal('tax_amount', 18, 2);
+            $table->decimal('net_amount', 18, 2);
+            $table->timestamps();
+
+            $table->foreign('tax_transaction_id', 'tax_alloc_tx_fk')
+                ->references('id')->on('tax_transactions')->onDelete('cascade');
+            $table->foreign('project_id', 'tax_alloc_project_fk')
+                ->references('id')->on('projects')->onDelete('restrict');
+            $table->index(['tax_transaction_id','project_id'], 'tax_alloc_tx_project_idx');
+            $table->index(['project_id','tax_transaction_id'], 'tax_alloc_project_tx_idx');
+        });
     }
 
     public function down()
     {
+        Schema::dropIfExists('tax_transaction_allocations');
         Schema::dropIfExists('tax_transactions');
         Schema::dropIfExists('tax_codes');
     }
