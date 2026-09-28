@@ -578,6 +578,8 @@ class VendorPayableAccountingService
             $code = $tax['code'];
             $transaction = TaxTransaction::create([
                 'tax_code_id' => $code->id,
+                'tax_type' => $code->tax_type,
+                'chart_of_account_id' => $code->chart_of_account_id,
                 'branch_id' => $bill->branch_id,
                 'vendor_id' => $bill->vendor_id,
                 'vendor_bill_id' => $bill->id,
