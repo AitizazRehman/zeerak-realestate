@@ -38,8 +38,8 @@ class FiscalYearController extends Controller
         }
 
         $year = DB::transaction(function () use ($data, $start, $end) {
-            if (FiscalYear::where('starts_on', '<=', $end->toDateString())
-                ->where('ends_on', '>=', $start->toDateString())->exists()) {
+            if (FiscalYear::whereDate('starts_on', '<=', $end->toDateString())
+                ->whereDate('ends_on', '>=', $start->toDateString())->exists()) {
                 throw ValidationException::withMessages(['starts_on' => ['This fiscal year overlaps an existing fiscal year.']]);
             }
 
