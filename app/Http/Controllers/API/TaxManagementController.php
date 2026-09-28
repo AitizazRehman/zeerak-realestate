@@ -177,7 +177,6 @@ class TaxManagementController extends Controller
             'reversed_transactions' => $summaryRows->where('status', 'reversed')->count(),
             'taxable_amount' => $this->money($summaryRows->sum('taxable_amount')),
             'tax_amount' => $this->money($summaryRows->sum('tax_amount')),
-            'net_amount' => $this->money($summaryRows->sum('net_amount')),
             'pending_certificates' => $summaryRows->where('certificate_status', 'pending')->count(),
             'issued_certificates' => $summaryRows->where('certificate_status', 'issued')->count(),
         ];
