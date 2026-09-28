@@ -85,6 +85,14 @@ class AccountsPayableTest extends AccountingTestCase
             $table->timestamps();
         });
 
+        Schema::create('vendor_bill_payment_allocations', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('vendor_bill_payment_id');
+            $table->unsignedBigInteger('project_id')->nullable();
+            $table->decimal('amount', 18, 2);
+            $table->timestamps();
+        });
+
         ChartOfAccount::create([
             'code' => '2100',
             'name' => 'Accounts Payable',
@@ -268,4 +276,95 @@ class AccountsPayableTest extends AccountingTestCase
         $this->assertSame('0.00', $bill->remaining_amount);
         $this->assertNotNull($bill->cancellationJournal()->first());
     }
+    public function test_multi_project_bill_and_payment_keep_project_ap_balanced()
+    {
+        DB::table('projects')->insert([
+            'id' => 2,
+            'branch_id' => 1,
+        ]);
+
+        DB::table('vendor_bills')->where('id', 1)->update([
+            'project_id' => null,
+            'total_amount' => 1000,
+            'paid_amount' => 0,
+            'remaining_amount' => 1000,
+            'status' => 'posted',
+        ]);
+
+        DB::table('vendor_bill_lines')->where('vendor_bill_id', 1)->delete();
+
+        DB::table('vendor_bill_lines')->insert([
+            [
+                'vendor_bill_id' => 1,
+                'chart_of_account_id' => $this->expenseAccountId,
+                'project_id' => 1,
+                'description' => 'Project one share',
+                'amount' => 600,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'vendor_bill_id' => 1,
+                'chart_of_account_id' => $this->expenseAccountId,
+                'project_id' => 2,
+                'description' => 'Project two share',
+                'amount' => 400,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $bill = VendorBill::findOrFail(1);
+        $entry = $this->service->postBill($bill, 1);
+        $payable = ChartOfAccount::where('code', '2100')->firstOrFail();
+
+        $this->assertDatabaseHas('journal_lines', [
+            'journal_entry_id' => $entry->id,
+            'chart_of_account_id' => $payable->id,
+            'project_id' => 1,
+            'credit' => 600.00,
+        ]);
+        $this->assertDatabaseHas('journal_lines', [
+            'journal_entry_id' => $entry->id,
+            'chart_of_account_id' => $payable->id,
+            'project_id' => 2,
+            'credit' => 400.00,
+        ]);
+
+        $payment = $this->service->payBill($bill, [
+            'amount' => 500,
+            'cash_bank_account_id' => $this->cashAccountId,
+            'payment_date' => '2026-09-20',
+            'payment_method' => 'bank_transfer',
+            'request_key' => 'ap-project-allocation',
+        ], 1);
+
+        $this->assertDatabaseHas('vendor_bill_payment_allocations', [
+            'vendor_bill_payment_id' => $payment->id,
+            'project_id' => 1,
+            'amount' => 300.00,
+        ]);
+        $this->assertDatabaseHas('vendor_bill_payment_allocations', [
+            'vendor_bill_payment_id' => $payment->id,
+            'project_id' => 2,
+            'amount' => 200.00,
+        ]);
+
+        $paymentEntry = $payment->journalEntry()->firstOrFail();
+
+        $projectOneBalance = DB::table('journal_lines')
+            ->where('chart_of_account_id', $payable->id)
+            ->where('project_id', 1)
+            ->sum(DB::raw('credit - debit'));
+
+        $projectTwoBalance = DB::table('journal_lines')
+            ->where('chart_of_account_id', $payable->id)
+            ->where('project_id', 2)
+            ->sum(DB::raw('credit - debit'));
+
+        $this->assertSame(300.0, (float) $projectOneBalance);
+        $this->assertSame(200.0, (float) $projectTwoBalance);
+        $this->assertNotNull($paymentEntry);
+    }
+
 }
