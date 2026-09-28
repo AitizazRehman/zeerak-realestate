@@ -20,6 +20,11 @@ class FiscalYear extends Model
 
     public function closure()
     {
-        return $this->hasOne(FiscalYearClosure::class);
+        return $this->hasOne(FiscalYearClosure::class)->latest('id');
+    }
+
+    public function closures()
+    {
+        return $this->hasMany(FiscalYearClosure::class)->orderByDesc('id');
     }
 }
