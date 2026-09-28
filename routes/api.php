@@ -46,6 +46,7 @@ use App\Http\Controllers\API\AccountsPayableReportController;
 use App\Http\Controllers\API\TreasuryController;
 use App\Http\Controllers\API\ExecutiveFinanceController;
 use App\Http\Controllers\API\AccountingBudgetController;
+use App\Http\Controllers\API\FixedAssetController;
 
 Route::prefix('auth')->group(function () { Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1'); });
 Route::get('app-settings', [CompanySettingController::class, 'publicSettings'])->middleware('throttle:60,1');
@@ -148,6 +149,19 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::put('accounting/budgets/{accountingBudget}', [AccountingBudgetController::class, 'update'])->middleware('permission:accounting.edit');
     Route::post('accounting/budgets/{accountingBudget}/approve', [AccountingBudgetController::class, 'approve'])->middleware('permission:accounting.edit');
     Route::get('accounting/budgets/{accountingBudget}/variance', [AccountingBudgetController::class, 'variance'])->middleware('permission:accounting.view');
+
+    Route::get('accounting/fixed-assets/options', [FixedAssetController::class, 'options'])->middleware('permission:accounting.view');
+    Route::get('accounting/fixed-assets/categories', [FixedAssetController::class, 'categories'])->middleware('permission:accounting.view');
+    Route::post('accounting/fixed-assets/categories', [FixedAssetController::class, 'storeCategory'])->middleware('permission:accounting.create');
+    Route::put('accounting/fixed-assets/categories/{fixedAssetCategory}', [FixedAssetController::class, 'updateCategory'])->middleware('permission:accounting.edit');
+    Route::get('accounting/fixed-assets', [FixedAssetController::class, 'index'])->middleware('permission:accounting.view');
+    Route::post('accounting/fixed-assets', [FixedAssetController::class, 'store'])->middleware('permission:accounting.create');
+    Route::get('accounting/fixed-assets/{fixedAsset}', [FixedAssetController::class, 'show'])->middleware('permission:accounting.view');
+    Route::put('accounting/fixed-assets/{fixedAsset}', [FixedAssetController::class, 'update'])->middleware('permission:accounting.edit');
+    Route::post('accounting/fixed-assets/{fixedAsset}/depreciation', [FixedAssetController::class, 'postDepreciation'])->middleware('permission:accounting.edit');
+    Route::post('accounting/fixed-assets/depreciation/run', [FixedAssetController::class, 'postPeriodDepreciation'])->middleware('permission:accounting.edit');
+    Route::post('accounting/fixed-assets/depreciations/{fixedAssetDepreciation}/reverse', [FixedAssetController::class, 'reverseDepreciation'])->middleware('permission:accounting.edit');
+    Route::post('accounting/fixed-assets/{fixedAsset}/dispose', [FixedAssetController::class, 'dispose'])->middleware('permission:accounting.edit');
 
     Route::get('accounting/report-options', [AccountingReportController::class, 'options'])->middleware('permission:accounting.view');
     Route::get('accounting/general-ledger', [AccountingReportController::class, 'ledger'])->middleware('permission:accounting.view');
