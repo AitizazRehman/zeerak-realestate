@@ -9,7 +9,7 @@ class Booking extends Model
 {
     use SoftDeletes;
     protected $fillable=['customer_id','property_id','sales_agent_id','booking_number','status','property_price','discount','final_price','paid_amount','remaining_amount','booking_date','notes'];
-    protected $casts=['property_price'=>'decimal:2','discount'=>'decimal:2','final_price'=>'decimal:2','paid_amount'=>'decimal:2','remaining_amount'=>'decimal:2','booking_date'=>'date'];
+    protected $casts=['customer_id'=>'integer','property_id'=>'integer','sales_agent_id'=>'integer','property_price'=>'decimal:2','discount'=>'decimal:2','final_price'=>'decimal:2','paid_amount'=>'decimal:2','remaining_amount'=>'decimal:2','booking_date'=>'date'];
     public function revenueJournal(){return $this->hasOne(JournalEntry::class,'source_id')->where('source_type','booking_revenue');}
     public function revenueCancellationJournal(){return $this->hasOne(JournalEntry::class,'source_id')->where('source_type','booking_revenue_cancel');}
     public function customer(){return $this->belongsTo(Customer::class);}
