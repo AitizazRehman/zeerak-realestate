@@ -355,12 +355,14 @@ class AccountsPayableTest extends AccountingTestCase
         $projectOneBalance = DB::table('journal_lines')
             ->where('chart_of_account_id', $payable->id)
             ->where('project_id', 1)
-            ->sum(DB::raw('credit - debit'));
+            ->selectRaw('COALESCE(SUM(credit - debit), 0) as balance')
+            ->value('balance');
 
         $projectTwoBalance = DB::table('journal_lines')
             ->where('chart_of_account_id', $payable->id)
             ->where('project_id', 2)
-            ->sum(DB::raw('credit - debit'));
+            ->selectRaw('COALESCE(SUM(credit - debit), 0) as balance')
+            ->value('balance');
 
         $this->assertSame(300.0, (float) $projectOneBalance);
         $this->assertSame(200.0, (float) $projectTwoBalance);
