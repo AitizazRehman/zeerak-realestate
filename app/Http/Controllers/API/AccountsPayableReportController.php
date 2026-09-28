@@ -33,9 +33,11 @@ class AccountsPayableReportController extends Controller
         $query = VendorBill::with([
             'vendor:id,vendor_number,name,branch_id',
             'project:id,name,code',
+            'lines:id,vendor_bill_id,project_id,amount',
             'payments' => function ($payments) {
                 $payments->orderBy('payment_date')->orderBy('id');
             },
+            'payments.allocations:id,vendor_bill_payment_id,project_id,amount',
         ]);
 
         if (!$this->canAccessAllBranches()) {
@@ -83,7 +85,7 @@ class AccountsPayableReportController extends Controller
             ->orderBy('id')
             ->get();
 
-        $events = $this->events($bills, $to)
+        $events = $this->events($bills, $to, $filters['project_id'] ?? null)
             ->sortBy(function ($event) {
                 return $event['date'].'|'.str_pad((string) $event['order'], 12, '0', STR_PAD_LEFT);
             })
@@ -154,7 +156,7 @@ class AccountsPayableReportController extends Controller
             ->orderBy('id')
             ->get();
 
-        $rows = $this->balancesAsOf($bills, $asOf)
+        $rows = $this->balancesAsOf($bills, $asOf, $filters['project_id'] ?? null)
             ->filter(function ($row) {
                 return (float) $row['balance'] > 0.009;
             })
@@ -247,9 +249,10 @@ class AccountsPayableReportController extends Controller
             ->whereDate('bill_date', '<=', $asOf->toDateString())
             ->get();
 
-        $balances = $this->balancesAsOf($bills, $asOf);
+        $projectId = $filters['project_id'] ?? null;
+        $balances = $this->balancesAsOf($bills, $asOf, $projectId);
         $subledger = round((float) $balances->sum('balance'), 2);
-        $managedGl = $this->managedGlBalance($bills, $asOf);
+        $managedGl = $this->managedGlBalance($bills, $asOf, $projectId);
         $managedDifference = round($managedGl - $subledger, 2);
 
         $unfiltered = empty($filters['branch_id']) &&
@@ -296,12 +299,18 @@ class AccountsPayableReportController extends Controller
         }
     }
 
-    private function events(Collection $bills, Carbon $to)
+    private function events(Collection $bills, Carbon $to, $projectId = null)
     {
         $events = collect();
         $order = 0;
 
         foreach ($bills as $bill) {
+            $billAmount = $this->billAmountForProject($bill, $projectId);
+
+            if ($billAmount <= 0.009) {
+                continue;
+            }
+
             if ($bill->bill_date->lte($to)) {
                 $events->push([
                     'date' => $bill->bill_date->toDateString(),
@@ -315,11 +324,17 @@ class AccountsPayableReportController extends Controller
                     'project_name' => optional($bill->project)->name,
                     'description' => $bill->description,
                     'debit' => 0.0,
-                    'credit' => round((float) $bill->total_amount, 2),
+                    'credit' => $this->moneyNumber($billAmount),
                 ]);
             }
 
             foreach ($bill->payments as $payment) {
+                $paymentAmount = $this->paymentAmountForProject($payment, $bill, $projectId);
+
+                if ($paymentAmount <= 0.009) {
+                    continue;
+                }
+
                 if ($payment->payment_date->lte($to)) {
                     $events->push([
                         'date' => $payment->payment_date->toDateString(),
@@ -332,7 +347,7 @@ class AccountsPayableReportController extends Controller
                         'project_id' => $bill->project_id,
                         'project_name' => optional($bill->project)->name,
                         'description' => 'Payment against '.$bill->bill_number,
-                        'debit' => round((float) $payment->amount, 2),
+                        'debit' => $this->moneyNumber($paymentAmount),
                         'credit' => 0.0,
                     ]);
                 }
@@ -350,7 +365,7 @@ class AccountsPayableReportController extends Controller
                         'project_name' => optional($bill->project)->name,
                         'description' => $payment->reversal_reason ?: 'Vendor payment reversal',
                         'debit' => 0.0,
-                        'credit' => round((float) $payment->amount, 2),
+                        'credit' => $this->moneyNumber($paymentAmount),
                     ]);
                 }
             }
@@ -369,7 +384,7 @@ class AccountsPayableReportController extends Controller
                     'project_id' => $bill->project_id,
                     'project_name' => optional($bill->project)->name,
                     'description' => $bill->cancellation_reason ?: 'Vendor bill cancellation',
-                    'debit' => round((float) $bill->total_amount, 2),
+                    'debit' => $this->moneyNumber($billAmount),
                     'credit' => 0.0,
                 ]);
             }
@@ -378,29 +393,32 @@ class AccountsPayableReportController extends Controller
         return $events;
     }
 
-    private function balancesAsOf(Collection $bills, Carbon $asOf)
+    private function balancesAsOf(Collection $bills, Carbon $asOf, $projectId = null)
     {
-        return $bills->map(function ($bill) use ($asOf) {
+        return $bills->map(function ($bill) use ($asOf, $projectId) {
+            $billAmount = $this->billAmountForProject($bill, $projectId);
             $balance = $bill->bill_date->lte($asOf)
-                ? round((float) $bill->total_amount, 2)
+                ? $billAmount
                 : 0.0;
 
             foreach ($bill->payments as $payment) {
+                $paymentAmount = $this->paymentAmountForProject($payment, $bill, $projectId);
+
                 if ($payment->payment_date->lte($asOf)) {
-                    $balance = round($balance - (float) $payment->amount, 2);
+                    $balance = round($balance - $paymentAmount, 2);
                 }
 
                 if ($payment->reversed_at &&
                     $payment->reversal_date &&
                     Carbon::parse($payment->reversal_date)->lte($asOf)) {
-                    $balance = round($balance + (float) $payment->amount, 2);
+                    $balance = round($balance + $paymentAmount, 2);
                 }
             }
 
             if ($bill->status === 'cancelled' &&
                 $bill->cancellation_date &&
                 Carbon::parse($bill->cancellation_date)->lte($asOf)) {
-                $balance = round($balance - (float) $bill->total_amount, 2);
+                $balance = round($balance - $billAmount, 2);
             }
 
             return [
@@ -420,7 +438,7 @@ class AccountsPayableReportController extends Controller
         });
     }
 
-    private function managedGlBalance(Collection $bills, Carbon $asOf)
+    private function managedGlBalance(Collection $bills, Carbon $asOf, $projectId = null)
     {
         $account = $this->payableAccount();
         $billIds = $bills->pluck('id')->map(function ($id) { return (int) $id; })->values();
@@ -437,6 +455,9 @@ class AccountsPayableReportController extends Controller
             ->where('e.status', 'posted')
             ->where('e.entry_date', '<=', $asOf->toDateString())
             ->where('l.chart_of_account_id', $account->id)
+            ->when($projectId, function ($query) use ($projectId) {
+                $query->where('l.project_id', (int) $projectId);
+            })
             ->where(function ($source) use ($billIds, $paymentIds) {
                 if ($billIds->count()) {
                     $source->where(function ($bills) use ($billIds) {
@@ -472,6 +493,46 @@ class AccountsPayableReportController extends Controller
             ->first();
 
         return round((float) $row->balance, 2);
+    }
+
+
+    private function billAmountForProject($bill, $projectId = null)
+    {
+        if (!$projectId) {
+            return round((float) $bill->total_amount, 2);
+        }
+
+        return round((float) $bill->lines->sum(function ($line) use ($bill, $projectId) {
+            $effectiveProject = $line->project_id ?: $bill->project_id;
+
+            return (int) $effectiveProject === (int) $projectId
+                ? (float) $line->amount
+                : 0.0;
+        }), 2);
+    }
+
+    private function paymentAmountForProject($payment, $bill, $projectId = null)
+    {
+        if (!$projectId) {
+            return round((float) $payment->amount, 2);
+        }
+
+        if ($payment->relationLoaded('allocations') && $payment->allocations->count()) {
+            return round((float) $payment->allocations->sum(function ($allocation) use ($projectId) {
+                return (int) $allocation->project_id === (int) $projectId
+                    ? (float) $allocation->amount
+                    : 0.0;
+            }), 2);
+        }
+
+        return (int) $bill->project_id === (int) $projectId
+            ? round((float) $payment->amount, 2)
+            : 0.0;
+    }
+
+    private function moneyNumber($value)
+    {
+        return round((float) $value, 2);
     }
 
     private function payableAccount()
