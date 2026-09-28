@@ -14,6 +14,9 @@
         <v-btn text color="#165134" class="mr-2" to="/admin/accounting/vendors">
           <v-icon left>mdi-store-outline</v-icon>Vendors
         </v-btn>
+        <v-btn text color="#165134" class="mr-2" to="/admin/accounting/taxes">
+          <v-icon left>mdi-percent-outline</v-icon>Taxes
+        </v-btn>
         <v-btn v-if="$can('accounting.create')" color="#165134" dark depressed @click="openBill">
           <v-icon left>mdi-file-document-plus-outline</v-icon>New Bill
         </v-btn>
@@ -103,7 +106,7 @@
 
                 <div class="subtitle-2 font-weight-bold mt-4 mb-2">Payment History</div>
                 <v-simple-table dense>
-                  <thead><tr><th>Date</th><th>Cash/Bank</th><th>Method</th><th>Reference</th><th class="text-right">Amount</th><th></th></tr></thead>
+                  <thead><tr><th>Date</th><th>Cash/Bank</th><th>Method</th><th>Reference</th><th class="text-right">Gross</th><th class="text-right">Withholding</th><th class="text-right">Net Cash</th><th></th></tr></thead>
                   <tbody>
                     <tr v-for="payment in item.payments || []" :key="payment.id">
                       <td>{{dateLabel(payment.payment_date)}}</td>
@@ -111,12 +114,14 @@
                       <td>{{payment.payment_method}}</td>
                       <td>{{payment.reference_number || payment.cheque_number || '—'}}</td>
                       <td class="text-right" :class="payment.reversed_at ? 'text-decoration-line-through grey--text' : ''">PKR {{money(payment.amount)}}</td>
+                      <td class="text-right" :class="payment.reversed_at ? 'text-decoration-line-through grey--text' : ''">PKR {{money(paymentWithholding(payment))}}</td>
+                      <td class="text-right" :class="payment.reversed_at ? 'text-decoration-line-through grey--text' : ''"><strong>PKR {{money(Number(payment.amount||0)-paymentWithholding(payment))}}</strong></td>
                       <td class="text-right">
                         <v-chip v-if="payment.reversed_at" x-small color="grey" dark>Reversed</v-chip>
                         <v-btn v-else-if="$can('accounting.edit')" x-small text color="warning" @click="openReversePayment(payment)">Reverse</v-btn>
                       </td>
                     </tr>
-                    <tr v-if="!(item.payments || []).length"><td colspan="6" class="text-center grey--text">No payments yet.</td></tr>
+                    <tr v-if="!(item.payments || []).length"><td colspan="8" class="text-center grey--text">No payments yet.</td></tr>
                   </tbody>
                 </v-simple-table>
               </td>
@@ -173,7 +178,7 @@
       </v-card>
     </v-dialog>
 
-    <v-dialog v-model="paymentDialog" max-width="650" persistent>
+    <v-dialog v-model="paymentDialog" max-width="850" persistent>
       <v-card>
         <v-card-title>Pay Vendor Bill</v-card-title>
         <v-card-text>
@@ -186,6 +191,57 @@
             <v-col cols="12" md="6"><v-text-field v-model="paymentForm.reference_number" outlined dense label="Reference #"/></v-col>
             <v-col cols="12"><v-text-field v-model="paymentForm.cheque_number" outlined dense label="Cheque #"/></v-col>
           </v-row>
+
+          <v-divider class="my-3"/>
+          <div class="d-flex align-center mb-2">
+            <div>
+              <div class="subtitle-2 font-weight-bold">Withholding Tax</div>
+              <div class="caption grey--text">Optional. Gross amount reduces AP; withholding is credited to the tax liability and only the net amount leaves Cash/Bank.</div>
+            </div>
+            <v-spacer/>
+            <v-btn small text color="#165134" @click="addWithholding"><v-icon left small>mdi-plus</v-icon>Add Tax</v-btn>
+          </div>
+
+          <v-card v-for="(tax,index) in paymentForm.withholdings || []" :key="'tax-'+index" flat outlined class="pa-3 mb-2">
+            <v-row dense align="center">
+              <v-col cols="12" md="6">
+                <v-autocomplete
+                  v-model="tax.tax_code_id"
+                  :items="withholdingTaxCodes"
+                  item-text="display"
+                  item-value="id"
+                  outlined dense hide-details
+                  label="Withholding Code *"
+                />
+              </v-col>
+              <v-col cols="10" md="5">
+                <v-text-field
+                  v-model.number="tax.taxable_amount"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  outlined dense hide-details
+                  label="Taxable Amount"
+                  :placeholder="'Default '+money(paymentForm.amount)"
+                />
+              </v-col>
+              <v-col cols="2" md="1" class="text-right">
+                <v-btn icon small color="error" @click="paymentForm.withholdings.splice(index,1)"><v-icon small>mdi-delete-outline</v-icon></v-btn>
+              </v-col>
+              <v-col cols="12" class="pt-1">
+                <div class="caption grey--text">
+                  Rate {{ taxCodeRate(tax.tax_code_id) }}% · Estimated tax PKR {{ money(estimatedTax(tax)) }}
+                </div>
+              </v-col>
+            </v-row>
+          </v-card>
+
+          <v-card flat outlined class="pa-3 mt-3">
+            <div class="d-flex justify-space-between"><span>Gross AP Settlement</span><strong>PKR {{money(paymentForm.amount)}}</strong></div>
+            <div class="d-flex justify-space-between mt-1"><span>Less: Withholding Tax</span><strong>PKR {{money(paymentWithholdingTotal)}}</strong></div>
+            <v-divider class="my-2"/>
+            <div class="d-flex justify-space-between"><span>Net Cash / Bank Payment</span><strong class="success--text">PKR {{money(paymentNetCash)}}</strong></div>
+          </v-card>
         </v-card-text>
         <v-card-actions><v-spacer/><v-btn text @click="paymentDialog=false">Cancel</v-btn><v-btn color="#165134" dark depressed :loading="paymentSaving" @click="savePayment">Post Payment</v-btn></v-card-actions>
       </v-card>
@@ -216,7 +272,7 @@ export default {
   data(){
     return{
       tab:0,loading:false,billSaving:false,paymentSaving:false,reverseSaving:false,cancelSaving:false,
-      items:[],total:0,page:1,perPage:25,aging:{},agingVendors:[],branches:[],vendors:[],projects:[],debitAccounts:[],cashAccounts:[],
+      items:[],total:0,page:1,perPage:25,aging:{},agingVendors:[],branches:[],vendors:[],projects:[],debitAccounts:[],cashAccounts:[],withholdingTaxCodes:[],
       billDialog:false,paymentDialog:false,reverseDialog:false,cancelDialog:false,selectedBill:null,selectedPayment:null,billErrors:{},
       filters:{search:'',branch_id:null,vendor_id:null,project_id:null,status:null},
       statusOptions:[{text:'Posted',value:'posted'},{text:'Partial',value:'partial'},{text:'Paid',value:'paid'},{text:'Overdue',value:'overdue'},{text:'Cancelled',value:'cancelled'}],
@@ -233,7 +289,9 @@ export default {
     }
   },
   computed:{
-    billTotal(){return (this.billForm.lines||[]).reduce((sum,line)=>sum+Number(line.amount||0),0)}
+    billTotal(){return (this.billForm.lines||[]).reduce((sum,line)=>sum+Number(line.amount||0),0)},
+    paymentWithholdingTotal(){return (this.paymentForm.withholdings||[]).reduce((sum,tax)=>sum+this.estimatedTax(tax),0)},
+    paymentNetCash(){return Math.max(0,Number(this.paymentForm.amount||0)-this.paymentWithholdingTotal)}
   },
   async mounted(){await this.loadOptions();await Promise.all([this.loadBills(),this.loadAging()])},
   methods:{
@@ -246,6 +304,7 @@ export default {
       this.projects=(r.data.projects||[]).map(x=>Object.assign({},x,{display:(x.code?x.code+' · ':'')+x.name}))
       this.debitAccounts=(r.data.debit_accounts||[]).map(x=>Object.assign({},x,{display:x.code+' · '+x.name}))
       this.cashAccounts=(r.data.cash_accounts||[]).map(x=>Object.assign({},x,{display:x.code+' · '+x.name}))
+      this.withholdingTaxCodes=(r.data.withholding_tax_codes||[]).map(x=>Object.assign({},x,{display:x.code+' · '+x.name+' · '+Number(x.rate_percent||0)+'%'}))
     },
     async branchChanged(){this.filters.vendor_id=null;this.filters.project_id=null;await this.loadOptions()},
     applyFilters(){this.page=1;Promise.all([this.loadBills(),this.loadAging()])},
@@ -286,8 +345,12 @@ export default {
       }finally{this.billSaving=false}
     },
     openPayment(item){
-      this.selectedBill=item;this.paymentForm={amount:Number(item.remaining_amount||0),cash_bank_account_id:null,payment_date:this.today(),payment_method:'bank_transfer',reference_number:'',cheque_number:'',notes:'',request_key:'vendor-payment-'+item.id+'-'+Date.now()+'-'+Math.random().toString(36).slice(2)};this.paymentDialog=true
+      this.selectedBill=item;this.paymentForm={amount:Number(item.remaining_amount||0),cash_bank_account_id:null,payment_date:this.today(),payment_method:'bank_transfer',reference_number:'',cheque_number:'',notes:'',withholdings:[],request_key:'vendor-payment-'+item.id+'-'+Date.now()+'-'+Math.random().toString(36).slice(2)};this.paymentDialog=true
     },
+    addWithholding(){this.paymentForm.withholdings.push({tax_code_id:null,taxable_amount:null})},
+    taxCodeRate(id){const code=this.withholdingTaxCodes.find(x=>Number(x.id)===Number(id));return code?Number(code.rate_percent||0):0},
+    estimatedTax(tax){const base=tax&&tax.taxable_amount!==null&&tax.taxable_amount!==''?Number(tax.taxable_amount||0):Number(this.paymentForm.amount||0);return Math.round(base*this.taxCodeRate(tax&&tax.tax_code_id)/100*100)/100},
+    paymentWithholding(payment){return (payment.tax_transactions||[]).reduce((sum,tax)=>sum+Number(tax.tax_amount||0),0)},
     async savePayment(){
       this.paymentSaving=true
       try{
