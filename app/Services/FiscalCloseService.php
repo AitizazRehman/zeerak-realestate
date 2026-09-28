@@ -37,6 +37,32 @@ class FiscalCloseService
             return $this->result($year, null, $checks, $blockers, $warnings);
         }
 
+        $firstPeriod = $periods->first();
+        $calendarComplete = $periods->count() === 12
+            && $firstPeriod->starts_on->isSameDay($year->starts_on)
+            && $finalPeriod->ends_on->isSameDay($year->ends_on);
+
+        if ($calendarComplete) {
+            for ($i = 1; $i < $periods->count(); $i++) {
+                if (!$periods[$i - 1]->ends_on->copy()->addDay()->isSameDay($periods[$i]->starts_on)) {
+                    $calendarComplete = false;
+                    break;
+                }
+            }
+        }
+
+        $checks[] = $this->check(
+            'Fiscal period calendar is complete',
+            $calendarComplete,
+            $calendarComplete
+                ? 'All 12 accounting periods cover the fiscal year without gaps.'
+                : 'The fiscal year must contain 12 contiguous accounting periods covering the full year.'
+        );
+
+        if (!$calendarComplete) {
+            $blockers[] = 'Repair the fiscal period calendar before closing the fiscal year.';
+        }
+
         $earlierOpen = $periods->slice(0, max(0, $periods->count() - 1))
             ->where('status', 'open')
             ->values();
